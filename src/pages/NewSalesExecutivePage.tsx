@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -20,50 +20,104 @@ const steps = [
   { id: 'admin', title: 'Beheer', description: 'Beheergegevens' },
 ];
 
+const defaultForm = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone: '',
+  start_date: '',
+  external_guest_email: '',
+  external_access_required: false,
+  status: 'active' as string,
+
+  workspace_name: '',
+  sharepoint_site_name: '',
+  workspace_slug: '',
+  provisioning_mode: 'design_only' as string,
+  include_training_library: true,
+  include_lead_list: true,
+  include_excel_import: false,
+  eod_typeform_url: '',
+  eod_display_mode: 'embedded' as string,
+
+  product_lines: ['KlikklaarSEO'] as string[],
+  deal_registration_enabled: true,
+  appointment_scheduling_enabled: true,
+  account_management_enabled: true,
+
+  pipedrive_enabled: false,
+  exact_enabled: false,
+  qapitaal_enabled: false,
+  eod_embedded: true,
+  eod_external_link: false,
+
+  notes: '',
+};
+
 export default function NewSalesExecutivePage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    start_date: '',
-    external_guest_email: '',
-    external_access_required: false,
-    status: 'active' as const,
-
-    workspace_name: '',
-    sharepoint_site_name: '',
-    workspace_slug: '',
-    provisioning_mode: 'design_only' as const,
-    include_training_library: true,
-    include_lead_list: true,
-    include_excel_import: false,
-    eod_typeform_url: '',
-    eod_display_mode: 'embedded' as const,
-
-    product_lines: ['KlikklaarSEO'] as string[],
-    deal_registration_enabled: true,
-    appointment_scheduling_enabled: true,
-    account_management_enabled: true,
-
-    pipedrive_enabled: false,
-    exact_enabled: false,
-    qapitaal_enabled: false,
-    eod_embedded: true,
-    eod_external_link: false,
-
-    notes: '',
-  });
+  const [form, setForm] = useState({ ...defaultForm });
 
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
   const fullName = `${form.first_name} ${form.last_name}`.trim();
   const defaultWsName = fullName ? `Klikklaar SEO – SE – ${fullName}` : '';
+
+  // Load existing data in edit mode
+  useEffect(() => {
+    if (!id) return;
+    const load = async () => {
+      const [{ data: se }, { data: ws }] = await Promise.all([
+        supabase.from('sales_executives').select('*').eq('id', id).single(),
+        supabase.from('workspaces').select('*').eq('sales_executive_id', id).maybeSingle(),
+      ]);
+
+      if (!se) {
+        toast.error('Sales Executive niet gevonden');
+        navigate('/sales-executives');
+        return;
+      }
+
+      setForm(prev => ({
+        ...prev,
+        first_name: se.first_name,
+        last_name: se.last_name,
+        email: se.email,
+        phone: se.phone || '',
+        start_date: se.start_date || '',
+        external_guest_email: se.external_guest_email || '',
+        external_access_required: se.external_access_required ?? false,
+        status: se.status || 'active',
+        ...(ws ? {
+          workspace_name: ws.workspace_name,
+          sharepoint_site_name: ws.sharepoint_site_name || '',
+          workspace_slug: ws.workspace_slug || '',
+          provisioning_mode: ws.provisioning_mode || 'design_only',
+          include_training_library: ws.include_training_library ?? true,
+          include_lead_list: ws.include_lead_list ?? true,
+          include_excel_import: ws.include_excel_import ?? false,
+          eod_typeform_url: ws.eod_typeform_url || '',
+          eod_display_mode: ws.eod_display_mode || 'embedded',
+          product_lines: ws.product_lines || ['KlikklaarSEO'],
+          deal_registration_enabled: ws.deal_registration_enabled ?? true,
+          appointment_scheduling_enabled: ws.appointment_scheduling_enabled ?? true,
+          account_management_enabled: ws.account_management_enabled ?? true,
+        } : {}),
+      }));
+
+      if (ws) setWorkspaceId(ws.id);
+      setLoading(false);
+    };
+    load();
+  }, [id, navigate]);
 
   const handleSave = async () => {
     if (!form.first_name || !form.last_name || !form.email) {
@@ -72,54 +126,111 @@ export default function NewSalesExecutivePage() {
     }
     setSaving(true);
     try {
-      const { data: se, error: seError } = await supabase
-        .from('sales_executives')
-        .insert({
-          first_name: form.first_name,
-          last_name: form.last_name,
-          email: form.email,
-          phone: form.phone || null,
-          start_date: form.start_date || null,
-          external_guest_email: form.external_guest_email || null,
-          external_access_required: form.external_access_required,
-          status: form.status,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+      if (isEdit && id) {
+        // Update SE
+        const { data: se, error: seError } = await supabase
+          .from('sales_executives')
+          .update({
+            first_name: form.first_name,
+            last_name: form.last_name,
+            email: form.email,
+            phone: form.phone || null,
+            start_date: form.start_date || null,
+            external_guest_email: form.external_guest_email || null,
+            external_access_required: form.external_access_required,
+            status: form.status,
+          })
+          .eq('id', id)
+          .select()
+          .single();
 
-      if (seError) throw seError;
+        if (seError) throw seError;
 
-      const { error: wsError } = await supabase.from('workspaces').insert({
-        sales_executive_id: se.id,
-        workspace_name: form.workspace_name || defaultWsName,
-        workspace_slug: form.workspace_slug || fullName.toLowerCase().replace(/\s+/g, '-'),
-        sharepoint_site_name: form.sharepoint_site_name || defaultWsName,
-        provisioning_mode: form.provisioning_mode,
-        include_training_library: form.include_training_library,
-        include_lead_list: form.include_lead_list,
-        include_excel_import: form.include_excel_import,
-        eod_typeform_url: form.eod_typeform_url || null,
-        eod_display_mode: form.eod_display_mode,
-        product_lines: form.product_lines,
-        deal_registration_enabled: form.deal_registration_enabled,
-        appointment_scheduling_enabled: form.appointment_scheduling_enabled,
-        account_management_enabled: form.account_management_enabled,
-      });
+        // Update or create workspace
+        const wsData = {
+          workspace_name: form.workspace_name || defaultWsName,
+          workspace_slug: form.workspace_slug || fullName.toLowerCase().replace(/\s+/g, '-'),
+          sharepoint_site_name: form.sharepoint_site_name || defaultWsName,
+          provisioning_mode: form.provisioning_mode,
+          include_training_library: form.include_training_library,
+          include_lead_list: form.include_lead_list,
+          include_excel_import: form.include_excel_import,
+          eod_typeform_url: form.eod_typeform_url || null,
+          eod_display_mode: form.eod_display_mode,
+          product_lines: form.product_lines,
+          deal_registration_enabled: form.deal_registration_enabled,
+          appointment_scheduling_enabled: form.appointment_scheduling_enabled,
+          account_management_enabled: form.account_management_enabled,
+        };
 
-      if (wsError) throw wsError;
+        if (workspaceId) {
+          const { error: wsError } = await supabase.from('workspaces').update(wsData).eq('id', workspaceId);
+          if (wsError) throw wsError;
+        } else {
+          const { error: wsError } = await supabase.from('workspaces').insert({ ...wsData, sales_executive_id: id });
+          if (wsError) throw wsError;
+        }
 
-      // Audit log
-      await supabase.from('audit_logs').insert({
-        actor_user_id: user?.id,
-        action_type: 'create',
-        entity_type: 'sales_executive',
-        entity_id: se.id,
-        after_json: se,
-      });
+        await supabase.from('audit_logs').insert({
+          actor_user_id: user?.id,
+          action_type: 'update',
+          entity_type: 'sales_executive',
+          entity_id: id,
+          after_json: se,
+        });
 
-      toast.success('Sales Executive succesvol aangemaakt');
-      navigate(`/sales-executives/${se.id}`);
+        toast.success('Sales Executive succesvol bijgewerkt');
+        navigate(`/sales-executives/${id}`);
+      } else {
+        // Create new SE
+        const { data: se, error: seError } = await supabase
+          .from('sales_executives')
+          .insert({
+            first_name: form.first_name,
+            last_name: form.last_name,
+            email: form.email,
+            phone: form.phone || null,
+            start_date: form.start_date || null,
+            external_guest_email: form.external_guest_email || null,
+            external_access_required: form.external_access_required,
+            status: form.status,
+            created_by: user?.id,
+          })
+          .select()
+          .single();
+
+        if (seError) throw seError;
+
+        const { error: wsError } = await supabase.from('workspaces').insert({
+          sales_executive_id: se.id,
+          workspace_name: form.workspace_name || defaultWsName,
+          workspace_slug: form.workspace_slug || fullName.toLowerCase().replace(/\s+/g, '-'),
+          sharepoint_site_name: form.sharepoint_site_name || defaultWsName,
+          provisioning_mode: form.provisioning_mode,
+          include_training_library: form.include_training_library,
+          include_lead_list: form.include_lead_list,
+          include_excel_import: form.include_excel_import,
+          eod_typeform_url: form.eod_typeform_url || null,
+          eod_display_mode: form.eod_display_mode,
+          product_lines: form.product_lines,
+          deal_registration_enabled: form.deal_registration_enabled,
+          appointment_scheduling_enabled: form.appointment_scheduling_enabled,
+          account_management_enabled: form.account_management_enabled,
+        });
+
+        if (wsError) throw wsError;
+
+        await supabase.from('audit_logs').insert({
+          actor_user_id: user?.id,
+          action_type: 'create',
+          entity_type: 'sales_executive',
+          entity_id: se.id,
+          after_json: se,
+        });
+
+        toast.success('Sales Executive succesvol aangemaakt');
+        navigate(`/sales-executives/${se.id}`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Opslaan mislukt';
       toast.error(msg);
@@ -128,11 +239,13 @@ export default function NewSalesExecutivePage() {
     }
   };
 
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Nieuwe Sales Executive</h1>
-        <p className="text-muted-foreground text-sm mt-1">Vul alle gegevens in om een nieuwe SE aan te maken</p>
+        <h1 className="text-2xl font-bold text-foreground">{isEdit ? 'Sales Executive bewerken' : 'Nieuwe Sales Executive'}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{isEdit ? 'Wijzig de gegevens van deze SE' : 'Vul alle gegevens in om een nieuwe SE aan te maken'}</p>
       </div>
 
       {/* Step indicator */}
@@ -347,7 +460,7 @@ export default function NewSalesExecutivePage() {
           </Button>
         ) : (
           <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" /> {saving ? 'Opslaan...' : 'Sales Executive aanmaken'}
+            <Save className="h-4 w-4 mr-1" /> {saving ? 'Opslaan...' : isEdit ? 'Wijzigingen opslaan' : 'Sales Executive aanmaken'}
           </Button>
         )}
       </div>
