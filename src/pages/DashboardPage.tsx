@@ -209,7 +209,9 @@ export default function DashboardPage() {
                         <Link to={`/sales-executives/${se.id}/edit`}>
                           <Button variant="ghost" size="icon" title="Bewerken"><Pencil className="h-4 w-4" /></Button>
                         </Link>
-                        <Button variant="ghost" size="icon" title="Provisioneren"><Play className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="Provisioneren" onClick={() => handleProvision(se)} disabled={provisioningId === se.id}>
+                          {provisioningId === se.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                        </Button>
                         <Button variant="ghost" size="icon" title="Exporteren"><Download className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" title="Verwijderen"><Trash2 className="h-4 w-4" /></Button>
                       </div>
