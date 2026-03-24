@@ -1,0 +1,185 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import { StatCard } from '@/components/ui/stat-card';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Button } from '@/components/ui/button';
+import {
+  Users, Package, CheckCircle, AlertTriangle, Plug, ClipboardCheck,
+  Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2,
+} from 'lucide-react';
+import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
+
+interface SERow extends SalesExecutive {
+  workspace?: Workspace;
+  integrations?: IntegrationConfig[];
+}
+
+export default function DashboardPage() {
+  const [ses, setSes] = useState<SERow[]>([]);
+  const [stats, setStats] = useState({
+    activeSEs: 0, draftWorkspaces: 0, readyWorkspaces: 0, failedJobs: 0,
+    integrationErrors: 0, eodExpected: 0, eodReceived: 0,
+    openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: seData } = await supabase.from('sales_executives').select('*');
+      const { data: wsData } = await supabase.from('workspaces').select('*');
+      const { data: icData } = await supabase.from('integration_configs').select('*');
+      const { data: jobData } = await supabase.from('provisioning_jobs').select('*');
+      const { data: eodData } = await supabase.from('eod_submissions').select('*');
+      const { data: eventData } = await supabase.from('integration_events').select('*');
+
+      const seList = (seData || []) as SalesExecutive[];
+      const wsList = (wsData || []) as Workspace[];
+      const icList = (icData || []) as IntegrationConfig[];
+
+      const rows: SERow[] = seList.map(se => ({
+        ...se,
+        workspace: wsList.find(w => w.sales_executive_id === se.id),
+        integrations: icList.filter(ic => {
+          const ws = wsList.find(w => w.sales_executive_id === se.id);
+          return ws && ic.workspace_id === ws.id;
+        }),
+      }));
+
+      const today = new Date().toISOString().split('T')[0];
+
+      setStats({
+        activeSEs: seList.filter(s => s.status === 'active').length,
+        draftWorkspaces: wsList.filter(w => w.sharepoint_status === 'draft').length,
+        readyWorkspaces: wsList.filter(w => ['ready', 'executed'].includes(w.sharepoint_status)).length,
+        failedJobs: (jobData || []).filter(j => j.status === 'failed').length,
+        integrationErrors: (eventData || []).filter(e => e.processing_status === 'failed').length,
+        eodExpected: seList.filter(s => s.status === 'active').length,
+        eodReceived: (eodData || []).filter(e => e.session_date === today && e.status !== 'pending').length,
+        openLeads: 0,
+        callbacksToday: 0,
+        openDeals: 0,
+        wonDeals: 0,
+        activeSubscriptions: 0,
+      });
+
+      setSes(rows);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  const getIntegrationStatus = (row: SERow, provider: string) => {
+    const ic = row.integrations?.find(i => i.provider === provider);
+    return ic ? ic.status : 'not_configured';
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground text-sm mt-1">Overzicht van alle Sales Executive activiteiten</p>
+        </div>
+        <Link to="/sales-executives/new">
+          <Button>Nieuwe Sales Executive</Button>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <StatCard title="Actieve SEs" value={stats.activeSEs} icon={Users} variant="info" />
+        <StatCard title="Workspaces concept" value={stats.draftWorkspaces} icon={Package} />
+        <StatCard title="Workspaces gereed" value={stats.readyWorkspaces} icon={CheckCircle} variant="success" />
+        <StatCard title="Jobs mislukt" value={stats.failedJobs} icon={AlertTriangle} variant="destructive" />
+        <StatCard title="Integratiefouten" value={stats.integrationErrors} icon={Plug} variant="warning" />
+        <StatCard title="EOD verwacht" value={stats.eodExpected} icon={ClipboardCheck} />
+        <StatCard title="EOD ontvangen" value={stats.eodReceived} icon={ClipboardCheck} variant="success" />
+        <StatCard title="Open leads" value={stats.openLeads} icon={Target} />
+        <StatCard title="Callbacks vandaag" value={stats.callbacksToday} icon={PhoneCall} variant="warning" />
+        <StatCard title="Open deals" value={stats.openDeals} icon={Handshake} />
+        <StatCard title="Gewonnen deals" value={stats.wonDeals} icon={Trophy} variant="success" />
+        <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
+      </div>
+
+      <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+        <div className="p-4 border-b">
+          <h2 className="text-lg font-semibold text-card-foreground">Sales Executives</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left p-3 font-medium text-muted-foreground">Naam</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">E-mail</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Workspace</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Extern</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Pipedrive</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Exact</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Qapitaal</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">EOD</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Provisioning</th>
+                <th className="text-right p-3 font-medium text-muted-foreground">Acties</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ses.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                    Nog geen Sales Executives aangemaakt.{' '}
+                    <Link to="/sales-executives/new" className="text-primary hover:underline">
+                      Maak de eerste aan
+                    </Link>
+                  </td>
+                </tr>
+              ) : (
+                ses.map(se => (
+                  <tr key={se.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="p-3 font-medium text-foreground">{se.full_name}</td>
+                    <td className="p-3 text-muted-foreground">{se.email}</td>
+                    <td className="p-3"><StatusBadge status={se.status} /></td>
+                    <td className="p-3">
+                      {se.workspace ? (
+                        <StatusBadge status={se.workspace.sharepoint_status} />
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-muted-foreground">{se.external_access_required ? 'Ja' : 'Nee'}</td>
+                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'pipedrive')} /></td>
+                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'exact')} /></td>
+                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'qapitaal')} /></td>
+                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'typeform')} /></td>
+                    <td className="p-3">
+                      {se.workspace ? (
+                        <StatusBadge status={se.workspace.sharepoint_status} />
+                      ) : '—'}
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link to={`/sales-executives/${se.id}`}>
+                          <Button variant="ghost" size="icon" title="Bekijken"><Eye className="h-4 w-4" /></Button>
+                        </Link>
+                        <Link to={`/sales-executives/${se.id}/edit`}>
+                          <Button variant="ghost" size="icon" title="Bewerken"><Pencil className="h-4 w-4" /></Button>
+                        </Link>
+                        <Button variant="ghost" size="icon" title="Provisioneren"><Play className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="Exporteren"><Download className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="Verwijderen"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
