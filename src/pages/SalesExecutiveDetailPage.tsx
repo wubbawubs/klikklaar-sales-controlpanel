@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Play, Download, Pencil, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { buildArtifactInserts } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
 
 export default function SalesExecutiveDetailPage() {
@@ -65,9 +66,12 @@ export default function SalesExecutiveDetailPage() {
 
       if (jobError) throw jobError;
 
+      // Auto-generate artifacts
+      const artifactRows = buildArtifactInserts(se, workspace);
+      await supabase.from('generated_artifacts').insert(artifactRows);
+
       // Update workspace status
-      const newStatus = workspace.provisioning_mode === 'controlled_execution' ? 'provisioning' : 'ready';
-      await supabase.from('workspaces').update({ sharepoint_status: newStatus }).eq('id', workspace.id);
+      await supabase.from('workspaces').update({ sharepoint_status: 'artifacts_generated' }).eq('id', workspace.id);
 
       // Audit log
       await supabase.from('audit_logs').insert({
@@ -79,9 +83,13 @@ export default function SalesExecutiveDetailPage() {
       });
 
       // Update local state
-      setWorkspace({ ...workspace, sharepoint_status: newStatus });
+      setWorkspace({ ...workspace, sharepoint_status: 'artifacts_generated' });
 
-      toast({ title: 'Provisioning gestart', description: `Job aangemaakt (${job.job_type}). Status: ${newStatus}.` });
+      // Refresh artifacts list
+      const { data: newArtifacts } = await supabase.from('generated_artifacts').select('*').eq('workspace_id', workspace.id).order('created_at', { ascending: false });
+      setArtifacts(newArtifacts || []);
+
+      toast({ title: 'Provisioning gestart', description: `Job aangemaakt (${job.job_type}). Artifacts automatisch gegenereerd.` });
     } catch (err: any) {
       toast({ title: 'Fout bij provisioning', description: err.message, variant: 'destructive' });
     } finally {
