@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, TrendingUp, Users, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { RefreshCw, User, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface Deal {
   id: number;
@@ -29,25 +29,19 @@ interface Stage {
   deals: Deal[];
 }
 
-interface Pipeline {
-  id: number;
-  name: string;
-  active: boolean;
+interface PipelineData {
+  pipeline: { id: number; name: string };
   stages: Stage[];
   total_deals: number;
   total_value: number;
-}
-
-interface FunnelData {
-  funnels: Pipeline[];
   fetched_at: string;
 }
 
 export function PipedriveFunnel() {
-  const [data, setData] = useState<FunnelData | null>(null);
+  const [data, setData] = useState<PipelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedStage, setExpandedStage] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchDeals = async () => {
     setLoading(true);
@@ -68,8 +62,11 @@ export function PipedriveFunnel() {
 
   useEffect(() => { fetchDeals(); }, []);
 
-  const formatCurrency = (value: number, currency = 'EUR') => {
-    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency }).format(value);
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(value);
+
+  const scroll = (dir: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' });
   };
 
   if (loading) {
@@ -96,170 +93,127 @@ export function PipedriveFunnel() {
     );
   }
 
-  if (!data?.funnels?.length) {
+  if (!data?.stages?.length) {
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-sm text-muted-foreground">Geen pipelines gevonden in Pipedrive.</p>
+          <p className="text-sm text-muted-foreground">Geen stages gevonden.</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-semibold">{data.pipeline.name}</h3>
           <StatusBadge status="connected" />
-          {data.fetched_at && (
-            <span className="text-xs text-muted-foreground">
-              Laatst opgehaald: {new Date(data.fetched_at).toLocaleString('nl-NL')}
-            </span>
-          )}
+          <Badge variant="secondary" className="text-xs">
+            {data.total_deals} deals
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {formatCurrency(data.total_value)} totaal
+          </span>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchDeals} disabled={loading}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-          Vernieuwen
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {new Date(data.fetched_at).toLocaleString('nl-NL')}
+          </span>
+          <Button variant="outline" size="sm" onClick={fetchDeals} disabled={loading}>
+            <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
+            Vernieuwen
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scroll('left')}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scroll('right')}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {data.funnels.length === 1 ? (
-        <PipelineView pipeline={data.funnels[0]} expandedStage={expandedStage} setExpandedStage={setExpandedStage} formatCurrency={formatCurrency} />
-      ) : (
-        <Tabs defaultValue={String(data.funnels[0].id)}>
-          <TabsList>
-            {data.funnels.map(p => (
-              <TabsTrigger key={p.id} value={String(p.id)}>{p.name}</TabsTrigger>
-            ))}
-          </TabsList>
-          {data.funnels.map(p => (
-            <TabsContent key={p.id} value={String(p.id)}>
-              <PipelineView pipeline={p} expandedStage={expandedStage} setExpandedStage={setExpandedStage} formatCurrency={formatCurrency} />
-            </TabsContent>
-          ))}
-        </Tabs>
-      )}
+      {/* Kanban board */}
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-4 scrollbar-thin"
+        style={{ scrollSnapType: 'x mandatory' }}
+      >
+        {data.stages.map((stage) => (
+          <StageColumn key={stage.id} stage={stage} formatCurrency={formatCurrency} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function PipelineView({ pipeline, expandedStage, setExpandedStage, formatCurrency }: {
-  pipeline: Pipeline;
-  expandedStage: number | null;
-  setExpandedStage: (id: number | null) => void;
-  formatCurrency: (v: number, c?: string) => string;
-}) {
-  const maxDeals = Math.max(...pipeline.stages.map(s => s.deals_count), 1);
-
+function StageColumn({ stage, formatCurrency }: { stage: Stage; formatCurrency: (v: number) => string }) {
   return (
-    <div className="space-y-4">
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="py-3 px-4 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Stages</p>
-              <p className="text-lg font-bold">{pipeline.stages.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3 px-4 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <Users className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Open deals</p>
-              <p className="text-lg font-bold">{pipeline.total_deals}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3 px-4 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <DollarSign className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Pipeline waarde</p>
-              <p className="text-lg font-bold">{formatCurrency(pipeline.total_value)}</p>
-            </div>
-          </CardContent>
-        </Card>
+    <div
+      className="flex-shrink-0 w-[240px] flex flex-col rounded-lg border bg-muted/30"
+      style={{ scrollSnapAlign: 'start' }}
+    >
+      {/* Column header */}
+      <div className="px-3 py-2 border-b bg-muted/50 rounded-t-lg">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium truncate">{stage.name}</h4>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1 shrink-0">
+            {stage.deals_count}
+          </Badge>
+        </div>
+        {stage.deals_value > 0 && (
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {formatCurrency(stage.deals_value)}
+          </p>
+        )}
       </div>
 
-      {/* Funnel visualization */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">{pipeline.name} — Deal Funnel</CardTitle>
-          <CardDescription>Klik op een stage om de deals te bekijken</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {pipeline.stages.map((stage, i) => {
-            const widthPct = Math.max(20, (stage.deals_count / maxDeals) * 100);
-            const isExpanded = expandedStage === stage.id;
-
-            return (
-              <div key={stage.id}>
-                <button
-                  onClick={() => setExpandedStage(isExpanded ? null : stage.id)}
-                  className="w-full text-left group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div
-                        className={cn(
-                          "relative h-10 rounded-md flex items-center px-3 transition-all",
-                          "bg-primary/15 hover:bg-primary/25 border border-primary/20",
-                        )}
-                        style={{ width: `${widthPct}%` }}
-                      >
-                        <span className="text-sm font-medium truncate">{stage.name}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 w-40 justify-end">
-                      <Badge variant="secondary" className="text-xs">
-                        {stage.deals_count} deal{stage.deals_count !== 1 ? 's' : ''}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground w-20 text-right">
-                        {formatCurrency(stage.deals_value)}
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
-                </button>
-
-                {isExpanded && stage.deals.length > 0 && (
-                  <div className="mt-2 ml-4 mb-3 border-l-2 border-primary/20 pl-4 space-y-2">
-                    {stage.deals.map(deal => (
-                      <div key={deal.id} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{deal.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {[deal.person_name, deal.org_name].filter(Boolean).join(' — ') || 'Geen contactpersoon'}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0 ml-3">
-                          <p className="font-medium">{formatCurrency(deal.value, deal.currency)}</p>
-                          {deal.expected_close_date && (
-                            <p className="text-xs text-muted-foreground">Sluitdatum: {deal.expected_close_date}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+      {/* Deal cards */}
+      <ScrollArea className="flex-1 max-h-[calc(100vh-280px)]">
+        <div className="p-2 space-y-2">
+          {stage.deals.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Geen deals</p>
+          ) : (
+            stage.deals.map((deal) => (
+              <DealCard key={deal.id} deal={deal} formatCurrency={formatCurrency} />
+            ))
+          )}
+        </div>
+      </ScrollArea>
     </div>
+  );
+}
+
+function DealCard({ deal, formatCurrency }: { deal: Deal; formatCurrency: (v: number) => string }) {
+  return (
+    <Card className="shadow-sm hover:shadow-md transition-shadow cursor-default">
+      <CardContent className="p-2.5 space-y-1.5">
+        <p className="text-sm font-medium leading-tight line-clamp-2">{deal.title}</p>
+
+        {deal.org_name && (
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Building2 className="h-3 w-3 shrink-0" />
+            <span className="truncate">{deal.org_name}</span>
+          </div>
+        )}
+
+        {deal.person_name && (
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <User className="h-3 w-3 shrink-0" />
+            <span className="truncate">{deal.person_name}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-0.5">
+          <span className="text-xs font-semibold text-primary">
+            {formatCurrency(deal.value)}
+          </span>
+          {deal.owner_name && (
+            <span className="text-[10px] text-muted-foreground">{deal.owner_name}</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
