@@ -3,10 +3,60 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AppLayout } from "@/components/layout/AppLayout";
+import LoginPage from "@/pages/LoginPage";
+import DashboardPage from "@/pages/DashboardPage";
+import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
+import NewSalesExecutivePage from "@/pages/NewSalesExecutivePage";
+import SalesExecutiveDetailPage from "@/pages/SalesExecutiveDetailPage";
+import ProvisioningPage from "@/pages/ProvisioningPage";
+import ArtifactsPage from "@/pages/ArtifactsPage";
+import IntegrationsPage from "@/pages/IntegrationsPage";
+import TrainingPage from "@/pages/TrainingPage";
+import EodPage from "@/pages/EodPage";
+import SettingsPage from "@/pages/SettingsPage";
+import AuditLogsPage from "@/pages/AuditLogsPage";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-3">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground text-sm">Laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <LoginPage />;
+
+  return (
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/sales-executives" element={<SalesExecutivesPage />} />
+        <Route path="/sales-executives/new" element={<NewSalesExecutivePage />} />
+        <Route path="/sales-executives/:id" element={<SalesExecutiveDetailPage />} />
+        <Route path="/sales-executives/:id/edit" element={<NewSalesExecutivePage />} />
+        <Route path="/provisioning" element={<ProvisioningPage />} />
+        <Route path="/artifacts" element={<ArtifactsPage />} />
+        <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/training" element={<TrainingPage />} />
+        <Route path="/eod" element={<EodPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/audit-logs" element={<AuditLogsPage />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -14,11 +64,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
