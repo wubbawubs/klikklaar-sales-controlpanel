@@ -5,7 +5,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Play, Download } from 'lucide-react';
+import { ArrowLeft, Play, Download, Pencil } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
 
 export default function SalesExecutiveDetailPage() {
