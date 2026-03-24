@@ -64,6 +64,9 @@ export default function SalesExecutiveDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Link to={`/sales-executives/${id}/edit`}>
+            <Button variant="outline" size="sm"><Pencil className="h-4 w-4 mr-1" />Bewerken</Button>
+          </Link>
           <Button variant="outline" size="sm"><Play className="h-4 w-4 mr-1" />Provisioneren</Button>
           <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Exporteren</Button>
         </div>
