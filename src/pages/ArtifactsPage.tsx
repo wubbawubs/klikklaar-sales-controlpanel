@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy, Download, FileJson, FileText, RefreshCw } from 'lucide-react';
-import { buildArtifactInserts } from '@/lib/artifact-generator';
+import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, GeneratedArtifact } from '@/types/database';
 
 export default function ArtifactsPage() {
