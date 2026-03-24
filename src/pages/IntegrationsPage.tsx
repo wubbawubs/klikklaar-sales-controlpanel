@@ -2,12 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { AlertTriangle } from 'lucide-react';
+import { PipedriveFunnel } from '@/components/integrations/PipedriveFunnel';
 
 const providers = [
   {
     id: 'pipedrive', name: 'Pipedrive',
     description: 'Leads, deals en activiteiten spiegelen en opvolgen',
     features: ['Pipeline mapping', 'Status mapping', 'Activity mapping', 'Eigenaar mapping'],
+    hasLiveComponent: true,
   },
   {
     id: 'exact', name: 'Exact',
@@ -51,7 +53,7 @@ export default function IntegrationsPage() {
                       <CardTitle>{p.name}</CardTitle>
                       <CardDescription>{p.description}</CardDescription>
                     </div>
-                    <StatusBadge status="not_configured" />
+                    <StatusBadge status={p.hasLiveComponent ? 'connected' : 'not_configured'} />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -61,36 +63,43 @@ export default function IntegrationsPage() {
                       <p className="text-sm text-warning">{p.warning}</p>
                     </div>
                   )}
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Ondersteunde functies</h4>
-                    <ul className="space-y-1">
-                      {p.features.map(f => (
-                        <li key={f} className="text-sm text-muted-foreground flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Status overzicht</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex justify-between p-2 bg-muted rounded">
-                        <span className="text-muted-foreground">Status</span>
-                        <StatusBadge status="not_configured" />
+                  {!p.hasLiveComponent && (
+                    <>
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Ondersteunde functies</h4>
+                        <ul className="space-y-1">
+                          {p.features.map(f => (
+                            <li key={f} className="text-sm text-muted-foreground flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <div className="flex justify-between p-2 bg-muted rounded">
-                        <span className="text-muted-foreground">Laatste test</span>
-                        <span>—</span>
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Status overzicht</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex justify-between p-2 bg-muted rounded">
+                            <span className="text-muted-foreground">Status</span>
+                            <StatusBadge status="not_configured" />
+                          </div>
+                          <div className="flex justify-between p-2 bg-muted rounded">
+                            <span className="text-muted-foreground">Laatste test</span>
+                            <span>—</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Configuratie wordt per workspace ingesteld via de Sales Executive detailpagina of beheerinstellingen. 
                     Credentials worden uitsluitend server-side opgeslagen.
                   </p>
                 </CardContent>
               </Card>
+
+              {/* Live Pipedrive funnel */}
+              {p.id === 'pipedrive' && <PipedriveFunnel />}
             </div>
           </TabsContent>
         ))}
