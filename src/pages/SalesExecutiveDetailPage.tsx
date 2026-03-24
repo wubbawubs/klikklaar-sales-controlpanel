@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Play, Download, Pencil, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { buildArtifactInserts } from '@/lib/artifact-generator';
+import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
 
 export default function SalesExecutiveDetailPage() {
