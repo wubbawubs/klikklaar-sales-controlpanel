@@ -2,8 +2,34 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const PIPELINE_NAME_FILTER = 'Sales KlikKlaar';
+
+async function fetchAllDeals(base: string, token: string, pipelineId: number) {
+  const allDeals: any[] = [];
+  let start = 0;
+  const limit = 500;
+
+  while (true) {
+    const res = await fetch(
+      `${base}/deals?api_token=${token}&status=open&pipeline_id=${pipelineId}&start=${start}&limit=${limit}`
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(`Pipedrive deals error [${res.status}]: ${JSON.stringify(data)}`);
+
+    const deals = data.data || [];
+    allDeals.push(...deals);
+
+    if (data.additional_data?.pagination?.more_items_in_collection) {
+      start = data.additional_data.pagination.next_start;
+    } else {
+      break;
+    }
+  }
+  return allDeals;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,81 +47,73 @@ serve(async (req) => {
   const BASE = 'https://api.pipedrive.com/v1';
 
   try {
-    // Fetch all pipelines
+    // Fetch all pipelines and find the target one
     const pipelinesRes = await fetch(`${BASE}/pipelines?api_token=${PIPEDRIVE_API_TOKEN}`);
     const pipelinesData = await pipelinesRes.json();
-    if (!pipelinesRes.ok) {
-      throw new Error(`Pipedrive pipelines error [${pipelinesRes.status}]: ${JSON.stringify(pipelinesData)}`);
-    }
+    if (!pipelinesRes.ok) throw new Error(`Pipedrive pipelines error`);
 
     const pipelines = pipelinesData.data || [];
+    const targetPipeline = pipelines.find((p: any) =>
+      p.name.toLowerCase().includes(PIPELINE_NAME_FILTER.toLowerCase())
+    );
 
-    // Fetch stages for all pipelines
-    const stagesRes = await fetch(`${BASE}/stages?api_token=${PIPEDRIVE_API_TOKEN}`);
-    const stagesData = await stagesRes.json();
-    if (!stagesRes.ok) {
-      throw new Error(`Pipedrive stages error [${stagesRes.status}]: ${JSON.stringify(stagesData)}`);
-    }
-
-    const stages = stagesData.data || [];
-
-    // Fetch deal summary per stage (open deals)
-    const dealsRes = await fetch(`${BASE}/deals?api_token=${PIPEDRIVE_API_TOKEN}&status=open&limit=500`);
-    const dealsData = await dealsRes.json();
-    if (!dealsRes.ok) {
-      throw new Error(`Pipedrive deals error [${dealsRes.status}]: ${JSON.stringify(dealsData)}`);
-    }
-
-    const deals = dealsData.data || [];
-
-    // Group deals by stage
-    const dealsByStage: Record<number, { count: number; value: number; deals: any[] }> = {};
-    for (const deal of deals) {
-      const stageId = deal.stage_id;
-      if (!dealsByStage[stageId]) {
-        dealsByStage[stageId] = { count: 0, value: 0, deals: [] };
-      }
-      dealsByStage[stageId].count++;
-      dealsByStage[stageId].value += deal.value || 0;
-      dealsByStage[stageId].deals.push({
-        id: deal.id,
-        title: deal.title,
-        value: deal.value,
-        currency: deal.currency,
-        person_name: deal.person_name,
-        org_name: deal.org_name,
-        add_time: deal.add_time,
-        update_time: deal.update_time,
-        expected_close_date: deal.expected_close_date,
-        owner_name: deal.owner_name,
+    if (!targetPipeline) {
+      return new Response(JSON.stringify({ error: `Pipeline "${PIPELINE_NAME_FILTER}" niet gevonden`, available: pipelines.map((p: any) => p.name) }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Build funnel per pipeline
-    const funnels = pipelines.map((pipeline: any) => {
-      const pipelineStages = stages
-        .filter((s: any) => s.pipeline_id === pipeline.id)
-        .sort((a: any, b: any) => a.order_nr - b.order_nr)
-        .map((stage: any) => ({
-          id: stage.id,
-          name: stage.name,
-          order: stage.order_nr,
-          deals_count: dealsByStage[stage.id]?.count || 0,
-          deals_value: dealsByStage[stage.id]?.value || 0,
-          deals: dealsByStage[stage.id]?.deals || [],
-        }));
+    // Fetch stages for this pipeline
+    const stagesRes = await fetch(`${BASE}/stages?api_token=${PIPEDRIVE_API_TOKEN}&pipeline_id=${targetPipeline.id}`);
+    const stagesData = await stagesRes.json();
+    if (!stagesRes.ok) throw new Error(`Pipedrive stages error`);
+    const stages = (stagesData.data || []).sort((a: any, b: any) => a.order_nr - b.order_nr);
 
+    // Fetch ALL deals with pagination
+    const deals = await fetchAllDeals(BASE, PIPEDRIVE_API_TOKEN, targetPipeline.id);
+
+    // Group deals by stage
+    const dealsByStage: Record<number, any[]> = {};
+    for (const deal of deals) {
+      const stageId = deal.stage_id;
+      if (!dealsByStage[stageId]) dealsByStage[stageId] = [];
+      dealsByStage[stageId].push({
+        id: deal.id,
+        title: deal.title,
+        value: deal.value || 0,
+        currency: deal.currency,
+        person_name: deal.person_name,
+        org_name: deal.org_name,
+        owner_name: deal.owner_name,
+        expected_close_date: deal.expected_close_date,
+        add_time: deal.add_time,
+        status: deal.status,
+      });
+    }
+
+    const stageColumns = stages.map((stage: any) => {
+      const stageDeals = dealsByStage[stage.id] || [];
       return {
-        id: pipeline.id,
-        name: pipeline.name,
-        active: pipeline.active,
-        stages: pipelineStages,
-        total_deals: pipelineStages.reduce((sum: number, s: any) => sum + s.deals_count, 0),
-        total_value: pipelineStages.reduce((sum: number, s: any) => sum + s.deals_value, 0),
+        id: stage.id,
+        name: stage.name,
+        order: stage.order_nr,
+        deals_count: stageDeals.length,
+        deals_value: stageDeals.reduce((sum: number, d: any) => sum + d.value, 0),
+        deals: stageDeals,
       };
     });
 
-    return new Response(JSON.stringify({ funnels, fetched_at: new Date().toISOString() }), {
+    return new Response(JSON.stringify({
+      pipeline: {
+        id: targetPipeline.id,
+        name: targetPipeline.name,
+      },
+      stages: stageColumns,
+      total_deals: deals.length,
+      total_value: deals.reduce((sum: number, d: any) => sum + (d.value || 0), 0),
+      fetched_at: new Date().toISOString(),
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {
