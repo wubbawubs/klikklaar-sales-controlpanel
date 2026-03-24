@@ -71,7 +71,6 @@ export default function SalesExecutiveDetailPage() {
       await supabase.from('generated_artifacts').insert(artifactRows);
 
       // Update workspace status
-      const newStatus = workspace.provisioning_mode === 'controlled_execution' ? 'provisioning' : 'ready';
       await supabase.from('workspaces').update({ sharepoint_status: 'artifacts_generated' }).eq('id', workspace.id);
 
       // Audit log
