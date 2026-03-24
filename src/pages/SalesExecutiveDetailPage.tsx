@@ -84,9 +84,13 @@ export default function SalesExecutiveDetailPage() {
       });
 
       // Update local state
-      setWorkspace({ ...workspace, sharepoint_status: newStatus });
+      setWorkspace({ ...workspace, sharepoint_status: 'artifacts_generated' });
 
-      toast({ title: 'Provisioning gestart', description: `Job aangemaakt (${job.job_type}). Status: ${newStatus}.` });
+      // Refresh artifacts list
+      const { data: newArtifacts } = await supabase.from('generated_artifacts').select('*').eq('workspace_id', workspace.id).order('created_at', { ascending: false });
+      setArtifacts(newArtifacts || []);
+
+      toast({ title: 'Provisioning gestart', description: `Job aangemaakt (${job.job_type}). Artifacts automatisch gegenereerd.` });
     } catch (err: any) {
       toast({ title: 'Fout bij provisioning', description: err.message, variant: 'destructive' });
     } finally {
