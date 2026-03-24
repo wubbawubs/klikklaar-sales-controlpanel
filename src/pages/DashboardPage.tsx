@@ -4,9 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Users, Package, CheckCircle, AlertTriangle, Plug, ClipboardCheck,
-  Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2,
+  Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
 } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
 
