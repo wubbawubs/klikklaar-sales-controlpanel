@@ -128,7 +128,7 @@ function generateDeploymentSummary(se: SalesExecutive, ws: Workspace): string {
   ].join('\n');
 }
 
-export function generateArtifactContent(type: string, se: SalesExecutive, ws: Workspace): { json: object | null; text: string | null } {
+export function generateArtifactContent(type: string, se: SalesExecutive, ws: Workspace): { json: Json | null; text: string | null } {
   switch (type) {
     case 'sharepoint_manifest':
       return { json: generateSharePointManifest(se, ws), text: null };
