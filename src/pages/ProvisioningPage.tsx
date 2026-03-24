@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ProvisioningJob, Workspace, SalesExecutive } from '@/types/database';
