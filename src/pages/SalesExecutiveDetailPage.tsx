@@ -49,6 +49,46 @@ export default function SalesExecutiveDetailPage() {
     fetch();
   }, [id]);
 
+  const handleProvision = async () => {
+    if (!workspace || !se) {
+      toast({ title: 'Geen workspace', description: 'Er is geen workspace geconfigureerd voor deze Sales Executive.', variant: 'destructive' });
+      return;
+    }
+    setProvisioning(true);
+    try {
+      // Create provisioning job
+      const { data: job, error: jobError } = await supabase.from('provisioning_jobs').insert({
+        workspace_id: workspace.id,
+        job_type: workspace.provisioning_mode || 'design_only',
+        status: 'pending',
+      }).select().single();
+
+      if (jobError) throw jobError;
+
+      // Update workspace status
+      const newStatus = workspace.provisioning_mode === 'controlled_execution' ? 'provisioning' : 'ready';
+      await supabase.from('workspaces').update({ sharepoint_status: newStatus }).eq('id', workspace.id);
+
+      // Audit log
+      await supabase.from('audit_logs').insert({
+        entity_type: 'provisioning_job',
+        entity_id: job.id,
+        action_type: 'create',
+        actor_user_id: user?.id,
+        after_json: { job_type: job.job_type, workspace_id: workspace.id, se_name: se.full_name },
+      });
+
+      // Update local state
+      setWorkspace({ ...workspace, sharepoint_status: newStatus });
+
+      toast({ title: 'Provisioning gestart', description: `Job aangemaakt (${job.job_type}). Status: ${newStatus}.` });
+    } catch (err: any) {
+      toast({ title: 'Fout bij provisioning', description: err.message, variant: 'destructive' });
+    } finally {
+      setProvisioning(false);
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
   if (!se) return <div className="text-center text-destructive p-8">Sales Executive niet gevonden</div>;
 
@@ -72,7 +112,10 @@ export default function SalesExecutiveDetailPage() {
           <Link to={`/sales-executives/${id}/edit`}>
             <Button variant="outline" size="sm"><Pencil className="h-4 w-4 mr-1" />Bewerken</Button>
           </Link>
-          <Button variant="outline" size="sm"><Play className="h-4 w-4 mr-1" />Provisioneren</Button>
+          <Button variant="outline" size="sm" onClick={handleProvision} disabled={provisioning}>
+            {provisioning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
+            Provisioneren
+          </Button>
           <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Exporteren</Button>
         </div>
       </div>
