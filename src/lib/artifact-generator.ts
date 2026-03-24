@@ -1,3 +1,4 @@
+import type { Json } from '@/integrations/supabase/types';
 import type { SalesExecutive, Workspace } from '@/types/database';
 
 export const ARTIFACT_TYPES = [
