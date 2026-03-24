@@ -80,6 +80,42 @@ export default function DashboardPage() {
     return ic ? ic.status : 'not_configured';
   };
 
+  const handleProvision = async (se: SERow) => {
+    if (!se.workspace) {
+      toast({ title: 'Geen workspace', description: 'Er is geen workspace geconfigureerd voor deze Sales Executive.', variant: 'destructive' });
+      return;
+    }
+    setProvisioningId(se.id);
+    try {
+      const ws = se.workspace;
+      const { data: job, error } = await supabase.from('provisioning_jobs').insert({
+        workspace_id: ws.id,
+        job_type: ws.provisioning_mode || 'design_only',
+        status: 'pending',
+      }).select().single();
+      if (error) throw error;
+
+      const newStatus = ws.provisioning_mode === 'controlled_execution' ? 'provisioning' : 'ready';
+      await supabase.from('workspaces').update({ sharepoint_status: newStatus }).eq('id', ws.id);
+
+      await supabase.from('audit_logs').insert({
+        entity_type: 'provisioning_job',
+        entity_id: job.id,
+        action_type: 'create',
+        actor_user_id: user?.id,
+        after_json: { job_type: job.job_type, workspace_id: ws.id, se_name: se.full_name },
+      });
+
+      setSes(prev => prev.map(s => s.id === se.id ? { ...s, workspace: { ...ws, sharepoint_status: newStatus } } : s));
+      toast({ title: 'Provisioning gestart', description: `Job aangemaakt voor ${se.full_name}.` });
+    } catch (err: any) {
+      toast({ title: 'Fout bij provisioning', description: err.message, variant: 'destructive' });
+    } finally {
+      setProvisioningId(null);
+    }
+  };
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
   }
