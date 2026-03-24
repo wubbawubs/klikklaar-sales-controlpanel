@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Play, Download, Pencil, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { buildArtifactInserts } from '@/lib/artifact-generator';
+import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
 
 export default function SalesExecutiveDetailPage() {
@@ -66,8 +66,14 @@ export default function SalesExecutiveDetailPage() {
 
       if (jobError) throw jobError;
 
+      // Determine next version
+      const { data: latestArtifact } = await supabase.from('generated_artifacts')
+        .select('version').eq('workspace_id', workspace.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const nextVersion = getNextVersion(latestArtifact?.version ?? null);
+
       // Auto-generate artifacts
-      const artifactRows = buildArtifactInserts(se, workspace);
+      const artifactRows = buildArtifactInserts(se, workspace, nextVersion);
       await supabase.from('generated_artifacts').insert(artifactRows);
 
       // Update workspace status

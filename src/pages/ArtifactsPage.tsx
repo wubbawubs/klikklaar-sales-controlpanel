@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy, Download, FileJson, FileText, RefreshCw } from 'lucide-react';
-import { buildArtifactInserts } from '@/lib/artifact-generator';
+import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, GeneratedArtifact } from '@/types/database';
 
 export default function ArtifactsPage() {
@@ -41,7 +41,13 @@ export default function ArtifactsPage() {
     if (!selectedSe || !selectedWs) return;
     setGenerating(true);
     try {
-      const rows = buildArtifactInserts(selectedSe, selectedWs);
+      // Determine next version
+      const { data: latestArtifact } = await supabase.from('generated_artifacts')
+        .select('version').eq('workspace_id', selectedWs.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const nextVersion = getNextVersion(latestArtifact?.version ?? null);
+
+      const rows = buildArtifactInserts(selectedSe, selectedWs, nextVersion);
       const { error } = await supabase.from('generated_artifacts').insert(rows);
       if (error) throw error;
 
