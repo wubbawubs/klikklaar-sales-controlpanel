@@ -41,7 +41,13 @@ export default function ArtifactsPage() {
     if (!selectedSe || !selectedWs) return;
     setGenerating(true);
     try {
-      const rows = buildArtifactInserts(selectedSe, selectedWs);
+      // Determine next version
+      const { data: latestArtifact } = await supabase.from('generated_artifacts')
+        .select('version').eq('workspace_id', selectedWs.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const nextVersion = getNextVersion(latestArtifact?.version ?? null);
+
+      const rows = buildArtifactInserts(selectedSe, selectedWs, nextVersion);
       const { error } = await supabase.from('generated_artifacts').insert(rows);
       if (error) throw error;
 
