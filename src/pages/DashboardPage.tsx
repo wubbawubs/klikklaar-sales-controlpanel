@@ -4,9 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Users, Package, CheckCircle, AlertTriangle, Plug, ClipboardCheck,
-  Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2,
+  Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
 } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
 
@@ -17,6 +19,9 @@ interface SERow extends SalesExecutive {
 
 export default function DashboardPage() {
   const [ses, setSes] = useState<SERow[]>([]);
+  const [provisioningId, setProvisioningId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     activeSEs: 0, draftWorkspaces: 0, readyWorkspaces: 0, failedJobs: 0,
     integrationErrors: 0, eodExpected: 0, eodReceived: 0,
@@ -73,6 +78,41 @@ export default function DashboardPage() {
   const getIntegrationStatus = (row: SERow, provider: string) => {
     const ic = row.integrations?.find(i => i.provider === provider);
     return ic ? ic.status : 'not_configured';
+  };
+
+  const handleProvision = async (se: SERow) => {
+    if (!se.workspace) {
+      toast({ title: 'Geen workspace', description: 'Er is geen workspace geconfigureerd voor deze Sales Executive.', variant: 'destructive' });
+      return;
+    }
+    setProvisioningId(se.id);
+    try {
+      const ws = se.workspace;
+      const { data: job, error } = await supabase.from('provisioning_jobs').insert({
+        workspace_id: ws.id,
+        job_type: ws.provisioning_mode || 'design_only',
+        status: 'pending',
+      }).select().single();
+      if (error) throw error;
+
+      const newStatus = ws.provisioning_mode === 'controlled_execution' ? 'provisioning' : 'ready';
+      await supabase.from('workspaces').update({ sharepoint_status: newStatus }).eq('id', ws.id);
+
+      await supabase.from('audit_logs').insert({
+        entity_type: 'provisioning_job',
+        entity_id: job.id,
+        action_type: 'create',
+        actor_user_id: user?.id,
+        after_json: { job_type: job.job_type, workspace_id: ws.id, se_name: se.full_name },
+      });
+
+      setSes(prev => prev.map(s => s.id === se.id ? { ...s, workspace: { ...ws, sharepoint_status: newStatus } } : s));
+      toast({ title: 'Provisioning gestart', description: `Job aangemaakt voor ${se.full_name}.` });
+    } catch (err: any) {
+      toast({ title: 'Fout bij provisioning', description: err.message, variant: 'destructive' });
+    } finally {
+      setProvisioningId(null);
+    }
   };
 
   if (loading) {
@@ -168,7 +208,9 @@ export default function DashboardPage() {
                         <Link to={`/sales-executives/${se.id}/edit`}>
                           <Button variant="ghost" size="icon" title="Bewerken"><Pencil className="h-4 w-4" /></Button>
                         </Link>
-                        <Button variant="ghost" size="icon" title="Provisioneren"><Play className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="Provisioneren" onClick={() => handleProvision(se)} disabled={provisioningId === se.id}>
+                          {provisioningId === se.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                        </Button>
                         <Button variant="ghost" size="icon" title="Exporteren"><Download className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" title="Verwijderen"><Trash2 className="h-4 w-4" /></Button>
                       </div>
