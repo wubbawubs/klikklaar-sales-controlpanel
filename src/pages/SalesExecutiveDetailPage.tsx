@@ -12,6 +12,8 @@ import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, Gener
 
 export default function SalesExecutiveDetailPage() {
   const { id } = useParams();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [se, setSe] = useState<SalesExecutive | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationConfig[]>([]);
@@ -19,6 +21,7 @@ export default function SalesExecutiveDetailPage() {
   const [artifacts, setArtifacts] = useState<GeneratedArtifact[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [provisioning, setProvisioning] = useState(false);
 
   useEffect(() => {
     if (!id) return;
