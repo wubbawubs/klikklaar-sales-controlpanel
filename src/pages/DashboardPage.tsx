@@ -114,7 +114,6 @@ export default function DashboardPage() {
       setProvisioningId(null);
     }
   };
-  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
