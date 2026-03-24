@@ -149,7 +149,7 @@ export function generateArtifactContent(type: string, se: SalesExecutive, ws: Wo
   }
 }
 
-export function buildArtifactInserts(se: SalesExecutive, ws: Workspace) {
+export function buildArtifactInserts(se: SalesExecutive, ws: Workspace, nextVersion = '1.0') {
   return ARTIFACT_TYPES.map(at => {
     const { json, text } = generateArtifactContent(at.type, se, ws);
     return {
@@ -159,7 +159,15 @@ export function buildArtifactInserts(se: SalesExecutive, ws: Workspace) {
       artifact_format: at.format,
       artifact_content: json,
       artifact_text: text,
-      version: '1.0',
+      version: nextVersion,
     };
   });
+}
+
+export function getNextVersion(currentVersion: string | null): string {
+  if (!currentVersion) return '1.0';
+  const parts = currentVersion.split('.');
+  const major = parseInt(parts[0] || '1', 10);
+  const minor = parseInt(parts[1] || '0', 10);
+  return `${major}.${minor + 1}`;
 }
