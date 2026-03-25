@@ -240,7 +240,7 @@ export default function PublicFormPage() {
             <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <h1 className="text-3xl font-bold">{form.title}</h1>
               {form.description && <p className="text-muted-foreground text-lg">{form.description}</p>}
-              <Button onClick={next} size="lg" className="text-lg px-8">Starten <ChevronRight className="ml-2 h-5 w-5" /></Button>
+              <Button onClick={() => next()} size="lg" className="text-lg px-8">Starten <ChevronRight className="ml-2 h-5 w-5" /></Button>
             </div>
           )}
 
