@@ -211,8 +211,8 @@ export default function SalesExecutiveDetailPage() {
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Naam</span><span>{se.full_name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">E-mail</span><span>{se.email}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Telefoon</span><div className="flex justify-between"><span className="text-muted-foreground">Telefoon</span><span>{se.phone || ','}</span></div></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Startdatum</span><span>{se.start_date ? new Date(se.start_date).toLocaleDateString('nl-NL') : '—'}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Telefoon</span><span>{se.phone || ','}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Startdatum</span><span>{se.start_date ? new Date(se.start_date).toLocaleDateString('nl-NL') : ','}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Externe toegang</span><span>{se.external_access_required ? 'Ja' : 'Nee'}</span></div>
               </CardContent>
             </Card>
