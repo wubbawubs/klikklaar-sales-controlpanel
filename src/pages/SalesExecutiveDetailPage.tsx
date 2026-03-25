@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
+import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 
 export default function SalesExecutiveDetailPage() {
   const { id } = useParams();
