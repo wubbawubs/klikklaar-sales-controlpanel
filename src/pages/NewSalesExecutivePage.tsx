@@ -67,6 +67,7 @@ export default function NewSalesExecutivePage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   const [form, setForm] = useState({ ...defaultForm });
+  const [selectedLeads, setSelectedLeads] = useState<SelectedLead[]>([]);
 
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
