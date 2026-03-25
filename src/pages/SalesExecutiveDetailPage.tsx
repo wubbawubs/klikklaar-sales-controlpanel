@@ -211,8 +211,8 @@ export default function SalesExecutiveDetailPage() {
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Naam</span><span>{se.full_name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">E-mail</span><span>{se.email}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Telefoon</span><span>{se.phone || '—'}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Startdatum</span><span>{se.start_date ? new Date(se.start_date).toLocaleDateString('nl-NL') : '—'}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Telefoon</span><span>{se.phone || ','}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Startdatum</span><span>{se.start_date ? new Date(se.start_date).toLocaleDateString('nl-NL') : ','}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Externe toegang</span><span>{se.external_access_required ? 'Ja' : 'Nee'}</span></div>
               </CardContent>
             </Card>
@@ -250,7 +250,7 @@ export default function SalesExecutiveDetailPage() {
                     'Excel import': workspace.include_excel_import ? 'Ja' : 'Nee',
                     'Dealregistratie': workspace.deal_registration_enabled ? 'Ja' : 'Nee',
                     'Afspraakplanning': workspace.appointment_scheduling_enabled ? 'Ja' : 'Nee',
-                    'EOD URL': workspace.eod_typeform_url || '—',
+                    'EOD URL': workspace.eod_typeform_url || ',',
                     'EOD weergave': workspace.eod_display_mode,
                   }).map(([k, v]) => (
                     <div key={k} className="flex justify-between">
@@ -365,7 +365,7 @@ export default function SalesExecutiveDetailPage() {
                       <td className="p-3">{new Date(eod.session_date).toLocaleDateString('nl-NL')}</td>
                       <td className="p-3"><StatusBadge status={eod.status} /></td>
                       <td className="p-3"><StatusBadge status={eod.follow_up_status} /></td>
-                      <td className="p-3 text-muted-foreground">{eod.coach_notes || '—'}</td>
+                      <td className="p-3 text-muted-foreground"><td className="p-3 text-muted-foreground">{eod.coach_notes || ','}</td></td>
                     </tr>
                   ))}
                 </tbody>

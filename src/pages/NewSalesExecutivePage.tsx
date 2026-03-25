@@ -69,7 +69,7 @@ export default function NewSalesExecutivePage() {
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
   const fullName = `${form.first_name} ${form.last_name}`.trim();
-  const defaultWsName = fullName ? `Klikklaar SEO – SE – ${fullName}` : '';
+  const defaultWsName = fullName ? `Klikklaar SEO | SE | ${fullName}` : '';
 
   // Load existing data in edit mode
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function NewSalesExecutivePage() {
             <>
               <div className="space-y-2">
                 <Label>Workspace naam</Label>
-                <Input value={form.workspace_name} onChange={e => update('workspace_name', e.target.value)} placeholder={defaultWsName || 'Klikklaar SEO – SE – [Naam]'} />
+                <Input value={form.workspace_name} onChange={e => update('workspace_name', e.target.value)} placeholder={defaultWsName || 'Klikklaar SEO | SE | [Naam]'} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

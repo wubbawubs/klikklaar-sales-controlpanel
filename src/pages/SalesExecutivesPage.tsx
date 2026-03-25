@@ -54,9 +54,9 @@ export default function SalesExecutivesPage() {
                 <tr key={se.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-medium text-foreground">{se.full_name}</td>
                   <td className="p-3 text-muted-foreground">{se.email}</td>
-                  <td className="p-3 text-muted-foreground">{se.phone || '—'}</td>
+                  <td className="p-3 text-muted-foreground">{se.phone || ','}</td>
                   <td className="p-3"><StatusBadge status={se.status} /></td>
-                  <td className="p-3 text-muted-foreground">{se.start_date ? new Date(se.start_date).toLocaleDateString('nl-NL') : '—'}</td>
+                  <td className="p-3 text-muted-foreground">{se.start_date ? new Date(se.start_date).toLocaleDateString('nl-NL') : ','}</td>
                   <td className="p-3 text-right">
                     <Link to={`/sales-executives/${se.id}`}>
                       <Button variant="ghost" size="sm"><Eye className="h-4 w-4 mr-1" />Bekijken</Button>

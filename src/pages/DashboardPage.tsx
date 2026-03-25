@@ -187,7 +187,7 @@ export default function DashboardPage() {
                       {se.workspace ? (
                         <StatusBadge status={se.workspace.sharepoint_status} />
                       ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
+                        <span className="text-muted-foreground text-xs">,</span>
                       )}
                     </td>
                     <td className="p-3 text-muted-foreground">{se.external_access_required ? 'Ja' : 'Nee'}</td>
@@ -198,7 +198,7 @@ export default function DashboardPage() {
                     <td className="p-3">
                       {se.workspace ? (
                         <StatusBadge status={se.workspace.sharepoint_status} />
-                      ) : '—'}
+                      ) : ','}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
