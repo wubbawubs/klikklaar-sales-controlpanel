@@ -104,8 +104,8 @@ serve(async (req) => {
       email: p.email?.map((e: any) => e.value).filter(Boolean) || [],
       phone: p.phone?.map((ph: any) => ph.value).filter(Boolean) || [],
       job_title: p.job_title,
-      org_name: p.org_name,
-      org_id: p.org_id,
+      org_name: typeof p.org_id === 'object' ? p.org_id?.name : p.org_name,
+      org_id: typeof p.org_id === 'object' ? p.org_id?.value : p.org_id,
     }));
 
     return new Response(JSON.stringify({
