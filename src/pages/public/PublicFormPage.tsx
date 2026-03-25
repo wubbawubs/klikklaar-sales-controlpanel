@@ -73,9 +73,10 @@ export default function PublicFormPage() {
     return true;
   };
 
-  const next = () => {
+  const next = (skipValidation = false) => {
     if (step === -1) { setStep(0); return; }
-    if (currentQ && !validate(currentQ)) return;
+    if (!skipValidation && currentQ && !validate(currentQ)) return;
+    setError('');
     setStep(s => s + 1);
   };
 
