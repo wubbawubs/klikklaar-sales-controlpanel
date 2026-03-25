@@ -23,6 +23,7 @@ const navItems = [
   { to: '/sales-executives/new', icon: UserPlus, label: 'Nieuwe SE' },
   { to: '/provisioning', icon: Package, label: 'Provisioning' },
   { to: '/artifacts', icon: FileJson, label: 'Artifacts' },
+  { to: '/leads', icon: Target, label: 'Lead Management' },
   { to: '/integrations', icon: Plug, label: 'Integraties' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },

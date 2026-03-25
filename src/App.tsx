@@ -71,6 +71,7 @@ function AppRoutes() {
         <Route path="/eod" element={<EodPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/audit-logs" element={<AuditLogsPage />} />
+        <Route path="/leads" element={<LeadManagementPage />} />
         <Route path="/evaluaties" element={<EvaluatiesDashboard />} />
         <Route path="/evaluaties/formulieren" element={<FormulierenPage />} />
         <Route path="/evaluaties/formulieren/:id" element={<FormulierDetailPage />} />
