@@ -51,6 +51,29 @@ interface PipedriveActivity {
   add_time: string;
 }
 
+interface PipedriveDeal {
+  id: number;
+  title: string;
+  value: number;
+  currency: string;
+  person_name: string | null;
+  org_name: string | null;
+  owner_name: string | null;
+  expected_close_date: string | null;
+  add_time: string;
+  status: string;
+  stage_id: number;
+}
+
+interface DealStage {
+  id: number;
+  name: string;
+  order: number;
+  deals_count: number;
+  deals_value: number;
+  deals: PipedriveDeal[];
+}
+
 interface Props {
   salesExecutiveId: string;
   salesExecutiveName: string;
