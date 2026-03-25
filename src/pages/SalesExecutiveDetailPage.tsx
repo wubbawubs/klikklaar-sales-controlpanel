@@ -250,7 +250,7 @@ export default function SalesExecutiveDetailPage() {
                     'Excel import': workspace.include_excel_import ? 'Ja' : 'Nee',
                     'Dealregistratie': workspace.deal_registration_enabled ? 'Ja' : 'Nee',
                     'Afspraakplanning': workspace.appointment_scheduling_enabled ? 'Ja' : 'Nee',
-                    'EOD URL': workspace.eod_typeform_url || '—',
+                    'EOD URL': workspace.eod_typeform_url || ',',
                     'EOD weergave': workspace.eod_display_mode,
                   }).map(([k, v]) => (
                     <div key={k} className="flex justify-between">
