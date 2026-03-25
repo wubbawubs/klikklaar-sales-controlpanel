@@ -162,7 +162,7 @@ export default function PublicFormPage() {
       case 'date':
         return <Input type="date" value={val || ''} onChange={e => setAnswer(e.target.value)} className="text-lg h-14 w-56 bg-background" autoFocus />;
       case 'dropdown': {
-        const opts = q.options_json?.options || [];
+        const opts = Array.isArray(q.options_json) ? q.options_json : (q.options_json?.options || []);
         return (
           <div className="space-y-2">
             {opts.map((opt: string) => (
@@ -175,7 +175,7 @@ export default function PublicFormPage() {
         );
       }
       case 'multi_select': {
-        const opts = q.options_json?.options || [];
+        const opts = Array.isArray(q.options_json) ? q.options_json : (q.options_json?.options || []);
         const selected = Array.isArray(val) ? val : [];
         return (
           <div className="space-y-2">
