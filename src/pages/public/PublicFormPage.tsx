@@ -254,7 +254,7 @@ export default function PublicFormPage() {
               {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
               <div className="flex justify-between pt-4">
                 <Button variant="ghost" onClick={prev}><ChevronLeft className="mr-1 h-4 w-4" />Vorige</Button>
-                <Button onClick={next}>{step === totalSteps - 1 ? 'Controleren' : 'Volgende'} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <Button onClick={() => next()}>{step === totalSteps - 1 ? 'Controleren' : 'Volgende'} <ChevronRight className="ml-1 h-4 w-4" /></Button>
               </div>
               {currentQ.question_type !== 'long_text' && (
                 <p className="text-xs text-muted-foreground text-center">Druk Enter ↵ om door te gaan</p>
