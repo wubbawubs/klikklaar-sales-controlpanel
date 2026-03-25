@@ -5,7 +5,8 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Play, Download, Pencil, Loader2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowLeft, Play, Download, Pencil, Loader2, FileJson, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
@@ -23,6 +24,52 @@ export default function SalesExecutiveDetailPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
+
+  const exportData = (format: 'json' | 'csv') => {
+    if (!se) return;
+    const data = { sales_executive: se, workspace, integrations, eod_submissions: eods, artifacts, audit_logs: logs };
+    let blob: Blob;
+    let filename: string;
+
+    if (format === 'json') {
+      blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      filename = `${se.full_name?.replace(/\s+/g, '_') || 'export'}_export.json`;
+    } else {
+      const rows: string[][] = [];
+      // SE info
+      rows.push(['--- Sales Executive ---']);
+      Object.entries(se).forEach(([k, v]) => rows.push([k, String(v ?? '')]));
+      // Workspace
+      if (workspace) {
+        rows.push([''], ['--- Workspace ---']);
+        Object.entries(workspace).forEach(([k, v]) => rows.push([k, Array.isArray(v) ? v.join('; ') : String(v ?? '')]));
+      }
+      // EODs
+      if (eods.length) {
+        rows.push([''], ['--- EOD Submissions ---']);
+        const eodKeys = Object.keys(eods[0]);
+        rows.push(eodKeys);
+        eods.forEach(e => rows.push(eodKeys.map(k => String((e as any)[k] ?? ''))));
+      }
+      // Artifacts
+      if (artifacts.length) {
+        rows.push([''], ['--- Artifacts ---']);
+        rows.push(['artifact_name', 'artifact_type', 'version', 'artifact_format', 'created_at']);
+        artifacts.forEach(a => rows.push([a.artifact_name, a.artifact_type, a.version || '', a.artifact_format || '', a.created_at || '']));
+      }
+      const csvContent = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      blob = new Blob([csvContent], { type: 'text/csv' });
+      filename = `${se.full_name?.replace(/\s+/g, '_') || 'export'}_export.csv`;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Export gedownload', description: `${filename} is gedownload.` });
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -130,7 +177,19 @@ export default function SalesExecutiveDetailPage() {
             {provisioning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
             Provisioneren
           </Button>
-          <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Exporteren</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Exporteren</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportData('json')}>
+                <FileJson className="h-4 w-4 mr-2" />Exporteer als JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportData('csv')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />Exporteer als CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
