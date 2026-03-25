@@ -58,7 +58,7 @@ export default function ProvisioningPage() {
                 <tr key={j.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 text-muted-foreground">{new Date(j.created_at).toLocaleString('nl-NL')}</td>
                   <td className="p-3 font-medium"><td className="p-3 font-medium">{j.se_name || ','}</td></td>
-                  <td className="p-3 text-muted-foreground">{j.ws_name || '—'}</td>
+                  <td className="p-3 text-muted-foreground"><td className="p-3 text-muted-foreground">{j.ws_name || ','}</td></td>
                   <td className="p-3">{j.job_type}</td>
                   <td className="p-3"><StatusBadge status={j.status} /></td>
                 </tr>

@@ -85,7 +85,7 @@ export default function IntegrationsPage() {
                           </div>
                           <div className="flex justify-between p-2 bg-muted rounded">
                             <span className="text-muted-foreground">Laatste test</span>
-                            <span>—</span>
+                            <span>,</span>
                           </div>
                         </div>
                       </div>

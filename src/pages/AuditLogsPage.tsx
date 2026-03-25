@@ -52,7 +52,7 @@ export default function AuditLogsPage() {
                   <td className="p-3 text-muted-foreground">{new Date(log.created_at).toLocaleString('nl-NL')}</td>
                   <td className="p-3 font-medium">{log.action_type}</td>
                   <td className="p-3 text-muted-foreground">{log.entity_type}</td>
-                  <td className="p-3 text-muted-foreground font-mono text-xs">{log.entity_id?.slice(0, 8) || '—'}</td>
+                  <td className="p-3 text-muted-foreground font-mono text-xs"><td className="p-3 text-muted-foreground font-mono text-xs">{log.entity_id?.slice(0, 8) || ','}</td></td>
                 </tr>
               ))}
             </tbody>

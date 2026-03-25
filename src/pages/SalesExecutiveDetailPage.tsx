@@ -365,7 +365,7 @@ export default function SalesExecutiveDetailPage() {
                       <td className="p-3">{new Date(eod.session_date).toLocaleDateString('nl-NL')}</td>
                       <td className="p-3"><StatusBadge status={eod.status} /></td>
                       <td className="p-3"><StatusBadge status={eod.follow_up_status} /></td>
-                      <td className="p-3 text-muted-foreground">{eod.coach_notes || '—'}</td>
+                      <td className="p-3 text-muted-foreground"><td className="p-3 text-muted-foreground">{eod.coach_notes || ','}</td></td>
                     </tr>
                   ))}
                 </tbody>

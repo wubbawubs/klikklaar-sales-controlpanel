@@ -198,7 +198,7 @@ export default function DashboardPage() {
                     <td className="p-3">
                       {se.workspace ? (
                         <StatusBadge status={se.workspace.sharepoint_status} />
-                      ) : '—'}
+                      ) : ','}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
