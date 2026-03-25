@@ -134,6 +134,25 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
     }
   };
 
+  const fetchDeals = async () => {
+    const orgIds = [...new Set(leads.map(l => l.pipedrive_org_id).filter(Boolean))];
+    if (orgIds.length === 0) return;
+    setDealsLoading(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?org_ids=${orgIds.join(',')}`,
+        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const result = await res.json();
+      setDealStages((result.stages || []).filter((s: DealStage) => s.deals_count > 0));
+      setDealsTotalValue(result.total_value || 0);
+    } catch (err) {
+      console.error('Failed to fetch deals:', err);
+    } finally {
+      setDealsLoading(false);
+    }
+  };
+
   const logActivity = async () => {
     if (!selectedLead) return;
     setSyncing(true);
