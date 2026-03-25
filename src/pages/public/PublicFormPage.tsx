@@ -167,7 +167,7 @@ export default function PublicFormPage() {
         return (
           <div className="space-y-2">
             {opts.map((opt: string) => (
-              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(next, 200); }}
+              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(() => next(true), 200); }}
                 className={cn("block w-full text-left px-4 py-3 rounded-lg border transition-all text-base",
                   val === opt ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50 bg-background"
                 )}>{opt}</button>
