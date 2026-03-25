@@ -175,7 +175,7 @@ export default function PublicFormPage() {
         );
       }
       case 'multi_select': {
-        const opts = q.options_json?.options || [];
+        const opts = Array.isArray(q.options_json) ? q.options_json : (q.options_json?.options || []);
         const selected = Array.isArray(val) ? val : [];
         return (
           <div className="space-y-2">
