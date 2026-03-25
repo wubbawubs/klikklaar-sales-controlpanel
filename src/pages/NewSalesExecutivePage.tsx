@@ -231,6 +231,22 @@ export default function NewSalesExecutivePage() {
           after_json: se,
         });
 
+        // Save Pipedrive lead assignments
+        if (selectedLeads.length > 0) {
+          const leadRows = selectedLeads.map(lead => ({
+            sales_executive_id: se.id,
+            pipedrive_org_id: lead.pipedrive_org_id,
+            pipedrive_person_id: lead.pipedrive_person_id || null,
+            org_name: lead.org_name,
+            person_name: lead.person_name || null,
+            person_email: lead.person_email || null,
+            person_phone: lead.person_phone || null,
+            assigned_by: user?.id,
+            status: 'assigned',
+          }));
+          await (supabase as any).from('pipedrive_lead_assignments').insert(leadRows);
+        }
+
         toast.success('Sales Executive succesvol aangemaakt');
         navigate(`/sales-executives/${se.id}`);
       }
