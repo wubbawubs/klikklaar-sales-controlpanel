@@ -11,6 +11,7 @@ import {
   Settings,
   ScrollText,
   LogOut,
+  ListChecks,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
