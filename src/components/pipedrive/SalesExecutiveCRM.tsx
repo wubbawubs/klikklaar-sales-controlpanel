@@ -431,6 +431,7 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
           )}
         </TabsContent>
 
+        <TabsContent value="activities" className="space-y-2">
           {activities.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
