@@ -360,7 +360,77 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
           )}
         </TabsContent>
 
-        <TabsContent value="activities" className="space-y-2">
+        <TabsContent value="deals" className="space-y-4">
+          {dealsLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Deals ophalen uit Pipedrive...</span>
+            </div>
+          ) : dealStages.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <p>Geen deals gevonden voor de toegewezen leads.</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={fetchDeals}>
+                  <TrendingUp className="h-4 w-4 mr-1" />Deals ophalen
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {dealStages.reduce((sum, s) => sum + s.deals_count, 0)} deal(s) gevonden
+                </p>
+                <Badge variant="secondary" className="text-sm">
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  Totaal: €{dealsTotalValue.toLocaleString('nl-NL')}
+                </Badge>
+              </div>
+              <div className="grid gap-4">
+                {dealStages.map(stage => (
+                  <Card key={stage.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{stage.deals_count} deal{stage.deals_count !== 1 ? 's' : ''}</Badge>
+                          <Badge variant="secondary">€{stage.deals_value.toLocaleString('nl-NL')}</Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {stage.deals.map(deal => (
+                        <div key={deal.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <TrendingUp className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{deal.title}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {deal.org_name && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{deal.org_name}</span>}
+                                {deal.person_name && <span className="flex items-center gap-1"><User className="h-3 w-3" />{deal.person_name}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold">€{deal.value.toLocaleString('nl-NL')}</p>
+                            {deal.expected_close_date && (
+                              <p className="text-xs text-muted-foreground">
+                                Verwacht: {new Date(deal.expected_close_date).toLocaleDateString('nl-NL')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </TabsContent>
+
           {activities.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
