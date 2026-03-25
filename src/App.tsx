@@ -17,6 +17,7 @@ import TrainingPage from "@/pages/TrainingPage";
 import EodPage from "@/pages/EodPage";
 import SettingsPage from "@/pages/SettingsPage";
 import AuditLogsPage from "@/pages/AuditLogsPage";
+import LeadManagementPage from "@/pages/LeadManagementPage";
 import NotFound from "@/pages/NotFound";
 import PublicFormPage from "@/pages/public/PublicFormPage";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
