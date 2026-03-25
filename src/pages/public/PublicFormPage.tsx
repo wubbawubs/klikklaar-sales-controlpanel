@@ -212,7 +212,7 @@ export default function PublicFormPage() {
         return (
           <div className="flex gap-3">
             {['Ja', 'Nee'].map(opt => (
-              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(next, 200); }}
+              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(() => next(true), 200); }}
                 className={cn("flex-1 py-4 rounded-lg border text-lg font-medium transition-all",
                   val === opt ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50 bg-background"
                 )}>{opt}</button>
