@@ -53,12 +53,6 @@ export default function PipedriveLeadSelector({ selectedLeads, onSelectionChange
     try {
       const params = new URLSearchParams({ limit: '30' });
       if (term) params.set('search', term);
-      const { data, error } = await supabase.functions.invoke('pipedrive-organizations', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        body: null,
-      });
-      // Use URL params approach
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-organizations?${params.toString()}`,
         { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
