@@ -274,6 +274,7 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
       <Tabs defaultValue="leads">
         <TabsList>
           <TabsTrigger value="leads">Leads ({leads.length})</TabsTrigger>
+          <TabsTrigger value="deals" onClick={() => { if (dealStages.length === 0 && !dealsLoading) fetchDeals(); }}>Deals</TabsTrigger>
           <TabsTrigger value="activities">Activiteiten ({activities.length})</TabsTrigger>
           <TabsTrigger value="pipedrive">Pipedrive Live</TabsTrigger>
         </TabsList>
