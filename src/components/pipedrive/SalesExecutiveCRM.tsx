@@ -88,6 +88,9 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
   const [showActivityDialog, setShowActivityDialog] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dealStages, setDealStages] = useState<DealStage[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const [dealsTotalValue, setDealsTotalValue] = useState(0);
 
   // New activity form
   const [activityForm, setActivityForm] = useState({
