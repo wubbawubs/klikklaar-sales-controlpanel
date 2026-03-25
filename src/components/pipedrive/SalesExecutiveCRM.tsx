@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Building2, User, Phone, Mail, Plus, PhoneCall, CheckCircle2, Clock, Loader2, ExternalLink, Search } from 'lucide-react';
+import { Building2, User, Phone, Mail, Plus, PhoneCall, CheckCircle2, Clock, Loader2, ExternalLink, Search, DollarSign, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LeadAssignment {
@@ -51,6 +51,29 @@ interface PipedriveActivity {
   add_time: string;
 }
 
+interface PipedriveDeal {
+  id: number;
+  title: string;
+  value: number;
+  currency: string;
+  person_name: string | null;
+  org_name: string | null;
+  owner_name: string | null;
+  expected_close_date: string | null;
+  add_time: string;
+  status: string;
+  stage_id: number;
+}
+
+interface DealStage {
+  id: number;
+  name: string;
+  order: number;
+  deals_count: number;
+  deals_value: number;
+  deals: PipedriveDeal[];
+}
+
 interface Props {
   salesExecutiveId: string;
   salesExecutiveName: string;
@@ -65,6 +88,9 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
   const [showActivityDialog, setShowActivityDialog] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dealStages, setDealStages] = useState<DealStage[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const [dealsTotalValue, setDealsTotalValue] = useState(0);
 
   // New activity form
   const [activityForm, setActivityForm] = useState({
@@ -105,6 +131,25 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
       setPipedriveActivities(result.activities || []);
     } catch (err) {
       console.error('Failed to fetch Pipedrive activities:', err);
+    }
+  };
+
+  const fetchDeals = async () => {
+    const orgIds = [...new Set(leads.map(l => l.pipedrive_org_id).filter(Boolean))];
+    if (orgIds.length === 0) return;
+    setDealsLoading(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?org_ids=${orgIds.join(',')}`,
+        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const result = await res.json();
+      setDealStages((result.stages || []).filter((s: DealStage) => s.deals_count > 0));
+      setDealsTotalValue(result.total_value || 0);
+    } catch (err) {
+      console.error('Failed to fetch deals:', err);
+    } finally {
+      setDealsLoading(false);
     }
   };
 
@@ -229,6 +274,7 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
       <Tabs defaultValue="leads">
         <TabsList>
           <TabsTrigger value="leads">Leads ({leads.length})</TabsTrigger>
+          <TabsTrigger value="deals" onClick={() => { if (dealStages.length === 0 && !dealsLoading) fetchDeals(); }}>Deals</TabsTrigger>
           <TabsTrigger value="activities">Activiteiten ({activities.length})</TabsTrigger>
           <TabsTrigger value="pipedrive">Pipedrive Live</TabsTrigger>
         </TabsList>
@@ -311,6 +357,77 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
                 </Card>
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="deals" className="space-y-4">
+          {dealsLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Deals ophalen uit Pipedrive...</span>
+            </div>
+          ) : dealStages.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <p>Geen deals gevonden voor de toegewezen leads.</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={fetchDeals}>
+                  <TrendingUp className="h-4 w-4 mr-1" />Deals ophalen
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {dealStages.reduce((sum, s) => sum + s.deals_count, 0)} deal(s) gevonden
+                </p>
+                <Badge variant="secondary" className="text-sm">
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  Totaal: €{dealsTotalValue.toLocaleString('nl-NL')}
+                </Badge>
+              </div>
+              <div className="grid gap-4">
+                {dealStages.map(stage => (
+                  <Card key={stage.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{stage.deals_count} deal{stage.deals_count !== 1 ? 's' : ''}</Badge>
+                          <Badge variant="secondary">€{stage.deals_value.toLocaleString('nl-NL')}</Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {stage.deals.map(deal => (
+                        <div key={deal.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <TrendingUp className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{deal.title}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {deal.org_name && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{deal.org_name}</span>}
+                                {deal.person_name && <span className="flex items-center gap-1"><User className="h-3 w-3" />{deal.person_name}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold">€{deal.value.toLocaleString('nl-NL')}</p>
+                            {deal.expected_close_date && (
+                              <p className="text-xs text-muted-foreground">
+                                Verwacht: {new Date(deal.expected_close_date).toLocaleDateString('nl-NL')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </TabsContent>
 
