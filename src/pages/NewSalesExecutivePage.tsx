@@ -69,7 +69,7 @@ export default function NewSalesExecutivePage() {
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
   const fullName = `${form.first_name} ${form.last_name}`.trim();
-  const defaultWsName = fullName ? `Klikklaar SEO – SE – ${fullName}` : '';
+  const defaultWsName = fullName ? `Klikklaar SEO | SE | ${fullName}` : '';
 
   // Load existing data in edit mode
   useEffect(() => {
