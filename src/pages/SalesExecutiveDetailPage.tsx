@@ -177,7 +177,19 @@ export default function SalesExecutiveDetailPage() {
             {provisioning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
             Provisioneren
           </Button>
-          <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Exporteren</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Exporteren</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportData('json')}>
+                <FileJson className="h-4 w-4 mr-2" />Exporteer als JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportData('csv')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />Exporteer als CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
