@@ -47,6 +47,93 @@ export type Database = {
         }
         Relationships: []
       }
+      eod_submission_data: {
+        Row: {
+          appointments_set: number | null
+          blocker_text: string | null
+          calls_attempted: number | null
+          coaching_text: string | null
+          created_at: string | null
+          day_score: number | null
+          deals_closed: number | null
+          employee_name: string | null
+          energy_score: number | null
+          extra_notes: string | null
+          focus_tomorrow: string | null
+          followups_set: number | null
+          form_id: string
+          good_things: string | null
+          id: string
+          metadata_json: Json | null
+          product_lines: string[] | null
+          real_conversations: number | null
+          submission_id: string
+          team: string | null
+          work_date: string | null
+        }
+        Insert: {
+          appointments_set?: number | null
+          blocker_text?: string | null
+          calls_attempted?: number | null
+          coaching_text?: string | null
+          created_at?: string | null
+          day_score?: number | null
+          deals_closed?: number | null
+          employee_name?: string | null
+          energy_score?: number | null
+          extra_notes?: string | null
+          focus_tomorrow?: string | null
+          followups_set?: number | null
+          form_id: string
+          good_things?: string | null
+          id?: string
+          metadata_json?: Json | null
+          product_lines?: string[] | null
+          real_conversations?: number | null
+          submission_id: string
+          team?: string | null
+          work_date?: string | null
+        }
+        Update: {
+          appointments_set?: number | null
+          blocker_text?: string | null
+          calls_attempted?: number | null
+          coaching_text?: string | null
+          created_at?: string | null
+          day_score?: number | null
+          deals_closed?: number | null
+          employee_name?: string | null
+          energy_score?: number | null
+          extra_notes?: string | null
+          focus_tomorrow?: string | null
+          followups_set?: number | null
+          form_id?: string
+          good_things?: string | null
+          id?: string
+          metadata_json?: Json | null
+          product_lines?: string[] | null
+          real_conversations?: number | null
+          submission_id?: string
+          team?: string | null
+          work_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eod_submission_data_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eod_submission_data_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eod_submissions: {
         Row: {
           coach_notes: string | null
@@ -106,6 +193,118 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      form_questions: {
+        Row: {
+          created_at: string | null
+          form_id: string
+          id: string
+          options_json: Json | null
+          order_index: number
+          question_text: string
+          question_type: string
+          required: boolean | null
+          settings_json: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          form_id: string
+          id?: string
+          options_json?: Json | null
+          order_index?: number
+          question_text: string
+          question_type: string
+          required?: boolean | null
+          settings_json?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          form_id?: string
+          id?: string
+          options_json?: Json | null
+          order_index?: number
+          question_text?: string
+          question_type?: string
+          required?: boolean | null
+          settings_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_questions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          created_at: string | null
+          form_id: string
+          id: string
+          metadata_json: Json | null
+          submitted_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          form_id: string
+          id?: string
+          metadata_json?: Json | null
+          submitted_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          form_id?: string
+          id?: string
+          metadata_json?: Json | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forms: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          settings_json: Json | null
+          slug: string
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          settings_json?: Json | null
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          settings_json?: Json | null
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       generated_artifacts: {
         Row: {
@@ -405,6 +604,45 @@ export type Database = {
           value_json?: Json | null
         }
         Relationships: []
+      }
+      submission_answers: {
+        Row: {
+          answer_json: Json | null
+          answer_text: string | null
+          id: string
+          question_id: string
+          submission_id: string
+        }
+        Insert: {
+          answer_json?: Json | null
+          answer_text?: string | null
+          id?: string
+          question_id: string
+          submission_id: string
+        }
+        Update: {
+          answer_json?: Json | null
+          answer_text?: string | null
+          id?: string
+          question_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "form_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_answers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
