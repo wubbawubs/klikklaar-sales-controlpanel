@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
+import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 
 export default function SalesExecutiveDetailPage() {
   const { id } = useParams();
@@ -196,6 +197,7 @@ export default function SalesExecutiveDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overzicht</TabsTrigger>
+          <TabsTrigger value="crm">CRM / Leads</TabsTrigger>
           <TabsTrigger value="workspace">Workspace</TabsTrigger>
           <TabsTrigger value="sharepoint">SharePoint</TabsTrigger>
           <TabsTrigger value="integrations">Integraties</TabsTrigger>
@@ -232,6 +234,10 @@ export default function SalesExecutiveDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="crm">
+          <SalesExecutiveCRM salesExecutiveId={id!} salesExecutiveName={se.full_name || ''} />
         </TabsContent>
 
         <TabsContent value="workspace">

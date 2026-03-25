@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import PipedriveLeadSelector, { type SelectedLead } from '@/components/pipedrive/PipedriveLeadSelector';
 
 const steps = [
   { id: 'personal', title: 'SE Gegevens', description: 'Persoonlijke informatie' },
   { id: 'workspace', title: 'Workspace', description: 'Workspace-instellingen' },
   { id: 'sales', title: 'Lead & Sales', description: 'Lead- en sales-instellingen' },
   { id: 'integrations', title: 'Integraties', description: 'Integratie-instellingen' },
+  { id: 'pipedrive_leads', title: 'Pipedrive Leads', description: 'Selecteer leads uit Pipedrive' },
   { id: 'admin', title: 'Beheer', description: 'Beheergegevens' },
 ];
 
@@ -65,6 +67,7 @@ export default function NewSalesExecutivePage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   const [form, setForm] = useState({ ...defaultForm });
+  const [selectedLeads, setSelectedLeads] = useState<SelectedLead[]>([]);
 
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
@@ -227,6 +230,22 @@ export default function NewSalesExecutivePage() {
           entity_id: se.id,
           after_json: se,
         });
+
+        // Save Pipedrive lead assignments
+        if (selectedLeads.length > 0) {
+          const leadRows = selectedLeads.map(lead => ({
+            sales_executive_id: se.id,
+            pipedrive_org_id: lead.pipedrive_org_id,
+            pipedrive_person_id: lead.pipedrive_person_id || null,
+            org_name: lead.org_name,
+            person_name: lead.person_name || null,
+            person_email: lead.person_email || null,
+            person_phone: lead.person_phone || null,
+            assigned_by: user?.id,
+            status: 'assigned',
+          }));
+          await (supabase as any).from('pipedrive_lead_assignments').insert(leadRows);
+        }
 
         toast.success('Sales Executive succesvol aangemaakt');
         navigate(`/sales-executives/${se.id}`);
@@ -432,6 +451,19 @@ export default function NewSalesExecutivePage() {
           )}
 
           {step === 4 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecteer organisaties en contactpersonen uit Pipedrive die aan deze Sales Executive worden toegewezen. 
+                Deze worden direct zichtbaar in het persoonlijke CRM dashboard.
+              </p>
+              <PipedriveLeadSelector
+                selectedLeads={selectedLeads}
+                onSelectionChange={setSelectedLeads}
+              />
+            </div>
+          )}
+
+          {step === 5 && (
             <>
               <div className="space-y-2">
                 <Label>Beheerder</Label>
