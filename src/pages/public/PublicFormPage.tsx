@@ -200,7 +200,7 @@ export default function PublicFormPage() {
         return (
           <div className="flex flex-wrap gap-2 justify-center">
             {nums.map(n => (
-              <button key={n} onClick={() => { setAnswer(n); setTimeout(next, 200); }}
+              <button key={n} onClick={() => { setAnswer(n); setTimeout(() => next(true), 200); }}
                 className={cn("w-12 h-12 rounded-lg border text-lg font-medium transition-all",
                   val === n ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50 bg-background"
                 )}>{n}</button>
