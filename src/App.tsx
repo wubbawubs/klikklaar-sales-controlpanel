@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,11 +18,29 @@ import EodPage from "@/pages/EodPage";
 import SettingsPage from "@/pages/SettingsPage";
 import AuditLogsPage from "@/pages/AuditLogsPage";
 import NotFound from "@/pages/NotFound";
+import PublicFormPage from "@/pages/public/PublicFormPage";
+import FormSuccessPage from "@/pages/public/FormSuccessPage";
+import EvaluatiesDashboard from "@/pages/evaluaties/EvaluatiesDashboard";
+import FormulierenPage from "@/pages/evaluaties/FormulierenPage";
+import FormulierDetailPage from "@/pages/evaluaties/FormulierDetailPage";
+import ResponsesPage from "@/pages/evaluaties/ResponsesPage";
+import AnalyticsPage from "@/pages/evaluaties/AnalyticsPage";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const location = useLocation();
+
+  // Public form routes - accessible without authentication
+  if (location.pathname.startsWith('/form/')) {
+    return (
+      <Routes>
+        <Route path="/form/:slug/success" element={<FormSuccessPage />} />
+        <Route path="/form/:slug" element={<PublicFormPage />} />
+      </Routes>
+    );
+  }
 
   if (loading) {
     return (
@@ -52,6 +70,11 @@ function AppRoutes() {
         <Route path="/eod" element={<EodPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/audit-logs" element={<AuditLogsPage />} />
+        <Route path="/evaluaties" element={<EvaluatiesDashboard />} />
+        <Route path="/evaluaties/formulieren" element={<FormulierenPage />} />
+        <Route path="/evaluaties/formulieren/:id" element={<FormulierDetailPage />} />
+        <Route path="/evaluaties/responses" element={<ResponsesPage />} />
+        <Route path="/evaluaties/analytics" element={<AnalyticsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

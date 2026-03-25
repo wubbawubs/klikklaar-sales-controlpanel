@@ -11,6 +11,7 @@ import {
   Settings,
   ScrollText,
   LogOut,
+  ListChecks,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/integrations', icon: Plug, label: 'Integraties' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },
+  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties' },
   { to: '/settings', icon: Settings, label: 'Instellingen' },
   { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs' },
 ];
