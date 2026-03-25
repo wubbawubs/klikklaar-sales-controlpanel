@@ -73,9 +73,10 @@ export default function PublicFormPage() {
     return true;
   };
 
-  const next = () => {
+  const next = (skipValidation = false) => {
     if (step === -1) { setStep(0); return; }
-    if (currentQ && !validate(currentQ)) return;
+    if (!skipValidation && currentQ && !validate(currentQ)) return;
+    setError('');
     setStep(s => s + 1);
   };
 
@@ -166,7 +167,7 @@ export default function PublicFormPage() {
         return (
           <div className="space-y-2">
             {opts.map((opt: string) => (
-              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(next, 200); }}
+              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(() => next(true), 200); }}
                 className={cn("block w-full text-left px-4 py-3 rounded-lg border transition-all text-base",
                   val === opt ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50 bg-background"
                 )}>{opt}</button>
@@ -199,7 +200,7 @@ export default function PublicFormPage() {
         return (
           <div className="flex flex-wrap gap-2 justify-center">
             {nums.map(n => (
-              <button key={n} onClick={() => { setAnswer(n); setTimeout(next, 200); }}
+              <button key={n} onClick={() => { setAnswer(n); setTimeout(() => next(true), 200); }}
                 className={cn("w-12 h-12 rounded-lg border text-lg font-medium transition-all",
                   val === n ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50 bg-background"
                 )}>{n}</button>
@@ -211,7 +212,7 @@ export default function PublicFormPage() {
         return (
           <div className="flex gap-3">
             {['Ja', 'Nee'].map(opt => (
-              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(next, 200); }}
+              <button key={opt} onClick={() => { setAnswer(opt); setTimeout(() => next(true), 200); }}
                 className={cn("flex-1 py-4 rounded-lg border text-lg font-medium transition-all",
                   val === opt ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50 bg-background"
                 )}>{opt}</button>
@@ -239,7 +240,7 @@ export default function PublicFormPage() {
             <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <h1 className="text-3xl font-bold">{form.title}</h1>
               {form.description && <p className="text-muted-foreground text-lg">{form.description}</p>}
-              <Button onClick={next} size="lg" className="text-lg px-8">Starten <ChevronRight className="ml-2 h-5 w-5" /></Button>
+              <Button onClick={() => next()} size="lg" className="text-lg px-8">Starten <ChevronRight className="ml-2 h-5 w-5" /></Button>
             </div>
           )}
 
@@ -253,7 +254,7 @@ export default function PublicFormPage() {
               {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
               <div className="flex justify-between pt-4">
                 <Button variant="ghost" onClick={prev}><ChevronLeft className="mr-1 h-4 w-4" />Vorige</Button>
-                <Button onClick={next}>{step === totalSteps - 1 ? 'Controleren' : 'Volgende'} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <Button onClick={() => next()}>{step === totalSteps - 1 ? 'Controleren' : 'Volgende'} <ChevronRight className="ml-1 h-4 w-4" /></Button>
               </div>
               {currentQ.question_type !== 'long_text' && (
                 <p className="text-xs text-muted-foreground text-center">Druk Enter ↵ om door te gaan</p>
