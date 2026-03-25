@@ -45,6 +45,9 @@ serve(async (req) => {
   }
 
   const BASE = 'https://api.pipedrive.com/v1';
+  const url = new URL(req.url);
+  const orgIdsParam = url.searchParams.get('org_ids'); // comma-separated org IDs
+  const personIdsParam = url.searchParams.get('person_ids'); // comma-separated person IDs
 
   try {
     // Fetch all pipelines and find the target one
@@ -71,7 +74,24 @@ serve(async (req) => {
     const stages = (stagesData.data || []).sort((a: any, b: any) => a.order_nr - b.order_nr);
 
     // Fetch ALL deals with pagination
-    const deals = await fetchAllDeals(BASE, PIPEDRIVE_API_TOKEN, targetPipeline.id);
+    let deals = await fetchAllDeals(BASE, PIPEDRIVE_API_TOKEN, targetPipeline.id);
+
+    // Filter by org_ids or person_ids if provided
+    const orgIds = orgIdsParam ? orgIdsParam.split(',').map(Number).filter(Boolean) : null;
+    const personIds = personIdsParam ? personIdsParam.split(',').map(Number).filter(Boolean) : null;
+
+    if (orgIds && orgIds.length > 0) {
+      deals = deals.filter((d: any) => {
+        const dealOrgId = typeof d.org_id === 'object' ? d.org_id?.value : d.org_id;
+        return orgIds.includes(dealOrgId);
+      });
+    }
+    if (personIds && personIds.length > 0) {
+      deals = deals.filter((d: any) => {
+        const dealPersonId = typeof d.person_id === 'object' ? d.person_id?.value : d.person_id;
+        return personIds.includes(dealPersonId);
+      });
+    }
 
     // Group deals by stage
     const dealsByStage: Record<number, any[]> = {};
@@ -89,6 +109,7 @@ serve(async (req) => {
         expected_close_date: deal.expected_close_date,
         add_time: deal.add_time,
         status: deal.status,
+        stage_id: deal.stage_id,
       });
     }
 
