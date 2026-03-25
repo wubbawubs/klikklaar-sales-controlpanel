@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import PipedriveLeadSelector, { type SelectedLead } from '@/components/pipedrive/PipedriveLeadSelector';
 
 const steps = [
   { id: 'personal', title: 'SE Gegevens', description: 'Persoonlijke informatie' },
   { id: 'workspace', title: 'Workspace', description: 'Workspace-instellingen' },
   { id: 'sales', title: 'Lead & Sales', description: 'Lead- en sales-instellingen' },
   { id: 'integrations', title: 'Integraties', description: 'Integratie-instellingen' },
+  { id: 'pipedrive_leads', title: 'Pipedrive Leads', description: 'Selecteer leads uit Pipedrive' },
   { id: 'admin', title: 'Beheer', description: 'Beheergegevens' },
 ];
 
