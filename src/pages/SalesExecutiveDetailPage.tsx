@@ -25,6 +25,52 @@ export default function SalesExecutiveDetailPage() {
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
 
+  const exportData = (format: 'json' | 'csv') => {
+    if (!se) return;
+    const data = { sales_executive: se, workspace, integrations, eod_submissions: eods, artifacts, audit_logs: logs };
+    let blob: Blob;
+    let filename: string;
+
+    if (format === 'json') {
+      blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      filename = `${se.full_name?.replace(/\s+/g, '_') || 'export'}_export.json`;
+    } else {
+      const rows: string[][] = [];
+      // SE info
+      rows.push(['--- Sales Executive ---']);
+      Object.entries(se).forEach(([k, v]) => rows.push([k, String(v ?? '')]));
+      // Workspace
+      if (workspace) {
+        rows.push([''], ['--- Workspace ---']);
+        Object.entries(workspace).forEach(([k, v]) => rows.push([k, Array.isArray(v) ? v.join('; ') : String(v ?? '')]));
+      }
+      // EODs
+      if (eods.length) {
+        rows.push([''], ['--- EOD Submissions ---']);
+        const eodKeys = Object.keys(eods[0]);
+        rows.push(eodKeys);
+        eods.forEach(e => rows.push(eodKeys.map(k => String((e as any)[k] ?? ''))));
+      }
+      // Artifacts
+      if (artifacts.length) {
+        rows.push([''], ['--- Artifacts ---']);
+        rows.push(['artifact_name', 'artifact_type', 'version', 'artifact_format', 'created_at']);
+        artifacts.forEach(a => rows.push([a.artifact_name, a.artifact_type, a.version || '', a.artifact_format || '', a.created_at || '']));
+      }
+      const csvContent = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      blob = new Blob([csvContent], { type: 'text/csv' });
+      filename = `${se.full_name?.replace(/\s+/g, '_') || 'export'}_export.csv`;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Export gedownload', description: `${filename} is gedownload.` });
+  };
+
   useEffect(() => {
     if (!id) return;
     const fetch = async () => {
