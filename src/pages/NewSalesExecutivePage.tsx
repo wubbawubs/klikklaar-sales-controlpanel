@@ -118,6 +118,7 @@ export default function NewSalesExecutivePage() {
           include_excel_import: ws.include_excel_import ?? false,
           eod_typeform_url: ws.eod_typeform_url || '',
           eod_display_mode: ws.eod_display_mode || 'embedded',
+          selected_form_ids: (ws as any).selected_form_ids || [],
           product_lines: ws.product_lines || ['KlikklaarSEO'],
           deal_registration_enabled: ws.deal_registration_enabled ?? true,
           appointment_scheduling_enabled: ws.appointment_scheduling_enabled ?? true,
