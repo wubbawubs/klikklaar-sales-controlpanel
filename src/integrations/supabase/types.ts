@@ -790,6 +790,36 @@ export type Database = {
           },
         ]
       }
+      training_documents: {
+        Row: {
+          category: string
+          created_at: string
+          display_name: string
+          file_name: string
+          file_path: string
+          file_size_bytes: number | null
+          id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          display_name: string
+          file_name: string
+          file_path: string
+          file_size_bytes?: number | null
+          id?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          display_name?: string
+          file_name?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
