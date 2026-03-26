@@ -1,0 +1,1 @@
+DELETE FROM sales_executives WHERE id = '9fbac4bd-cf84-4d82-8c6a-9ac65ff34c34';
