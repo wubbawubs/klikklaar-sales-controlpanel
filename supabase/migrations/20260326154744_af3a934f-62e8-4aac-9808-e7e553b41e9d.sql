@@ -1,0 +1,1 @@
+ALTER TABLE public.workspaces ADD COLUMN selected_form_ids text[] DEFAULT '{}'::text[];

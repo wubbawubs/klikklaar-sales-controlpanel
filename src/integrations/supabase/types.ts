@@ -861,6 +861,7 @@ export type Database = {
           product_lines: string[] | null
           provisioning_mode: string | null
           sales_executive_id: string
+          selected_form_ids: string[] | null
           sharepoint_site_name: string | null
           sharepoint_site_url: string | null
           sharepoint_status: string | null
@@ -884,6 +885,7 @@ export type Database = {
           product_lines?: string[] | null
           provisioning_mode?: string | null
           sales_executive_id: string
+          selected_form_ids?: string[] | null
           sharepoint_site_name?: string | null
           sharepoint_site_url?: string | null
           sharepoint_status?: string | null
@@ -907,6 +909,7 @@ export type Database = {
           product_lines?: string[] | null
           provisioning_mode?: string | null
           sales_executive_id?: string
+          selected_form_ids?: string[] | null
           sharepoint_site_name?: string | null
           sharepoint_site_url?: string | null
           sharepoint_status?: string | null
