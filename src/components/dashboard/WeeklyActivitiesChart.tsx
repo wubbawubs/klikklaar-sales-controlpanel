@@ -22,7 +22,7 @@ interface Props {
   seId?: string;
 }
 
-export default function WeeklyActivitiesChart({ from, to }: Props) {
+export default function WeeklyActivitiesChart({ from, to, seId }: Props) {
   const [data, setData] = useState<any[]>([]);
   const [seNames, setSeNames] = useState<string[]>([]);
   const [totalActivities, setTotalActivities] = useState(0);
