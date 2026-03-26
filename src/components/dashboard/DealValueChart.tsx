@@ -26,7 +26,7 @@ const COLORS = [
   'hsl(40, 70%, 50%)',
 ];
 
-export default function DealValueChart({ from, to }: Props) {
+export default function DealValueChart({ from, to, seId }: Props) {
   const [data, setData] = useState<ChartEntry[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   const [loading, setLoading] = useState(true);

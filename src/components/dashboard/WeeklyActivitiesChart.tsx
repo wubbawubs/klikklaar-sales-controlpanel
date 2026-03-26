@@ -86,7 +86,7 @@ export default function WeeklyActivitiesChart({ from, to, seId }: Props) {
       }
     };
     fetch_();
-  }, [from, to]);
+  }, [from, to, seId]);
 
   if (loading) {
     return (
