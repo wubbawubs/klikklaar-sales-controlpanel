@@ -42,6 +42,7 @@ const defaultForm = {
   include_excel_import: false,
   eod_typeform_url: '',
   eod_display_mode: 'embedded' as string,
+  selected_form_ids: [] as string[],
 
   product_lines: ['KlikklaarSEO'] as string[],
   deal_registration_enabled: true,
