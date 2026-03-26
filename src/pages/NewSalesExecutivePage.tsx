@@ -70,6 +70,13 @@ export default function NewSalesExecutivePage() {
 
   const [form, setForm] = useState({ ...defaultForm });
   const [selectedLeads, setSelectedLeads] = useState<SelectedLead[]>([]);
+  const [availableForms, setAvailableForms] = useState<{ id: string; title: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from('forms').select('id, title').eq('status', 'active').then(({ data }) => {
+      if (data) setAvailableForms(data);
+    });
+  }, []);
 
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
