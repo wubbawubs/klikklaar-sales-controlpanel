@@ -106,13 +106,13 @@ export default function SEPersonalDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard title="Open leads" value={stats.openLeads} icon={Target} />
-        <StatCard title="Callbacks vandaag" value={stats.callbacksToday} icon={PhoneCall} variant="warning" />
-        <StatCard title="Open deals" value={stats.openDeals} icon={Handshake} />
-        <StatCard title="Gewonnen deals" value={stats.wonDeals} icon={Trophy} variant="success" />
-        <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
-        <StatCard title="EOD's ingediend" value={stats.eodSubmitted} icon={ClipboardCheck} variant="success" />
-        <StatCard title="Totaal activiteiten" value={stats.totalActivities} icon={Briefcase} />
+        <StatCard title="Open leads" value={stats.openLeads} icon={Target} to="/leads" />
+        <StatCard title="Callbacks vandaag" value={stats.callbacksToday} icon={PhoneCall} variant="warning" to="/leads" />
+        <StatCard title="Open deals" value={stats.openDeals} icon={Handshake} to="/leads" />
+        <StatCard title="Gewonnen deals" value={stats.wonDeals} icon={Trophy} variant="success" to="/leads" />
+        <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" to="/leads" />
+        <StatCard title="EOD's ingediend" value={stats.eodSubmitted} icon={ClipboardCheck} variant="success" to="/eod" />
+        <StatCard title="Totaal activiteiten" value={stats.totalActivities} icon={Briefcase} to="/leads" />
       </div>
 
       <div className="space-y-4">
