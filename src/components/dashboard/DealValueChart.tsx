@@ -29,9 +29,9 @@ export default function DealValueChart() {
   useEffect(() => {
     const fetchDealData = async () => {
       try {
-        // 1. Get all lead assignments with their SE mappings
+        // 1. Get lead assignments and SEs
         const [assignmentsRes, sesRes] = await Promise.all([
-          supabase.from('pipedrive_lead_assignments').select('sales_executive_id, pipedrive_org_id'),
+          supabase.from('pipedrive_lead_assignments').select('sales_executive_id, org_name'),
           supabase.from('sales_executives').select('id, full_name'),
         ]);
 
@@ -39,15 +39,15 @@ export default function DealValueChart() {
         const ses = sesRes.data || [];
         const seMap = Object.fromEntries(ses.map(se => [se.id, se.full_name || 'Onbekend']));
 
-        // Build org_id -> SE mapping
-        const orgToSe: Record<number, string> = {};
+        // Build org_name -> SE name mapping
+        const orgNameToSeName: Record<string, string> = {};
         assignments.forEach(a => {
-          if (a.pipedrive_org_id) {
-            orgToSe[a.pipedrive_org_id] = a.sales_executive_id;
+          if (a.org_name) {
+            orgNameToSeName[a.org_name.toLowerCase()] = seMap[a.sales_executive_id] || 'Onbekend';
           }
         });
 
-        // 2. Fetch all deals from Pipedrive (no org filter = all deals)
+        // 2. Fetch all deals from Pipedrive
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals`,
           {
@@ -60,48 +60,18 @@ export default function DealValueChart() {
         const result = await res.json();
         if (result.error) throw new Error(result.error);
 
-        // 3. Aggregate deal values per SE
+        // 3. Aggregate deal values per SE via org_name matching
         const seValues: Record<string, { value: number; deals: number }> = {};
-        const stages = result.stages || [];
 
-        for (const stage of stages) {
+        for (const stage of result.stages || []) {
           for (const deal of stage.deals || []) {
-            // Find SE via org_id mapping
-            const orgName = deal.org_name;
-            const orgId = Object.entries(orgToSe).find(([, seId]) => {
-              // Match by checking assignments
-              return assignments.some(a => a.pipedrive_org_id && a.sales_executive_id === seId &&
-                stages.some((s: any) => s.deals.some((d: any) => d.org_name === orgName && d.id === deal.id))
-              );
-            });
+            const seName = deal.org_name
+              ? orgNameToSeName[deal.org_name.toLowerCase()] || 'Niet toegewezen'
+              : 'Niet toegewezen';
 
-            // Try direct org_id match from deal
-            let seId: string | undefined;
-            for (const a of assignments) {
-              if (a.pipedrive_org_id && deal.org_name) {
-                // We need to match by org_id from the deal
-                // The deal object has org_name but the stage_id mapping from deal -> org_id isn't direct
-                // Use the orgToSe mapping
-                if (orgToSe[a.pipedrive_org_id]) {
-                  // Check if this assignment's org matches the deal's org
-                  const matchingAssignment = assignments.find(
-                    ass => ass.pipedrive_org_id === a.pipedrive_org_id
-                  );
-                  if (matchingAssignment) {
-                    seId = matchingAssignment.sales_executive_id;
-                    break;
-                  }
-                }
-              }
-            }
-
-            // Fallback: try to match by deal owner or put in "Niet toegewezen"
-            const targetSeId = seId || '__unassigned';
-            const label = seId ? (seMap[seId] || 'Onbekend') : 'Niet toegewezen';
-
-            if (!seValues[label]) seValues[label] = { value: 0, deals: 0 };
-            seValues[label].value += deal.value || 0;
-            seValues[label].deals += 1;
+            if (!seValues[seName]) seValues[seName] = { value: 0, deals: 0 };
+            seValues[seName].value += deal.value || 0;
+            seValues[seName].deals += 1;
           }
         }
 
