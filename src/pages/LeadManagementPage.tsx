@@ -53,12 +53,22 @@ export default function LeadManagementPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [leadsRes, sesRes] = await Promise.all([
+    const [leadsRes, sesRes, activitiesRes] = await Promise.all([
       supabase.from('pipedrive_lead_assignments').select('*').order('assigned_at', { ascending: false }),
       supabase.from('sales_executives').select('*').order('full_name'),
+      supabase.from('pipedrive_activities').select('lead_assignment_id'),
     ]);
     setLeads(leadsRes.data || []);
     setSes(sesRes.data || []);
+    
+    // Count activities per lead
+    const counts: Record<string, number> = {};
+    (activitiesRes.data || []).forEach((a: { lead_assignment_id: string | null }) => {
+      if (a.lead_assignment_id) {
+        counts[a.lead_assignment_id] = (counts[a.lead_assignment_id] || 0) + 1;
+      }
+    });
+    setActivityCounts(counts);
     setLoading(false);
   };
 
