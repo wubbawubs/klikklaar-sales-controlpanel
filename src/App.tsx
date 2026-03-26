@@ -66,6 +66,7 @@ function AppRoutes() {
         {/* Accessible by all authenticated users */}
         <Route path="/" element={<DashboardPage />} />
         <Route path="/leads" element={<LeadManagementPage />} />
+        <Route path="/calls" element={<CallLoggingPage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/eod" element={<EodPage />} />
 
