@@ -47,6 +47,69 @@ export type Database = {
         }
         Relationships: []
       }
+      calls: {
+        Row: {
+          callback_date: string | null
+          callback_time: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          lead_assignment_id: string | null
+          notes: string | null
+          org_name: string | null
+          outcome: string
+          sales_executive_id: string
+          updated_at: string
+        }
+        Insert: {
+          callback_date?: string | null
+          callback_time?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          lead_assignment_id?: string | null
+          notes?: string | null
+          org_name?: string | null
+          outcome?: string
+          sales_executive_id: string
+          updated_at?: string
+        }
+        Update: {
+          callback_date?: string | null
+          callback_time?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          lead_assignment_id?: string | null
+          notes?: string | null
+          org_name?: string | null
+          outcome?: string
+          sales_executive_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_lead_assignment_id_fkey"
+            columns: ["lead_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "pipedrive_lead_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eod_submission_data: {
         Row: {
           appointments_set: number | null
@@ -456,6 +519,50 @@ export type Database = {
           },
         ]
       }
+      learning_updates: {
+        Row: {
+          created_at: string
+          data_json: Json | null
+          id: string
+          impact: string
+          sales_executive_id: string | null
+          scope: string
+          title: string
+          what_changed: string
+          why: string
+        }
+        Insert: {
+          created_at?: string
+          data_json?: Json | null
+          id?: string
+          impact: string
+          sales_executive_id?: string | null
+          scope?: string
+          title: string
+          what_changed: string
+          why: string
+        }
+        Update: {
+          created_at?: string
+          data_json?: Json | null
+          id?: string
+          impact?: string
+          sales_executive_id?: string | null
+          scope?: string
+          title?: string
+          what_changed?: string
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_updates_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipedrive_activities: {
         Row: {
           activity_type: string
@@ -730,6 +837,56 @@ export type Database = {
         }
         Relationships: []
       }
+      se_baselines: {
+        Row: {
+          baseline_value: number
+          created_at: string
+          data_json: Json | null
+          id: string
+          metric_name: string
+          minimum_threshold: number | null
+          period_end: string | null
+          period_start: string | null
+          sales_executive_id: string
+          team_benchmark: number | null
+          updated_at: string
+        }
+        Insert: {
+          baseline_value?: number
+          created_at?: string
+          data_json?: Json | null
+          id?: string
+          metric_name: string
+          minimum_threshold?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          sales_executive_id: string
+          team_benchmark?: number | null
+          updated_at?: string
+        }
+        Update: {
+          baseline_value?: number
+          created_at?: string
+          data_json?: Json | null
+          id?: string
+          metric_name?: string
+          minimum_threshold?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          sales_executive_id?: string
+          team_benchmark?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "se_baselines_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           id: string
@@ -750,6 +907,62 @@ export type Database = {
           value_json?: Json | null
         }
         Relationships: []
+      }
+      signals: {
+        Row: {
+          action: string | null
+          confidence: string | null
+          created_at: string
+          data_json: Json | null
+          description: string | null
+          escalation_level: number | null
+          id: string
+          resolved: boolean | null
+          resolved_at: string | null
+          sales_executive_id: string
+          severity: string
+          signal_type: string
+          title: string
+        }
+        Insert: {
+          action?: string | null
+          confidence?: string | null
+          created_at?: string
+          data_json?: Json | null
+          description?: string | null
+          escalation_level?: number | null
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          sales_executive_id: string
+          severity?: string
+          signal_type: string
+          title: string
+        }
+        Update: {
+          action?: string | null
+          confidence?: string | null
+          created_at?: string
+          data_json?: Json | null
+          description?: string | null
+          escalation_level?: number | null
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          sales_executive_id?: string
+          severity?: string
+          signal_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signals_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submission_answers: {
         Row: {
@@ -789,6 +1002,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      team_insights: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          data_json: Json | null
+          description: string
+          id: string
+          insight_type: string
+          segment: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          data_json?: Json | null
+          description: string
+          id?: string
+          insight_type: string
+          segment?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          data_json?: Json | null
+          description?: string
+          id?: string
+          insight_type?: string
+          segment?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       training_documents: {
         Row: {
