@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
 import DealValueChart from '@/components/dashboard/DealValueChart';
+import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
