@@ -1,51 +1,151 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Video, FileText, Phone, HelpCircle, BookOpen, Package, FileSpreadsheet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Video, FileText, Phone, HelpCircle, BookOpen, Package, FileSpreadsheet, Download, ArrowLeft, FileIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-const categories = [
-  { icon: Video, label: "Video's", description: 'Trainingsvideo\'s en instructiefilmpjes', count: 0 },
-  { icon: FileText, label: 'Coaching-documenten', description: 'Persoonlijke coaching en evaluatie', count: 0 },
-  { icon: Phone, label: 'Belscripts', description: 'Scripts voor koude en warme acquisitie', count: 0 },
-  { icon: HelpCircle, label: 'FAQ', description: 'Veelgestelde vragen en antwoorden', count: 0 },
-  { icon: BookOpen, label: 'Procesinstructies', description: 'Stapsgewijze werkprocessen', count: 0 },
-  { icon: Package, label: 'Productinformatie', description: 'KlikklaarSEO en KlikklaarWEB productdetails', count: 0 },
-  { icon: FileSpreadsheet, label: 'Offerteformats', description: 'Standaard offertetemplates', count: 0 },
-];
+const categoryConfig: Record<string, { icon: any; description: string }> = {
+  "Video's": { icon: Video, description: "Trainingsvideo's en instructiefilmpjes" },
+  'Coaching-documenten': { icon: FileText, description: 'Persoonlijke coaching en evaluatie' },
+  'Belscripts': { icon: Phone, description: 'Scripts voor koude en warme acquisitie' },
+  'FAQ': { icon: HelpCircle, description: 'Veelgestelde vragen en antwoorden' },
+  'Procesinstructies': { icon: BookOpen, description: 'Stapsgewijze werkprocessen' },
+  'Productinformatie': { icon: Package, description: 'KlikklaarSEO en KlikklaarWEB productdetails' },
+  'Offerteformats': { icon: FileSpreadsheet, description: 'Standaard offertetemplates' },
+};
+
+function formatFileSize(bytes: number | null) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
+}
 
 export default function TrainingPage() {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const { data: documents = [] } = useQuery({
+    queryKey: ['training-documents'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('training_documents')
+        .select('*')
+        .order('display_name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const categoryCounts = documents.reduce((acc, doc) => {
+    acc[doc.category] = (acc[doc.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const categories = Object.entries(categoryConfig).map(([label, config]) => ({
+    label,
+    ...config,
+    count: categoryCounts[label] || 0,
+  }));
+
+  const filteredDocs = selectedCategory
+    ? documents.filter(d => d.category === selectedCategory)
+    : [];
+
+  const handleDownload = (filePath: string, fileName: string) => {
+    const { data } = supabase.storage.from('training-documents').getPublicUrl(filePath);
+    const a = document.createElement('a');
+    a.href = data.publicUrl;
+    a.download = fileName;
+    a.target = '_blank';
+    a.click();
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Training & Coaching</h1>
-        <p className="text-muted-foreground text-sm mt-1">Beheer trainingsinhoud voor Sales Executives</p>
+      <div className="flex items-center gap-3">
+        {selectedCategory && (
+          <Button variant="ghost" size="icon" onClick={() => setSelectedCategory(null)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {selectedCategory || 'Training & Coaching'}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {selectedCategory
+              ? categoryConfig[selectedCategory]?.description
+              : 'Beheer trainingsinhoud voor Sales Executives'}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map(cat => (
-          <Card key={cat.label} className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <cat.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">{cat.label}</CardTitle>
-                  <CardDescription className="text-xs">{cat.count} items</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{cat.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardContent className="p-6 text-center text-muted-foreground">
-          <p className="text-sm">Trainingsinhoud wordt beheerd via de SharePoint trainingsbibliotheek per Sales Executive workspace.</p>
-          <p className="text-xs mt-2">Upload en categoriseer content via het integratiecentrum of rechtstreeks in SharePoint.</p>
-        </CardContent>
-      </Card>
+      {!selectedCategory ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categories.map(cat => {
+            const Icon = cat.icon;
+            return (
+              <Card
+                key={cat.label}
+                className="hover:shadow-md transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                onClick={() => setSelectedCategory(cat.label)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">{cat.label}</CardTitle>
+                      <CardDescription className="text-xs">{cat.count} items</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{cat.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredDocs.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center text-muted-foreground">
+                <p className="text-sm">Geen documenten in deze categorie.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredDocs.map(doc => (
+              <Card key={doc.id} className="hover:shadow-sm transition-shadow">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <FileIcon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{doc.display_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {doc.file_name} · {formatFileSize(doc.file_size_bytes)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownload(doc.file_path, doc.file_name)}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Download
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
