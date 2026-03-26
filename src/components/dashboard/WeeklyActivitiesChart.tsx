@@ -33,8 +33,10 @@ export default function WeeklyActivitiesChart({ from, to, seId }: Props) {
     const fetch_ = async () => {
       setLoading(true);
       try {
+        let activitiesQuery = supabase.from('pipedrive_activities').select('sales_executive_id, created_at');
+        if (seId) activitiesQuery = activitiesQuery.eq('sales_executive_id', seId);
         const [activitiesRes, sesRes] = await Promise.all([
-          supabase.from('pipedrive_activities').select('sales_executive_id, created_at'),
+          activitiesQuery,
           supabase.from('sales_executives').select('id, full_name'),
         ]);
 
