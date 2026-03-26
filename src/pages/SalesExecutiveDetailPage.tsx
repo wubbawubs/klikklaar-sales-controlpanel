@@ -13,6 +13,17 @@ import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 
+function SelectedFormsList({ formIds }: { formIds: string[] }) {
+  const [forms, setForms] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    supabase.from('forms').select('id, title').in('id', formIds).then(({ data }) => {
+      if (data) setForms(data);
+    });
+  }, [formIds]);
+  if (!forms.length) return <span className="text-muted-foreground">Laden...</span>;
+  return <ul className="space-y-1">{forms.map(f => <li key={f.id}>✓ {f.title}</li>)}</ul>;
+}
+
 export default function SalesExecutiveDetailPage() {
   const { id } = useParams();
   const { toast } = useToast();
