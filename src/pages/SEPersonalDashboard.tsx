@@ -29,14 +29,22 @@ export default function SEPersonalDashboard() {
   useEffect(() => {
     if (!user) return;
     const fetch = async () => {
+      const normalizedEmail = (user.email ?? '').trim().toLowerCase();
+
       // Find the SE record linked to this user's email
-      const { data: seData } = await supabase
+      const { data: seData, error: seError } = await supabase
         .from('sales_executives')
         .select('*')
-        .eq('email', user.email ?? '')
+        .ilike('email', normalizedEmail)
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
+
+      if (seError) {
+        console.error('Kon SE-profiel niet ophalen:', seError.message);
+        setLoading(false);
+        return;
+      }
 
       if (!seData) {
         setLoading(false);
