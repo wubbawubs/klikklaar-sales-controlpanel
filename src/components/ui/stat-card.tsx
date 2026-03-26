@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface StatCardProps {
   title: string;
@@ -7,6 +8,7 @@ interface StatCardProps {
   icon: LucideIcon;
   variant?: 'default' | 'success' | 'warning' | 'destructive' | 'info';
   className?: string;
+  to?: string;
 }
 
 const variantClasses = {
