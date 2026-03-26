@@ -17,24 +17,37 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  icon: any;
+  label: string;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/sales-executives', icon: Users, label: 'Sales Executives' },
-  { to: '/sales-executives/new', icon: UserPlus, label: 'Nieuwe SE' },
-  { to: '/provisioning', icon: Package, label: 'Provisioning' },
-  { to: '/artifacts', icon: FileJson, label: 'Artifacts' },
-  { to: '/leads', icon: Target, label: 'Lead Management' },
-  { to: '/integrations', icon: Plug, label: 'Integraties' },
+  { to: '/sales-executives', icon: Users, label: 'Sales Executives', adminOnly: true },
+  { to: '/sales-executives/new', icon: UserPlus, label: 'Nieuwe SE', adminOnly: true },
+  { to: '/provisioning', icon: Package, label: 'Provisioning', adminOnly: true },
+  { to: '/artifacts', icon: FileJson, label: 'Artifacts', adminOnly: true },
+  { to: '/leads', icon: Target, label: 'Mijn Leads' },
+  { to: '/integrations', icon: Plug, label: 'Integraties', adminOnly: true },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },
-  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties' },
-  { to: '/settings', icon: Settings, label: 'Instellingen' },
-  { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs' },
+  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', adminOnly: true },
+  { to: '/settings', icon: Settings, label: 'Instellingen', adminOnly: true },
+  { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', adminOnly: true },
 ];
 
 export function AppSidebar() {
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin, roles } = useAuth();
   const location = useLocation();
+  const isCoachOrAdmin = isAdmin || roles.includes('coach');
+
+  const visibleItems = navItems.filter(item => {
+    if (!item.adminOnly) return true;
+    return isCoachOrAdmin;
+  });
 
   return (
     <aside className="flex flex-col h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -44,7 +57,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3">
-        {navItems.map(({ to, icon: Icon, label }) => {
+        {visibleItems.map(({ to, icon: Icon, label }) => {
           const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
           return (
             <NavLink

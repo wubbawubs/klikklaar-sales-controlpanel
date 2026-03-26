@@ -19,9 +19,10 @@ const SE_COLORS = [
 interface Props {
   from: Date;
   to: Date;
+  seId?: string;
 }
 
-export default function WeeklyActivitiesChart({ from, to }: Props) {
+export default function WeeklyActivitiesChart({ from, to, seId }: Props) {
   const [data, setData] = useState<any[]>([]);
   const [seNames, setSeNames] = useState<string[]>([]);
   const [totalActivities, setTotalActivities] = useState(0);
@@ -32,8 +33,10 @@ export default function WeeklyActivitiesChart({ from, to }: Props) {
     const fetch_ = async () => {
       setLoading(true);
       try {
+        let activitiesQuery = supabase.from('pipedrive_activities').select('sales_executive_id, created_at');
+        if (seId) activitiesQuery = activitiesQuery.eq('sales_executive_id', seId);
         const [activitiesRes, sesRes] = await Promise.all([
-          supabase.from('pipedrive_activities').select('sales_executive_id, created_at'),
+          activitiesQuery,
           supabase.from('sales_executives').select('id, full_name'),
         ]);
 
@@ -83,7 +86,7 @@ export default function WeeklyActivitiesChart({ from, to }: Props) {
       }
     };
     fetch_();
-  }, [from, to]);
+  }, [from, to, seId]);
 
   if (loading) {
     return (
