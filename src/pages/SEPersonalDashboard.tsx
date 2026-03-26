@@ -34,6 +34,8 @@ export default function SEPersonalDashboard() {
         .from('sales_executives')
         .select('*')
         .eq('email', user.email ?? '')
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       if (!seData) {

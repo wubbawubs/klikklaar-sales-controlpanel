@@ -24,7 +24,12 @@ interface SERow extends SalesExecutive {
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const { user, isAdmin, roles } = useAuth();
+  const { user, isAdmin, roles, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
+  }
+
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
 
   if (!isCoachOrAdmin) {
