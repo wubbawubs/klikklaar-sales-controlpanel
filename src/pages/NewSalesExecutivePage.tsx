@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,6 +42,7 @@ const defaultForm = {
   include_excel_import: false,
   eod_typeform_url: '',
   eod_display_mode: 'embedded' as string,
+  selected_form_ids: [] as string[],
 
   product_lines: ['KlikklaarSEO'] as string[],
   deal_registration_enabled: true,
@@ -68,6 +70,13 @@ export default function NewSalesExecutivePage() {
 
   const [form, setForm] = useState({ ...defaultForm });
   const [selectedLeads, setSelectedLeads] = useState<SelectedLead[]>([]);
+  const [availableForms, setAvailableForms] = useState<{ id: string; title: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from('forms').select('id, title').eq('status', 'active').then(({ data }) => {
+      if (data) setAvailableForms(data);
+    });
+  }, []);
 
   const update = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
@@ -434,8 +443,27 @@ export default function NewSalesExecutivePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Typeform EOD URL</Label>
-                <Input value={form.eod_typeform_url} onChange={e => update('eod_typeform_url', e.target.value)} placeholder="https://form.typeform.com/to/..." />
+                <Label>EOD Formulieren</Label>
+                <p className="text-xs text-muted-foreground">Selecteer welke formulieren deze SE moet invullen</p>
+                <div className="space-y-2 border rounded-md p-3">
+                  {availableForms.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Geen actieve formulieren gevonden</p>
+                  ) : (
+                    availableForms.map(f => (
+                      <div key={f.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`form-${f.id}`}
+                          checked={(form.selected_form_ids || []).includes(f.id)}
+                          onCheckedChange={(checked) => {
+                            const current = form.selected_form_ids || [];
+                            update('selected_form_ids', checked ? [...current, f.id] : current.filter(id => id !== f.id));
+                          }}
+                        />
+                        <Label htmlFor={`form-${f.id}`} className="text-sm font-normal cursor-pointer">{f.title}</Label>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>EOD weergave</Label>
