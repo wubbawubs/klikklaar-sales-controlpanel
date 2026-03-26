@@ -48,6 +48,8 @@ export default function LeadManagementPage() {
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [targetSeId, setTargetSeId] = useState('');
   const [reassigning, setReassigning] = useState(false);
+  const [expandedLeads, setExpandedLeads] = useState<Set<string>>(new Set());
+  const [activityCounts, setActivityCounts] = useState<Record<string, number>>({});
 
   const fetchData = async () => {
     setLoading(true);
