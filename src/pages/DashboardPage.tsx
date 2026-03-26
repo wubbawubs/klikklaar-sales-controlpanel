@@ -11,6 +11,7 @@ import {
   Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
 } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
+import DealValueChart from '@/components/dashboard/DealValueChart';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
@@ -145,6 +146,9 @@ export default function DashboardPage() {
         <StatCard title="Gewonnen deals" value={stats.wonDeals} icon={Trophy} variant="success" />
         <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
+
+      {/* Deal value chart */}
+      <DealValueChart />
 
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
         <div className="p-4 border-b">
