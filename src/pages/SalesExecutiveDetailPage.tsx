@@ -13,6 +13,17 @@ import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 
+function SelectedFormsList({ formIds }: { formIds: string[] }) {
+  const [forms, setForms] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    supabase.from('forms').select('id, title').in('id', formIds).then(({ data }) => {
+      if (data) setForms(data);
+    });
+  }, [formIds]);
+  if (!forms.length) return <span className="text-muted-foreground">Laden...</span>;
+  return <ul className="space-y-1">{forms.map(f => <li key={f.id}>✓ {f.title}</li>)}</ul>;
+}
+
 export default function SalesExecutiveDetailPage() {
   const { id } = useParams();
   const { toast } = useToast();
@@ -305,31 +316,41 @@ export default function SalesExecutiveDetailPage() {
         </TabsContent>
 
         <TabsContent value="integrations">
-          <div className="grid grid-cols-2 gap-4">
-            {['pipedrive','exact','qapitaal','typeform'].map(provider => {
-              const ic = integrations.find(i => i.provider === provider);
-              return (
-                <Card key={provider}>
-                  <CardHeader><CardTitle className="text-base capitalize">{provider}</CardTitle></CardHeader>
-                  <CardContent className="text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Status</span>
-                      <StatusBadge status={ic?.status || 'not_configured'} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Ingeschakeld</span>
-                      <span>{ic?.enabled ? 'Ja' : 'Nee'}</span>
-                    </div>
-                    {ic?.last_tested_at && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              {['pipedrive','exact','qapitaal','typeform'].map(provider => {
+                const ic = integrations.find(i => i.provider === provider);
+                return (
+                  <Card key={provider}>
+                    <CardHeader><CardTitle className="text-base capitalize">{provider}</CardTitle></CardHeader>
+                    <CardContent className="text-sm space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Laatste test</span>
-                        <span>{new Date(ic.last_tested_at).toLocaleString('nl-NL')}</span>
+                        <span className="text-muted-foreground">Status</span>
+                        <StatusBadge status={ic?.status || 'not_configured'} />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Ingeschakeld</span>
+                        <span>{ic?.enabled ? 'Ja' : 'Nee'}</span>
+                      </div>
+                      {ic?.last_tested_at && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Laatste test</span>
+                          <span>{new Date(ic.last_tested_at).toLocaleString('nl-NL')}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            {workspace && (workspace as any).selected_form_ids?.length > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-base">Gekoppelde EOD Formulieren</CardTitle></CardHeader>
+                <CardContent className="text-sm">
+                  <SelectedFormsList formIds={(workspace as any).selected_form_ids} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
