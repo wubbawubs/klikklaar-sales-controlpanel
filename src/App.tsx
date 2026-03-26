@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
@@ -28,6 +29,8 @@ import ResponsesPage from "@/pages/evaluaties/ResponsesPage";
 import AnalyticsPage from "@/pages/evaluaties/AnalyticsPage";
 
 const queryClient = new QueryClient();
+
+const ADMIN_ROLES = ['super_admin', 'admin', 'coach'] as const;
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -59,24 +62,27 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        {/* Accessible by all authenticated users */}
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/sales-executives" element={<SalesExecutivesPage />} />
-        <Route path="/sales-executives/new" element={<NewSalesExecutivePage />} />
-        <Route path="/sales-executives/:id" element={<SalesExecutiveDetailPage />} />
-        <Route path="/sales-executives/:id/edit" element={<NewSalesExecutivePage />} />
-        <Route path="/provisioning" element={<ProvisioningPage />} />
-        <Route path="/artifacts" element={<ArtifactsPage />} />
-        <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/leads" element={<LeadManagementPage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/eod" element={<EodPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/audit-logs" element={<AuditLogsPage />} />
-        <Route path="/leads" element={<LeadManagementPage />} />
-        <Route path="/evaluaties" element={<EvaluatiesDashboard />} />
-        <Route path="/evaluaties/formulieren" element={<FormulierenPage />} />
-        <Route path="/evaluaties/formulieren/:id" element={<FormulierDetailPage />} />
-        <Route path="/evaluaties/responses" element={<ResponsesPage />} />
-        <Route path="/evaluaties/analytics" element={<AnalyticsPage />} />
+
+        {/* Admin/Coach only routes */}
+        <Route path="/sales-executives" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutivesPage /></ProtectedRoute>} />
+        <Route path="/sales-executives/new" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><NewSalesExecutivePage /></ProtectedRoute>} />
+        <Route path="/sales-executives/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutiveDetailPage /></ProtectedRoute>} />
+        <Route path="/sales-executives/:id/edit" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><NewSalesExecutivePage /></ProtectedRoute>} />
+        <Route path="/provisioning" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ProvisioningPage /></ProtectedRoute>} />
+        <Route path="/artifacts" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ArtifactsPage /></ProtectedRoute>} />
+        <Route path="/integrations" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogsPage /></ProtectedRoute>} />
+        <Route path="/evaluaties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><EvaluatiesDashboard /></ProtectedRoute>} />
+        <Route path="/evaluaties/formulieren" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierenPage /></ProtectedRoute>} />
+        <Route path="/evaluaties/formulieren/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierDetailPage /></ProtectedRoute>} />
+        <Route path="/evaluaties/responses" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ResponsesPage /></ProtectedRoute>} />
+        <Route path="/evaluaties/analytics" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AnalyticsPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
