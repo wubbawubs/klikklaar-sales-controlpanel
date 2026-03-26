@@ -40,8 +40,14 @@ const navItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin, roles } = useAuth();
   const location = useLocation();
+  const isCoachOrAdmin = isAdmin || roles.includes('coach');
+
+  const visibleItems = navItems.filter(item => {
+    if (!item.adminOnly) return true;
+    return isCoachOrAdmin;
+  });
 
   return (
     <aside className="flex flex-col h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
