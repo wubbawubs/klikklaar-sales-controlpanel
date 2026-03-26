@@ -30,7 +30,15 @@ export default function DashboardPage() {
   const [ses, setSes] = useState<SERow[]>([]);
   const [provisioningId, setProvisioningId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin, roles } = useAuth();
+  const isCoachOrAdmin = isAdmin || roles.includes('coach');
+
+  // If not admin/coach, show personal SE dashboard
+  if (!isCoachOrAdmin) {
+    return <SEPersonalDashboard />;
+  }
+
+  const [ses, setSes] = useState<SERow[]>([]);
   const [stats, setStats] = useState({
     activeSEs: 0, draftWorkspaces: 0, readyWorkspaces: 0, failedJobs: 0,
     integrationErrors: 0, eodExpected: 0, eodReceived: 0,
