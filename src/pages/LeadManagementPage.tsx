@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter } from 'lucide-react';
+import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SalesExecutive } from '@/types/database';
+import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
 
 interface LeadAssignment {
   id: string;
@@ -47,15 +48,27 @@ export default function LeadManagementPage() {
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [targetSeId, setTargetSeId] = useState('');
   const [reassigning, setReassigning] = useState(false);
+  const [expandedLeads, setExpandedLeads] = useState<Set<string>>(new Set());
+  const [activityCounts, setActivityCounts] = useState<Record<string, number>>({});
 
   const fetchData = async () => {
     setLoading(true);
-    const [leadsRes, sesRes] = await Promise.all([
+    const [leadsRes, sesRes, activitiesRes] = await Promise.all([
       supabase.from('pipedrive_lead_assignments').select('*').order('assigned_at', { ascending: false }),
       supabase.from('sales_executives').select('*').order('full_name'),
+      supabase.from('pipedrive_activities').select('lead_assignment_id'),
     ]);
     setLeads(leadsRes.data || []);
     setSes(sesRes.data || []);
+    
+    // Count activities per lead
+    const counts: Record<string, number> = {};
+    (activitiesRes.data || []).forEach((a: { lead_assignment_id: string | null }) => {
+      if (a.lead_assignment_id) {
+        counts[a.lead_assignment_id] = (counts[a.lead_assignment_id] || 0) + 1;
+      }
+    });
+    setActivityCounts(counts);
     setLoading(false);
   };
 
@@ -112,6 +125,14 @@ export default function LeadManagementPage() {
       fetchData();
     }
     setReassigning(false);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedLeads(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
   const uniqueStatuses = [...new Set(leads.map(l => l.status))];
@@ -212,60 +233,88 @@ export default function LeadManagementPage() {
                       className="rounded border-muted-foreground"
                     />
                   </TableHead>
+                  <TableHead className="w-[30px]"></TableHead>
                   <TableHead>Organisatie</TableHead>
                   <TableHead>Contactpersoon</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Sales Executive</TableHead>
+                  <TableHead>Activiteiten</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Toegewezen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(lead => (
-                  <TableRow key={lead.id} className={selectedLeads.has(lead.id) ? 'bg-accent/50' : ''}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selectedLeads.has(lead.id)}
-                        onChange={() => toggleSelect(lead.id)}
-                        className="rounded border-muted-foreground"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="font-medium">{lead.org_name || '—'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>{lead.person_name || '—'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-0.5 text-xs text-muted-foreground">
-                        {lead.person_email && (
-                          <div className="flex items-center gap-1"><Mail className="h-3 w-3" />{lead.person_email}</div>
-                        )}
-                        {lead.person_phone && (
-                          <div className="flex items-center gap-1"><Phone className="h-3 w-3" />{lead.person_phone}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{seMap[lead.sales_executive_id]?.full_name || '—'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={statusColors[lead.status] || ''}>
-                        {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {lead.assigned_at ? new Date(lead.assigned_at).toLocaleDateString('nl-NL') : '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filtered.map(lead => {
+                  const isExpanded = expandedLeads.has(lead.id);
+                  const count = activityCounts[lead.id] || 0;
+                  return (
+                    <>
+                      <TableRow key={lead.id} className={`${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''} ${count > 0 ? 'cursor-pointer' : ''}`}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedLeads.has(lead.id)}
+                            onChange={() => toggleSelect(lead.id)}
+                            className="rounded border-muted-foreground"
+                          />
+                        </TableCell>
+                        <TableCell className="px-1">
+                          {count > 0 && (
+                            <button onClick={() => toggleExpand(lead.id)} className="p-1 rounded hover:bg-accent">
+                              {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            </button>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="font-medium">{lead.org_name || '—'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span>{lead.person_name || '—'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-0.5 text-xs text-muted-foreground">
+                            {lead.person_email && (
+                              <div className="flex items-center gap-1"><Mail className="h-3 w-3" />{lead.person_email}</div>
+                            )}
+                            {lead.person_phone && (
+                              <div className="flex items-center gap-1"><Phone className="h-3 w-3" />{lead.person_phone}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{seMap[lead.sales_executive_id]?.full_name || '—'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <PhoneCall className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm font-medium">{count}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={statusColors[lead.status] || ''}>
+                            {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {lead.assigned_at ? new Date(lead.assigned_at).toLocaleDateString('nl-NL') : '—'}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow key={`${lead.id}-activities`}>
+                          <TableCell colSpan={9} className="p-0 bg-muted/30">
+                            <LeadActivityHistory leadAssignmentId={lead.id} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
