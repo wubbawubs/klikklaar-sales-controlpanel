@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter } from 'lucide-react';
+import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SalesExecutive } from '@/types/database';
+import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
 
 interface LeadAssignment {
   id: string;
