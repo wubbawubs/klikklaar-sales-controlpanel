@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { to: '/provisioning', icon: Package, label: 'Provisioning', adminOnly: true },
   { to: '/artifacts', icon: FileJson, label: 'Artifacts', adminOnly: true },
   { to: '/leads', icon: Target, label: 'Mijn Leads' },
+  { to: '/calls', icon: Phone, label: 'Call Logging' },
   { to: '/integrations', icon: Plug, label: 'Integraties', adminOnly: true },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },
