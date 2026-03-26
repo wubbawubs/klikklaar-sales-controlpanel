@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
 import DealValueChart from '@/components/dashboard/DealValueChart';
+import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
@@ -147,8 +148,11 @@ export default function DashboardPage() {
         <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
-      {/* Deal value chart */}
-      <DealValueChart />
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <DealValueChart />
+        <WeeklyActivitiesChart />
+      </div>
 
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
         <div className="p-4 border-b">
