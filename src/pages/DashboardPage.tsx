@@ -11,6 +11,7 @@ import {
   Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
 } from 'lucide-react';
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
+import DealValueChart from '@/components/dashboard/DealValueChart';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
