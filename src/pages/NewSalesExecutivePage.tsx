@@ -169,6 +169,7 @@ export default function NewSalesExecutivePage() {
           include_excel_import: form.include_excel_import,
           eod_typeform_url: form.eod_typeform_url || null,
           eod_display_mode: form.eod_display_mode,
+          selected_form_ids: form.selected_form_ids || [],
           product_lines: form.product_lines,
           deal_registration_enabled: form.deal_registration_enabled,
           appointment_scheduling_enabled: form.appointment_scheduling_enabled,
