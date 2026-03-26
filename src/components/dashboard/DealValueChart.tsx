@@ -11,6 +11,11 @@ interface ChartEntry {
   deals: number;
 }
 
+interface Props {
+  from: Date;
+  to: Date;
+}
+
 const COLORS = [
   'hsl(var(--primary))',
   'hsl(210, 70%, 50%)',
@@ -20,7 +25,7 @@ const COLORS = [
   'hsl(40, 70%, 50%)',
 ];
 
-export default function DealValueChart() {
+export default function DealValueChart({ from, to }: Props) {
   const [data, setData] = useState<ChartEntry[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -28,8 +33,8 @@ export default function DealValueChart() {
 
   useEffect(() => {
     const fetchDealData = async () => {
+      setLoading(true);
       try {
-        // 1. Get lead assignments and SEs
         const [assignmentsRes, sesRes] = await Promise.all([
           supabase.from('pipedrive_lead_assignments').select('sales_executive_id, org_name'),
           supabase.from('sales_executives').select('id, full_name'),
@@ -39,7 +44,6 @@ export default function DealValueChart() {
         const ses = sesRes.data || [];
         const seMap = Object.fromEntries(ses.map(se => [se.id, se.full_name || 'Onbekend']));
 
-        // Build org_name -> SE name mapping
         const orgNameToSeName: Record<string, string> = {};
         assignments.forEach(a => {
           if (a.org_name) {
@@ -47,7 +51,6 @@ export default function DealValueChart() {
           }
         });
 
-        // 2. Fetch all deals from Pipedrive
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals`,
           {
@@ -60,11 +63,18 @@ export default function DealValueChart() {
         const result = await res.json();
         if (result.error) throw new Error(result.error);
 
-        // 3. Aggregate deal values per SE via org_name matching
         const seValues: Record<string, { value: number; deals: number }> = {};
+        const fromTs = from.getTime();
+        const toTs = to.getTime();
 
         for (const stage of result.stages || []) {
           for (const deal of stage.deals || []) {
+            // Filter by date range using add_time
+            if (deal.add_time) {
+              const dealTime = new Date(deal.add_time).getTime();
+              if (dealTime < fromTs || dealTime > toTs) continue;
+            }
+
             const seName = deal.org_name
               ? orgNameToSeName[deal.org_name.toLowerCase()] || 'Niet toegewezen'
               : 'Niet toegewezen';
@@ -80,7 +90,7 @@ export default function DealValueChart() {
           .sort((a, b) => b.value - a.value);
 
         setData(chartData);
-        setTotalValue(result.total_value || 0);
+        setTotalValue(chartData.reduce((sum, d) => sum + d.value, 0));
       } catch (err: any) {
         console.error('Failed to load deal chart data:', err);
         setError(err.message || 'Fout bij laden');
@@ -90,20 +100,13 @@ export default function DealValueChart() {
     };
 
     fetchDealData();
-  }, []);
+  }, [from, to]);
 
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Dealwaarde per Sales Executive
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-[250px]">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </CardContent>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" />Dealwaarde per Sales Executive</CardTitle></CardHeader>
+        <CardContent className="flex items-center justify-center h-[250px]"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></CardContent>
       </Card>
     );
   }
@@ -111,15 +114,8 @@ export default function DealValueChart() {
   if (error) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Dealwaarde per Sales Executive
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
-          {error}
-        </CardContent>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" />Dealwaarde per Sales Executive</CardTitle></CardHeader>
+        <CardContent className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">{error}</CardContent>
       </Card>
     );
   }
@@ -130,7 +126,7 @@ export default function DealValueChart() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Dealwaarde per Sales Executive
+            Dealwaarde per SE
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
             Totaal: €{totalValue.toLocaleString('nl-NL')}
@@ -140,30 +136,16 @@ export default function DealValueChart() {
       <CardContent>
         {data.length === 0 ? (
           <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
-            Geen open deals gevonden
+            Geen deals in deze periode
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                angle={-25}
-                textAnchor="end"
-                interval={0}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(v: number) => `€${(v / 1000).toFixed(0)}k`}
-              />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} angle={-25} textAnchor="end" interval={0} />
+              <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v: number) => `€${(v / 1000).toFixed(0)}k`} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '13px' }}
                 formatter={(value: number, _name: string, props: any) => [
                   `€${value.toLocaleString('nl-NL')} (${props.payload.deals} deal${props.payload.deals !== 1 ? 's' : ''})`,
                   'Waarde',

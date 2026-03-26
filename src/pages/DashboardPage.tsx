@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { subWeeks } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -13,6 +14,7 @@ import {
 import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/database';
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
+import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
@@ -30,6 +32,7 @@ export default function DashboardPage() {
     openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -148,10 +151,13 @@ export default function DashboardPage() {
         <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DealValueChart />
-        <WeeklyActivitiesChart />
+      {/* Chart date filter + charts */}
+      <div className="space-y-4">
+        <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DealValueChart from={chartRange.from} to={chartRange.to} />
+          <WeeklyActivitiesChart from={chartRange.from} to={chartRange.to} />
+        </div>
       </div>
 
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
