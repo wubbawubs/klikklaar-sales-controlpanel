@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Loader2, PhoneCall } from 'lucide-react';
-import { startOfWeek, format, subWeeks, parseISO } from 'date-fns';
+import { startOfWeek, format, eachWeekOfInterval, parseISO, isWithinInterval } from 'date-fns';
 import { nl } from 'date-fns/locale';
 
 const SE_COLORS = [
@@ -16,7 +16,12 @@ const SE_COLORS = [
   'hsl(40, 70%, 50%)',
 ];
 
-export default function WeeklyActivitiesChart() {
+interface Props {
+  from: Date;
+  to: Date;
+}
+
+export default function WeeklyActivitiesChart({ from, to }: Props) {
   const [data, setData] = useState<any[]>([]);
   const [seNames, setSeNames] = useState<string[]>([]);
   const [totalActivities, setTotalActivities] = useState(0);
@@ -25,6 +30,7 @@ export default function WeeklyActivitiesChart() {
 
   useEffect(() => {
     const fetch_ = async () => {
+      setLoading(true);
       try {
         const [activitiesRes, sesRes] = await Promise.all([
           supabase.from('pipedrive_activities').select('sales_executive_id, created_at'),
@@ -35,25 +41,26 @@ export default function WeeklyActivitiesChart() {
         const ses = sesRes.data || [];
         const seMap = Object.fromEntries(ses.map(s => [s.id, s.full_name || 'Onbekend']));
 
-        // Build last 8 weeks
-        const now = new Date();
+        // Build weeks within the range
+        const weekStarts = eachWeekOfInterval({ start: from, end: to }, { weekStartsOn: 1 });
         const weeks: Record<string, Record<string, number>> = {};
-        for (let i = 7; i >= 0; i--) {
-          const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
-          const key = format(weekStart, 'yyyy-MM-dd');
-          weeks[key] = {};
+        for (const ws of weekStarts) {
+          weeks[format(ws, 'yyyy-MM-dd')] = {};
         }
 
         const weekKeys = Object.keys(weeks);
         const uniqueSEs = new Set<string>();
+        let count = 0;
 
         for (const act of activities) {
           const created = parseISO(act.created_at || '');
+          if (!isWithinInterval(created, { start: from, end: to })) continue;
           const weekStart = format(startOfWeek(created, { weekStartsOn: 1 }), 'yyyy-MM-dd');
           if (!weeks[weekStart]) continue;
           const name = seMap[act.sales_executive_id] || 'Onbekend';
           uniqueSEs.add(name);
           weeks[weekStart][name] = (weeks[weekStart][name] || 0) + 1;
+          count++;
         }
 
         const names = Array.from(uniqueSEs).sort();
@@ -68,7 +75,7 @@ export default function WeeklyActivitiesChart() {
         });
 
         setData(chartData);
-        setTotalActivities(activities.length);
+        setTotalActivities(count);
       } catch (err: any) {
         setError(err.message || 'Fout bij laden');
       } finally {
@@ -76,7 +83,7 @@ export default function WeeklyActivitiesChart() {
       }
     };
     fetch_();
-  }, []);
+  }, [from, to]);
 
   if (loading) {
     return (
@@ -112,7 +119,7 @@ export default function WeeklyActivitiesChart() {
       <CardContent>
         {data.length === 0 ? (
           <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
-            Geen activiteiten gevonden
+            Geen activiteiten in deze periode
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
@@ -121,12 +128,7 @@ export default function WeeklyActivitiesChart() {
               <XAxis dataKey="week" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '13px' }}
               />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
               {seNames.map((name, i) => (

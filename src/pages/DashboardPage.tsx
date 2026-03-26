@@ -151,10 +151,13 @@ export default function DashboardPage() {
         <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DealValueChart />
-        <WeeklyActivitiesChart />
+      {/* Chart date filter + charts */}
+      <div className="space-y-4">
+        <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DealValueChart from={chartRange.from} to={chartRange.to} />
+          <WeeklyActivitiesChart from={chartRange.from} to={chartRange.to} />
+        </div>
       </div>
 
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
