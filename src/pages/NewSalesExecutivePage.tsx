@@ -434,8 +434,27 @@ export default function NewSalesExecutivePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Typeform EOD URL</Label>
-                <Input value={form.eod_typeform_url} onChange={e => update('eod_typeform_url', e.target.value)} placeholder="https://form.typeform.com/to/..." />
+                <Label>EOD Formulieren</Label>
+                <p className="text-xs text-muted-foreground">Selecteer welke formulieren deze SE moet invullen</p>
+                <div className="space-y-2 border rounded-md p-3">
+                  {availableForms.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Geen actieve formulieren gevonden</p>
+                  ) : (
+                    availableForms.map(f => (
+                      <div key={f.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`form-${f.id}`}
+                          checked={(form.selected_form_ids || []).includes(f.id)}
+                          onCheckedChange={(checked) => {
+                            const current = form.selected_form_ids || [];
+                            update('selected_form_ids', checked ? [...current, f.id] : current.filter(id => id !== f.id));
+                          }}
+                        />
+                        <Label htmlFor={`form-${f.id}`} className="text-sm font-normal cursor-pointer">{f.title}</Label>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>EOD weergave</Label>
