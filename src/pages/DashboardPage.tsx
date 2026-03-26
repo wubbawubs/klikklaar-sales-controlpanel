@@ -32,6 +32,7 @@ export default function DashboardPage() {
     openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
 
   useEffect(() => {
     const fetchData = async () => {
