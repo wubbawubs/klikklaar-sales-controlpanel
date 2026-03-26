@@ -19,6 +19,7 @@ const SE_COLORS = [
 interface Props {
   from: Date;
   to: Date;
+  seId?: string;
 }
 
 export default function WeeklyActivitiesChart({ from, to }: Props) {
