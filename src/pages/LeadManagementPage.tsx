@@ -127,6 +127,14 @@ export default function LeadManagementPage() {
     setReassigning(false);
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedLeads(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const uniqueStatuses = [...new Set(leads.map(l => l.status))];
 
   return (
