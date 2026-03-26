@@ -14,6 +14,7 @@ interface ChartEntry {
 interface Props {
   from: Date;
   to: Date;
+  seId?: string;
 }
 
 const COLORS = [
