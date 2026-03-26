@@ -2,16 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { subWeeks } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import SEPersonalDashboard from '@/pages/SEPersonalDashboard';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import SEPersonalDashboard from '@/pages/SEPersonalDashboard';
 import {
   Users, Package, CheckCircle, AlertTriangle, Plug, ClipboardCheck,
   Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
@@ -27,18 +23,20 @@ interface SERow extends SalesExecutive {
 }
 
 export default function DashboardPage() {
-  const [ses, setSes] = useState<SERow[]>([]);
-  const [provisioningId, setProvisioningId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user, isAdmin, roles } = useAuth();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
 
-  // If not admin/coach, show personal SE dashboard
   if (!isCoachOrAdmin) {
     return <SEPersonalDashboard />;
   }
 
+  return <AdminDashboard user={user} toast={toast} />;
+}
+
+function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   const [ses, setSes] = useState<SERow[]>([]);
+  const [provisioningId, setProvisioningId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     activeSEs: 0, draftWorkspaces: 0, readyWorkspaces: 0, failedJobs: 0,
     integrationErrors: 0, eodExpected: 0, eodReceived: 0,
@@ -79,17 +77,12 @@ export default function DashboardPage() {
         integrationErrors: (eventData || []).filter(e => e.processing_status === 'failed').length,
         eodExpected: seList.filter(s => s.status === 'active').length,
         eodReceived: (eodData || []).filter(e => e.session_date === today && e.status !== 'pending').length,
-        openLeads: 0,
-        callbacksToday: 0,
-        openDeals: 0,
-        wonDeals: 0,
-        activeSubscriptions: 0,
+        openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
       });
 
       setSes(rows);
       setLoading(false);
     };
-
     fetchData();
   }, []);
 
@@ -164,7 +157,6 @@ export default function DashboardPage() {
         <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
-      {/* Chart date filter + charts */}
       <div className="space-y-4">
         <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -199,9 +191,7 @@ export default function DashboardPage() {
                 <tr>
                   <td colSpan={11} className="p-8 text-center text-muted-foreground">
                     Nog geen Sales Executives aangemaakt.{' '}
-                    <Link to="/sales-executives/new" className="text-primary hover:underline">
-                      Maak de eerste aan
-                    </Link>
+                    <Link to="/sales-executives/new" className="text-primary hover:underline">Maak de eerste aan</Link>
                   </td>
                 </tr>
               ) : (
@@ -211,11 +201,7 @@ export default function DashboardPage() {
                     <td className="p-3 text-muted-foreground">{se.email}</td>
                     <td className="p-3"><StatusBadge status={se.status} /></td>
                     <td className="p-3">
-                      {se.workspace ? (
-                        <StatusBadge status={se.workspace.sharepoint_status} />
-                      ) : (
-                        <span className="text-muted-foreground text-xs">,</span>
-                      )}
+                      {se.workspace ? <StatusBadge status={se.workspace.sharepoint_status} /> : <span className="text-muted-foreground text-xs">—</span>}
                     </td>
                     <td className="p-3 text-muted-foreground">{se.external_access_required ? 'Ja' : 'Nee'}</td>
                     <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'pipedrive')} /></td>
@@ -223,9 +209,7 @@ export default function DashboardPage() {
                     <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'qapitaal')} /></td>
                     <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'typeform')} /></td>
                     <td className="p-3">
-                      {se.workspace ? (
-                        <StatusBadge status={se.workspace.sharepoint_status} />
-                      ) : ','}
+                      {se.workspace ? <StatusBadge status={se.workspace.sharepoint_status} /> : '—'}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
