@@ -16,6 +16,7 @@ import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/datab
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
+import AdminSignalsOverview from '@/components/dashboard/AdminSignalsOverview';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
