@@ -171,6 +171,8 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
         </div>
       </div>
 
+      <AdminSignalsOverview />
+
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold text-card-foreground">Sales Executives</h2>
