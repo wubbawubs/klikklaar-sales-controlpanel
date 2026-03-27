@@ -16,6 +16,7 @@ import type { SalesExecutive, Workspace, IntegrationConfig } from '@/types/datab
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
+import AdminSignalsOverview from '@/components/dashboard/AdminSignalsOverview';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
@@ -169,6 +170,8 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
           <WeeklyActivitiesChart from={chartRange.from} to={chartRange.to} />
         </div>
       </div>
+
+      <AdminSignalsOverview />
 
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
         <div className="p-4 border-b">
