@@ -46,6 +46,11 @@ export default function SEPersonalDashboard() {
       setSeId(seData.id);
       setSeName(seData.full_name || `${seData.first_name} ${seData.last_name}`);
 
+      // Trigger signal engine for this SE (fire-and-forget)
+      supabase.functions.invoke('signal-engine', {
+        body: { sales_executive_id: seData.id },
+      }).catch(() => {});
+
       const today = new Date().toISOString().split('T')[0];
 
       const [leads, activities, eods, todayCalls, signalsRes] = await Promise.all([
