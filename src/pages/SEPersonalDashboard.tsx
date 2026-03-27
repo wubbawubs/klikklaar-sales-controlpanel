@@ -36,7 +36,7 @@ export default function SEPersonalDashboard() {
       const { data: seData } = await supabase
         .from('sales_executives')
         .select('*')
-        .ilike('email', normalizedEmail)
+        .or(`email.ilike.${normalizedEmail},user_id.eq.${user.id}`)
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
