@@ -44,10 +44,12 @@ export default function CallLoggingPage() {
   const { data: seData } = useQuery({
     queryKey: ['se-profile', user?.email],
     queryFn: async () => {
+      // Try by email first, then by user_id (supports multiple auth accounts)
+      const normalizedEmail = (user?.email ?? '').trim().toLowerCase();
       const { data } = await supabase
         .from('sales_executives')
         .select('id, full_name')
-        .ilike('email', (user?.email ?? '').trim().toLowerCase())
+        .or(`email.ilike.${normalizedEmail},user_id.eq.${user?.id}`)
         .limit(1)
         .maybeSingle();
       return data;
