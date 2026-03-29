@@ -44,14 +44,22 @@ export default function PipedriveLeadSelector({ selectedLeads, onSelectionChange
   const [search, setSearch] = useState('');
   const [orgs, setOrgs] = useState<PipedriveOrg[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [expandedOrg, setExpandedOrg] = useState<number | null>(null);
   const [persons, setPersons] = useState<Record<number, PipedrivePerson[]>>({});
   const [loadingPersons, setLoadingPersons] = useState<number | null>(null);
 
-  const fetchOrgs = useCallback(async (term: string) => {
-    setLoading(true);
+  const PAGE_SIZE = 100;
+
+  const fetchOrgs = useCallback(async (term: string, start = 0, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const params = new URLSearchParams({ limit: '30' });
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), start: String(start) });
       if (term) params.set('search', term);
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-organizations?${params.toString()}`,
@@ -59,11 +67,14 @@ export default function PipedriveLeadSelector({ selectedLeads, onSelectionChange
       );
       const result = await res.json();
       if (result.error) throw new Error(result.error);
-      setOrgs(result.organizations || []);
+      const newOrgs = result.organizations || [];
+      setOrgs(prev => append ? [...prev, ...newOrgs] : newOrgs);
+      setHasMore(result.has_more || false);
     } catch (err) {
       console.error('Failed to fetch orgs:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -275,6 +286,25 @@ export default function PipedriveLeadSelector({ selectedLeads, onSelectionChange
                 )}
               </div>
             ))}
+            {hasMore && (
+              <div className="p-3 text-center border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchOrgs(search, orgs.length, true)}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Laden...
+                    </>
+                  ) : (
+                    `Meer organisaties laden`
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>
