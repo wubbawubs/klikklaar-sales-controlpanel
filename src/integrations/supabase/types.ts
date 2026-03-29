@@ -792,6 +792,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           email: string
+          employment_type: string
           external_access_required: boolean | null
           external_guest_email: string | null
           first_name: string
@@ -809,6 +810,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           email: string
+          employment_type?: string
           external_access_required?: boolean | null
           external_guest_email?: string | null
           first_name: string
@@ -826,6 +828,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           email?: string
+          employment_type?: string
           external_access_required?: boolean | null
           external_guest_email?: string | null
           first_name?: string

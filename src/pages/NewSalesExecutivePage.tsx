@@ -32,6 +32,7 @@ const defaultForm = {
   external_guest_email: '',
   external_access_required: false,
   status: 'active' as string,
+  employment_type: 'commission' as string,
 
   workspace_name: '',
   sharepoint_site_name: '',
@@ -71,6 +72,34 @@ export default function NewSalesExecutivePage() {
   const [form, setForm] = useState({ ...defaultForm });
   const [selectedLeads, setSelectedLeads] = useState<SelectedLead[]>([]);
   const [availableForms, setAvailableForms] = useState<{ id: string; title: string }[]>([]);
+  const [pipedriveCheck, setPipedriveCheck] = useState<{ loading: boolean; found: boolean; userName?: string }>({ loading: false, found: false });
+
+  const checkPipedriveUser = async (email: string) => {
+    if (!email || !email.includes('@')) return;
+    setPipedriveCheck({ loading: true, found: false });
+    try {
+      const { data, error } = await supabase.functions.invoke('pipedrive-users', {
+        body: undefined,
+        headers: {},
+      });
+      // Use GET with query params via fetch
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(email)}`,
+        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const result = await res.json();
+      if (result.found) {
+        setPipedriveCheck({ loading: false, found: true, userName: result.user?.name });
+        update('employment_type', 'employee');
+        update('pipedrive_enabled', true);
+        toast.success(`✅ ${result.user?.name || email} gevonden in Pipedrive — automatisch als vaste medewerker ingesteld`);
+      } else {
+        setPipedriveCheck({ loading: false, found: false });
+      }
+    } catch {
+      setPipedriveCheck({ loading: false, found: false });
+    }
+  };
 
   useEffect(() => {
     supabase.from('forms').select('id, title').eq('status', 'active').then(({ data }) => {
@@ -108,6 +137,7 @@ export default function NewSalesExecutivePage() {
         external_guest_email: se.external_guest_email || '',
         external_access_required: se.external_access_required ?? false,
         status: se.status || 'active',
+        employment_type: (se as any).employment_type || 'commission',
         ...(ws ? {
           workspace_name: ws.workspace_name,
           sharepoint_site_name: ws.sharepoint_site_name || '',
@@ -152,6 +182,7 @@ export default function NewSalesExecutivePage() {
             external_guest_email: form.external_guest_email || null,
             external_access_required: form.external_access_required,
             status: form.status,
+            employment_type: form.employment_type,
           })
           .eq('id', id)
           .select()
@@ -208,6 +239,7 @@ export default function NewSalesExecutivePage() {
             external_guest_email: form.external_guest_email || null,
             external_access_required: form.external_access_required,
             status: form.status,
+            employment_type: form.employment_type,
             created_by: user?.id,
           })
           .select()
@@ -341,6 +373,41 @@ export default function NewSalesExecutivePage() {
                 <Switch checked={form.external_access_required} onCheckedChange={v => update('external_access_required', v)} />
                 <Label>Externe toegang vereist</Label>
               </div>
+
+              {/* Employment type */}
+              <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+                <Label className="text-sm font-semibold">Dienstverband</Label>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={form.employment_type === 'employee'}
+                    onCheckedChange={v => update('employment_type', v ? 'employee' : 'commission')}
+                  />
+                  <Label>{form.employment_type === 'employee' ? '🏢 Vaste medewerker' : '💰 Provisie / bonus-basis'}</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {form.employment_type === 'employee'
+                    ? 'Volledige Pipedrive-toegang, zelfstandig leads toevoegen, eigen pipeline-weergave'
+                    : 'Leads worden toegewezen door coach/admin, beperkte CRM-weergave'}
+                </p>
+                {pipedriveCheck.found && (
+                  <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 rounded-md p-2">
+                    <span>✅ Gevonden in Pipedrive als {pipedriveCheck.userName}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Pipedrive check button */}
+              {form.email && !pipedriveCheck.found && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => checkPipedriveUser(form.email)}
+                  disabled={pipedriveCheck.loading}
+                >
+                  {pipedriveCheck.loading ? 'Controleren...' : '🔍 Controleer in Pipedrive'}
+                </Button>
+              )}
             </>
           )}
 

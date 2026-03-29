@@ -21,6 +21,7 @@ import AuditLogsPage from "@/pages/AuditLogsPage";
 import LeadManagementPage from "@/pages/LeadManagementPage";
 import CallLoggingPage from "@/pages/CallLoggingPage";
 import NotFound from "@/pages/NotFound";
+import PipedrivePage from "@/pages/PipedrivePage";
 import PublicFormPage from "@/pages/public/PublicFormPage";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
 import EvaluatiesDashboard from "@/pages/evaluaties/EvaluatiesDashboard";
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/leads" element={<LeadManagementPage />} />
         <Route path="/calls" element={<CallLoggingPage />} />
+        <Route path="/pipedrive" element={<PipedrivePage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/eod" element={<EodPage />} />
 

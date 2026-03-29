@@ -1,0 +1,2 @@
+ALTER TABLE public.sales_executives ADD COLUMN employment_type text NOT NULL DEFAULT 'commission';
+COMMENT ON COLUMN public.sales_executives.employment_type IS 'employee = vaste medewerker, commission = provisie-basis';

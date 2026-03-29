@@ -8,12 +8,14 @@ import SEPerformanceBars from '@/components/dashboard/SEPerformanceBars';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
+import PipedriveDashboardWidget from '@/components/dashboard/PipedriveDashboardWidget';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [seName, setSeName] = useState('');
   const [seId, setSeId] = useState<string | null>(null);
+  const [isEmployee, setIsEmployee] = useState(false);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function SEPersonalDashboard() {
       const normalizedEmail = (user.email ?? '').trim().toLowerCase();
       const { data: seData } = await supabase
         .from('sales_executives')
-        .select('id, full_name, first_name, last_name')
+        .select('id, full_name, first_name, last_name, employment_type')
         .or(`email.ilike.${normalizedEmail},user_id.eq.${user.id}`)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -31,6 +33,7 @@ export default function SEPersonalDashboard() {
       if (!seData) { setLoading(false); return; }
       setSeId(seData.id);
       setSeName(seData.full_name || `${seData.first_name} ${seData.last_name}`);
+      setIsEmployee((seData as any).employment_type === 'employee');
 
       // Trigger signal engine (fire-and-forget)
       supabase.functions.invoke('signal-engine', {
@@ -69,7 +72,10 @@ export default function SEPersonalDashboard() {
       {/* 1. Performance bars */}
       <SEPerformanceBars seId={seId} />
 
-      {/* 2. Taken checklist */}
+      {/* 2. Pipedrive widget (only for employees) */}
+      {isEmployee && <PipedriveDashboardWidget seId={seId} />}
+
+      {/* 3. Taken checklist */}
       <SETaskChecklist seId={seId} />
 
       {/* 3. Training & Advies */}
