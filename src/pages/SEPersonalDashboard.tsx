@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [seName, setSeName] = useState('');
   const [seId, setSeId] = useState<string | null>(null);
