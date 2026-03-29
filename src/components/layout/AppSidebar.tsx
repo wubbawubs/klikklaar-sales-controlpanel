@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import klikklaarLogo from '@/assets/klikklaar-logo.png';
 
 interface NavItem {
   to: string;
