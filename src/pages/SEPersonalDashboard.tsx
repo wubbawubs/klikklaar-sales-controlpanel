@@ -120,6 +120,9 @@ export default function SEPersonalDashboard() {
           <WeeklyActivitiesChart from={chartRange.from} to={chartRange.to} seId={seId} />
         </div>
       </div>
+
+      {/* CI Engine Chat (floating) */}
+      <CIChatCard seId={seId} seName={seName} />
     </div>
   );
 }
