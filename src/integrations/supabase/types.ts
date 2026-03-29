@@ -416,6 +416,50 @@ export type Database = {
           },
         ]
       }
+      health_events: {
+        Row: {
+          check_type: string
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          notified: boolean
+          sales_executive_id: string
+          status: string
+          suggested_fix: string | null
+        }
+        Insert: {
+          check_type: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          notified?: boolean
+          sales_executive_id: string
+          status?: string
+          suggested_fix?: string | null
+        }
+        Update: {
+          check_type?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          notified?: boolean
+          sales_executive_id?: string
+          status?: string
+          suggested_fix?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_events_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_configs: {
         Row: {
           auth_type: string | null
