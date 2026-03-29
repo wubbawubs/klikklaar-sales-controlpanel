@@ -72,6 +72,34 @@ export default function NewSalesExecutivePage() {
   const [form, setForm] = useState({ ...defaultForm });
   const [selectedLeads, setSelectedLeads] = useState<SelectedLead[]>([]);
   const [availableForms, setAvailableForms] = useState<{ id: string; title: string }[]>([]);
+  const [pipedriveCheck, setPipedriveCheck] = useState<{ loading: boolean; found: boolean; userName?: string }>({ loading: false, found: false });
+
+  const checkPipedriveUser = async (email: string) => {
+    if (!email || !email.includes('@')) return;
+    setPipedriveCheck({ loading: true, found: false });
+    try {
+      const { data, error } = await supabase.functions.invoke('pipedrive-users', {
+        body: undefined,
+        headers: {},
+      });
+      // Use GET with query params via fetch
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(email)}`,
+        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const result = await res.json();
+      if (result.found) {
+        setPipedriveCheck({ loading: false, found: true, userName: result.user?.name });
+        update('employment_type', 'employee');
+        update('pipedrive_enabled', true);
+        toast.success(`✅ ${result.user?.name || email} gevonden in Pipedrive — automatisch als vaste medewerker ingesteld`);
+      } else {
+        setPipedriveCheck({ loading: false, found: false });
+      }
+    } catch {
+      setPipedriveCheck({ loading: false, found: false });
+    }
+  };
 
   useEffect(() => {
     supabase.from('forms').select('id, title').eq('status', 'active').then(({ data }) => {
