@@ -78,11 +78,6 @@ export default function NewSalesExecutivePage() {
     if (!email || !email.includes('@')) return;
     setPipedriveCheck({ loading: true, found: false });
     try {
-      const { data, error } = await supabase.functions.invoke('pipedrive-users', {
-        body: undefined,
-        headers: {},
-      });
-      // Use GET with query params via fetch
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(email)}`,
         { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
