@@ -24,7 +24,7 @@ export default function SEPersonalDashboard() {
       const normalizedEmail = (user.email ?? '').trim().toLowerCase();
       const { data: seData } = await supabase
         .from('sales_executives')
-        .select('id, full_name, first_name, last_name')
+        .select('id, full_name, first_name, last_name, employment_type')
         .or(`email.ilike.${normalizedEmail},user_id.eq.${user.id}`)
         .order('created_at', { ascending: true })
         .limit(1)
