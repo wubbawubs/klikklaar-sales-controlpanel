@@ -30,6 +30,7 @@ export default function SEPersonalDashboard() {
     total: 0, not_reached: 0, callback: 0, no_interest: 0, interest: 0, appointment: 0, deal: 0,
   });
   const [signals, setSignals] = useState<any[]>([]);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
