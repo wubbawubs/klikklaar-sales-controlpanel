@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import klikklaarLogo from '@/assets/klikklaar-logo.png';
 
 interface NavItem {
   to: string;
@@ -56,12 +57,9 @@ export function AppSidebar() {
       {/* Brand header */}
       <div className="px-6 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
-            <span className="text-sidebar-primary font-bold text-sm">K</span>
-          </div>
+          <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-8" />
           <div>
-            <h1 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">Klikklaar SEO</h1>
-            <p className="text-[10px] text-sidebar-foreground/50 font-medium tracking-wide uppercase">Control Center</p>
+            <h1 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">Control Center</h1>
           </div>
         </div>
       </div>
