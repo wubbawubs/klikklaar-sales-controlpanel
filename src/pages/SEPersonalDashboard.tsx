@@ -11,6 +11,7 @@ import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart'
 import PipedriveDashboardWidget from '@/components/dashboard/PipedriveDashboardWidget';
 import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
 import SEEodHistory from '@/components/dashboard/SEEodHistory';
+import CICoachingCard from '@/components/dashboard/CICoachingCard';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
@@ -93,6 +94,9 @@ export default function SEPersonalDashboard() {
 
       {/* 2. Pipedrive widget (only for employees) */}
       {isEmployee && <PipedriveDashboardWidget seId={seId} />}
+
+      {/* CI Engine Coaching */}
+      <CICoachingCard seId={seId} />
 
       {/* 3. Taken checklist */}
       {/* EOD afsluiten */}
