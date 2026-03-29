@@ -9,6 +9,7 @@ import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 import PipedriveDashboardWidget from '@/components/dashboard/PipedriveDashboardWidget';
+import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
@@ -91,6 +92,10 @@ export default function SEPersonalDashboard() {
 
       {/* 2. Pipedrive widget (only for employees) */}
       {isEmployee && <PipedriveDashboardWidget seId={seId} />}
+
+      {/* 3. Taken checklist */}
+      {/* EOD afsluiten */}
+      <SEEndOfDayCTA seId={seId} seName={seName} />
 
       {/* 3. Taken checklist */}
       <SETaskChecklist seId={seId} />
