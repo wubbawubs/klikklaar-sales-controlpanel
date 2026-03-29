@@ -52,45 +52,49 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   const [loading, setLoading] = useState(true);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
 
+  const fetchData = async () => {
+    const { data: seData } = await supabase.from('sales_executives').select('*');
+    const { data: wsData } = await supabase.from('workspaces').select('*');
+    const { data: icData } = await supabase.from('integration_configs').select('*');
+    const { data: jobData } = await supabase.from('provisioning_jobs').select('*');
+    const { data: eodData } = await supabase.from('eod_submissions').select('*');
+    const { data: eventData } = await supabase.from('integration_events').select('*');
+
+    const seList = (seData || []) as SalesExecutive[];
+    const wsList = (wsData || []) as Workspace[];
+    const icList = (icData || []) as IntegrationConfig[];
+
+    const rows: SERow[] = seList.map(se => ({
+      ...se,
+      workspace: wsList.find(w => w.sales_executive_id === se.id),
+      integrations: icList.filter(ic => {
+        const ws = wsList.find(w => w.sales_executive_id === se.id);
+        return ws && ic.workspace_id === ws.id;
+      }),
+    }));
+
+    const today = new Date().toISOString().split('T')[0];
+
+    setStats({
+      activeSEs: seList.filter(s => s.status === 'active').length,
+      draftWorkspaces: wsList.filter(w => w.sharepoint_status === 'draft').length,
+      readyWorkspaces: wsList.filter(w => ['ready', 'executed'].includes(w.sharepoint_status)).length,
+      failedJobs: (jobData || []).filter(j => j.status === 'failed').length,
+      integrationErrors: (eventData || []).filter(e => e.processing_status === 'failed').length,
+      eodExpected: seList.filter(s => s.status === 'active').length,
+      eodReceived: (eodData || []).filter(e => e.session_date === today && e.status !== 'pending').length,
+      openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
+    });
+
+    setSes(rows);
+    setLoading(false);
+  };
+
+  // Initial load + 10-minute auto-refresh
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: seData } = await supabase.from('sales_executives').select('*');
-      const { data: wsData } = await supabase.from('workspaces').select('*');
-      const { data: icData } = await supabase.from('integration_configs').select('*');
-      const { data: jobData } = await supabase.from('provisioning_jobs').select('*');
-      const { data: eodData } = await supabase.from('eod_submissions').select('*');
-      const { data: eventData } = await supabase.from('integration_events').select('*');
-
-      const seList = (seData || []) as SalesExecutive[];
-      const wsList = (wsData || []) as Workspace[];
-      const icList = (icData || []) as IntegrationConfig[];
-
-      const rows: SERow[] = seList.map(se => ({
-        ...se,
-        workspace: wsList.find(w => w.sales_executive_id === se.id),
-        integrations: icList.filter(ic => {
-          const ws = wsList.find(w => w.sales_executive_id === se.id);
-          return ws && ic.workspace_id === ws.id;
-        }),
-      }));
-
-      const today = new Date().toISOString().split('T')[0];
-
-      setStats({
-        activeSEs: seList.filter(s => s.status === 'active').length,
-        draftWorkspaces: wsList.filter(w => w.sharepoint_status === 'draft').length,
-        readyWorkspaces: wsList.filter(w => ['ready', 'executed'].includes(w.sharepoint_status)).length,
-        failedJobs: (jobData || []).filter(j => j.status === 'failed').length,
-        integrationErrors: (eventData || []).filter(e => e.processing_status === 'failed').length,
-        eodExpected: seList.filter(s => s.status === 'active').length,
-        eodReceived: (eodData || []).filter(e => e.session_date === today && e.status !== 'pending').length,
-        openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
-      });
-
-      setSes(rows);
-      setLoading(false);
-    };
     fetchData();
+    const interval = setInterval(fetchData, 10 * 60 * 1000); // 10 minutes
+    return () => clearInterval(interval);
   }, []);
 
   const getIntegrationStatus = (row: SERow, provider: string) => {
