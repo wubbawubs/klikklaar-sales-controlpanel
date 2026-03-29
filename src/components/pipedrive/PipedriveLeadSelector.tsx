@@ -286,6 +286,25 @@ export default function PipedriveLeadSelector({ selectedLeads, onSelectionChange
                 )}
               </div>
             ))}
+            {hasMore && (
+              <div className="p-3 text-center border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchOrgs(search, orgs.length, true)}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Laden...
+                    </>
+                  ) : (
+                    `Meer organisaties laden`
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>
