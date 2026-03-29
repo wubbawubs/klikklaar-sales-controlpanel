@@ -49,14 +49,12 @@ export default function SEPerformanceBars({ seId }: Props) {
       const weekInterest = weekCalls.filter(c => ['interest', 'appointment', 'deal'].includes(c.outcome)).length;
       const weekAppointments = weekCalls.filter(c => c.outcome === 'appointment').length;
 
-      // Daily targets (reasonable defaults)
       setTodayMetrics([
         { label: 'Calls', value: todayCalls.length, target: 20, color: 'bg-primary' },
         { label: 'Bereikt', value: todayReached, target: 10, color: 'bg-primary' },
         { label: 'Positief', value: todayInterest, target: 3, color: 'bg-success' },
       ]);
 
-      // Weekly targets
       setWeekMetrics([
         { label: 'Calls', value: weekCalls.length, target: 100, color: 'bg-primary' },
         { label: 'Bereikt', value: weekReached, target: 50, color: 'bg-primary' },
@@ -74,14 +72,14 @@ export default function SEPerformanceBars({ seId }: Props) {
   const MetricRow = ({ metric }: { metric: Metric }) => {
     const pct = Math.min(100, Math.round((metric.value / metric.target) * 100));
     return (
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">{metric.label}</span>
-          <span className="font-medium text-foreground tabular-nums">{metric.value}<span className="text-muted-foreground font-normal">/{metric.target}</span></span>
+          <span className="text-muted-foreground font-medium">{metric.label}</span>
+          <span className="font-semibold text-foreground tabular-nums">{metric.value}<span className="text-muted-foreground font-normal">/{metric.target}</span></span>
         </div>
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className={cn('h-full rounded-full transition-all duration-500', metric.color)}
+            className={cn('h-full rounded-full transition-all duration-700 ease-out', metric.color)}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -92,22 +90,22 @@ export default function SEPerformanceBars({ seId }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Vandaag
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 pt-0">
+        <CardContent className="space-y-4 pt-0">
           {todayMetrics.map(m => <MetricRow key={m.label} metric={m} />)}
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Deze week
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 pt-0">
+        <CardContent className="space-y-4 pt-0">
           {weekMetrics.map(m => <MetricRow key={m.label} metric={m} />)}
         </CardContent>
       </Card>
