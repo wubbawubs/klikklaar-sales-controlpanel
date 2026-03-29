@@ -12,6 +12,7 @@ import PipedriveDashboardWidget from '@/components/dashboard/PipedriveDashboardW
 import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
 import SEEodHistory from '@/components/dashboard/SEEodHistory';
 import CICoachingCard from '@/components/dashboard/CICoachingCard';
+import CIChatCard from '@/components/dashboard/CIChatCard';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
@@ -119,6 +120,9 @@ export default function SEPersonalDashboard() {
           <WeeklyActivitiesChart from={chartRange.from} to={chartRange.to} seId={seId} />
         </div>
       </div>
+
+      {/* CI Engine Chat (floating) */}
+      <CIChatCard seId={seId} seName={seName} />
     </div>
   );
 }
