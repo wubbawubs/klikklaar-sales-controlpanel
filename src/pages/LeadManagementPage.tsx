@@ -139,15 +139,15 @@ export default function LeadManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Lead Management</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Lead Management</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Beheer en herverdeel Pipedrive leads tussen sales executives
           </p>
         </div>
         {selectedLeads.size > 0 && (
-          <Button onClick={() => setReassignDialogOpen(true)}>
+          <Button onClick={() => setReassignDialogOpen(true)} className="w-full sm:w-auto">
             <ArrowRightLeft className="h-4 w-4 mr-2" />
             Herverdeel ({selectedLeads.size})
           </Button>
