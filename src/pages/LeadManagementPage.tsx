@@ -168,7 +168,7 @@ export default function LeadManagementPage() {
               />
             </div>
             <Select value={filterSe} onValueChange={setFilterSe}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Sales Executive" />
               </SelectTrigger>
