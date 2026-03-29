@@ -101,6 +101,9 @@ export default function SEPersonalDashboard() {
       {/* 3. Taken checklist */}
       <SETaskChecklist seId={seId} />
 
+      {/* EOD Historie */}
+      <SEEodHistory seName={seName} />
+
       {/* 3. Training & Advies */}
       <SETrainingAdviceCard seId={seId} seName={seName} />
 
