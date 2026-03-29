@@ -13,6 +13,7 @@ import {
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
+import NextBestAction from '@/components/dashboard/NextBestAction';
 import { cn } from '@/lib/utils';
 
 export default function SEPersonalDashboard() {
