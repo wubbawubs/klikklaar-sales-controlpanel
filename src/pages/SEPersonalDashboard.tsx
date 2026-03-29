@@ -35,15 +35,32 @@ export default function SEPersonalDashboard() {
       setSeName(seData.full_name || `${seData.first_name} ${seData.last_name}`);
       setIsEmployee((seData as any).employment_type === 'employee');
 
-      // Trigger signal engine (fire-and-forget)
+      // Trigger signal engine + Pipedrive sync (fire-and-forget)
       supabase.functions.invoke('signal-engine', {
         body: { sales_executive_id: seData.id },
       }).catch(() => {});
+
+      if ((seData as any).employment_type === 'employee') {
+        supabase.functions.invoke('pipedrive-sync', {
+          body: { sales_executive_id: seData.id },
+        }).catch(() => {});
+      }
 
       setLoading(false);
     };
     fetchSE();
   }, [user]);
+
+  // 10-minute sync interval for employees
+  useEffect(() => {
+    if (!seId || !isEmployee) return;
+    const interval = setInterval(() => {
+      supabase.functions.invoke('pipedrive-sync', {
+        body: { sales_executive_id: seId },
+      }).catch(() => {});
+    }, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [seId, isEmployee]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
