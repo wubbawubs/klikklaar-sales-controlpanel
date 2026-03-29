@@ -70,7 +70,7 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
       <div className="px-6 py-5 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           <div className="flex flex-col items-start gap-1">
-            <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-12" />
+            <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-12 brightness-[1.8] contrast-[1.1]" />
             <span className="text-xs font-semibold text-sidebar-accent-foreground tracking-wide uppercase">Control Center</span>
           </div>
           {/* Close button — mobile only */}
