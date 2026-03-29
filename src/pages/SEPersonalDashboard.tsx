@@ -13,6 +13,7 @@ import {
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
+import NextBestAction from '@/components/dashboard/NextBestAction';
 import { cn } from '@/lib/utils';
 
 export default function SEPersonalDashboard() {
@@ -131,6 +132,9 @@ export default function SEPersonalDashboard() {
         <h1 className="text-2xl font-bold text-foreground">Welkom, {seName}</h1>
         <p className="text-muted-foreground text-sm mt-1">Jouw persoonlijke dashboard</p>
       </div>
+
+      {/* Next Best Action */}
+      <NextBestAction seId={seId} />
 
       {/* Reality Dashboard - Call Funnel */}
       <div>
