@@ -133,6 +133,9 @@ export default function SEPersonalDashboard() {
         <p className="text-muted-foreground text-sm mt-1">Jouw persoonlijke dashboard</p>
       </div>
 
+      {/* Next Best Action */}
+      <NextBestAction seId={seId} />
+
       {/* Reality Dashboard - Call Funnel */}
       <div>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Vandaag — Call Funnel</h2>
