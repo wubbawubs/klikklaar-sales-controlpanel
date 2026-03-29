@@ -53,6 +53,8 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   });
   const [loading, setLoading] = useState(true);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
+  // Health check runs as admin — uses a dummy SE context for system-level checks
+  const health = useHealthCheck('admin-system-check', 'Admin', true);
 
   const fetchData = async () => {
     const { data: seData } = await supabase.from('sales_executives').select('*');
