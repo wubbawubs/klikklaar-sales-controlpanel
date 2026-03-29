@@ -158,6 +158,9 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
         </Link>
       </div>
 
+      {/* Health Monitor */}
+      <SEHealthBar health={health} />
+
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <StatCard title="Actieve SEs" value={stats.activeSEs} icon={Users} variant="info" />
