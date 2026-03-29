@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { subWeeks } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Target, PhoneCall, Handshake, Trophy, CreditCard, ClipboardCheck, Briefcase,
-  Phone, PhoneOff, PhoneForwarded, Calendar, TrendingUp,
+  Phone, PhoneOff, PhoneForwarded, Calendar, TrendingUp, CheckCircle2,
 } from 'lucide-react';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
@@ -15,6 +17,7 @@ import { cn } from '@/lib/utils';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [seName, setSeName] = useState('');
   const [seId, setSeId] = useState<string | null>(null);
@@ -27,6 +30,7 @@ export default function SEPersonalDashboard() {
     total: 0, not_reached: 0, callback: 0, no_interest: 0, interest: 0, appointment: 0, deal: 0,
   });
   const [signals, setSignals] = useState<any[]>([]);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -91,6 +95,21 @@ export default function SEPersonalDashboard() {
     };
     fetchData();
   }, [user]);
+
+  const handleResolve = async (signalId: string) => {
+    setResolvingId(signalId);
+    const { error } = await supabase
+      .from('signals')
+      .update({ resolved: true, resolved_at: new Date().toISOString() })
+      .eq('id', signalId);
+    if (error) {
+      toast({ title: 'Fout', description: 'Kon signaal niet oplossen.', variant: 'destructive' });
+    } else {
+      setSignals(prev => prev.filter(s => s.id !== signalId));
+      toast({ title: 'Opgelost', description: 'Signaal is als afgehandeld gemarkeerd.' });
+    }
+    setResolvingId(null);
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
@@ -163,14 +182,26 @@ export default function SEPersonalDashboard() {
                     {sig.description && <p className="text-muted-foreground text-xs mt-1">{sig.description}</p>}
                     {sig.action && <p className="text-primary text-xs mt-1 font-medium">→ {sig.action}</p>}
                   </div>
-                  <span className={cn(
-                    'text-[10px] font-medium px-1.5 py-0.5 rounded uppercase shrink-0',
-                    sig.confidence === 'high' ? 'bg-success/10 text-success' :
-                    sig.confidence === 'medium' ? 'bg-warning/10 text-warning' :
-                    'bg-muted text-muted-foreground'
-                  )}>
-                    {sig.confidence}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-success"
+                      onClick={() => handleResolve(sig.id)}
+                      disabled={resolvingId === sig.id}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Oplossen
+                    </Button>
+                    <span className={cn(
+                      'text-[10px] font-medium px-1.5 py-0.5 rounded uppercase',
+                      sig.confidence === 'high' ? 'bg-success/10 text-success' :
+                      sig.confidence === 'medium' ? 'bg-warning/10 text-warning' :
+                      'bg-muted text-muted-foreground'
+                    )}>
+                      {sig.confidence}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
