@@ -33,6 +33,7 @@ export default function SEPersonalDashboard() {
       if (!seData) { setLoading(false); return; }
       setSeId(seData.id);
       setSeName(seData.full_name || `${seData.first_name} ${seData.last_name}`);
+      setIsEmployee((seData as any).employment_type === 'employee');
 
       // Trigger signal engine (fire-and-forget)
       supabase.functions.invoke('signal-engine', {
