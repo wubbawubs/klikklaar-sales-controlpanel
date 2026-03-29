@@ -117,8 +117,13 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
 
     // 4. Edge Functions general
     try {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const signalEngineBody = uuidRegex.test(seId)
+        ? { sales_executive_id: seId, ping: true }
+        : { ping: true };
+
       const { error } = await supabase.functions.invoke('signal-engine', {
-        body: { sales_executive_id: seId, ping: true },
+        body: signalEngineBody,
       });
       checks.edgeFunctions = error ? 'error' : 'ok';
       if (error) {
