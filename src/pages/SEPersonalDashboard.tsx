@@ -182,14 +182,26 @@ export default function SEPersonalDashboard() {
                     {sig.description && <p className="text-muted-foreground text-xs mt-1">{sig.description}</p>}
                     {sig.action && <p className="text-primary text-xs mt-1 font-medium">→ {sig.action}</p>}
                   </div>
-                  <span className={cn(
-                    'text-[10px] font-medium px-1.5 py-0.5 rounded uppercase shrink-0',
-                    sig.confidence === 'high' ? 'bg-success/10 text-success' :
-                    sig.confidence === 'medium' ? 'bg-warning/10 text-warning' :
-                    'bg-muted text-muted-foreground'
-                  )}>
-                    {sig.confidence}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-success"
+                      onClick={() => handleResolve(sig.id)}
+                      disabled={resolvingId === sig.id}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Oplossen
+                    </Button>
+                    <span className={cn(
+                      'text-[10px] font-medium px-1.5 py-0.5 rounded uppercase',
+                      sig.confidence === 'high' ? 'bg-success/10 text-success' :
+                      sig.confidence === 'medium' ? 'bg-warning/10 text-warning' :
+                      'bg-muted text-muted-foreground'
+                    )}>
+                      {sig.confidence}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
