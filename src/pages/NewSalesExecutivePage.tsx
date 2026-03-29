@@ -32,6 +32,7 @@ const defaultForm = {
   external_guest_email: '',
   external_access_required: false,
   status: 'active' as string,
+  employment_type: 'commission' as string,
 
   workspace_name: '',
   sharepoint_site_name: '',
