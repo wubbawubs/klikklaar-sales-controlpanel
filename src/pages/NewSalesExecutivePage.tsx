@@ -238,6 +238,7 @@ export default function NewSalesExecutivePage() {
             external_guest_email: form.external_guest_email || null,
             external_access_required: form.external_access_required,
             status: form.status,
+            employment_type: form.employment_type,
             created_by: user?.id,
           })
           .select()
