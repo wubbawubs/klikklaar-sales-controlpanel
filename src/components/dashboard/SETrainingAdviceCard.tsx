@@ -291,7 +291,7 @@ export default function SETrainingAdviceCard({ seId, seName }: Props) {
               onClick={() => setHelpMode(true)}
             >
               <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-              Direct hulp nodig, {firstName}? Stuur een signaal
+              Directe hulp nodig, van een Senior? Stuur een signaal
             </Button>
           ) : (
             <div className="space-y-2">
