@@ -48,6 +48,7 @@ serve(async (req) => {
   const url = new URL(req.url);
   const orgIdsParam = url.searchParams.get('org_ids'); // comma-separated org IDs
   const personIdsParam = url.searchParams.get('person_ids'); // comma-separated person IDs
+  const userIdParam = url.searchParams.get('user_id'); // Pipedrive user ID to filter by owner
 
   try {
     // Fetch all pipelines and find the target one
