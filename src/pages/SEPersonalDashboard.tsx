@@ -72,7 +72,10 @@ export default function SEPersonalDashboard() {
       {/* 1. Performance bars */}
       <SEPerformanceBars seId={seId} />
 
-      {/* 2. Taken checklist */}
+      {/* 2. Pipedrive widget (only for employees) */}
+      {isEmployee && <PipedriveDashboardWidget seId={seId} />}
+
+      {/* 3. Taken checklist */}
       <SETaskChecklist seId={seId} />
 
       {/* 3. Training & Advies */}
