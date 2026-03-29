@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,7 @@ interface Signal {
 }
 
 export default function AdminSignalsOverview() {
+  const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -73,12 +75,15 @@ export default function AdminSignalsOverview() {
       </CardHeader>
       <CardContent className="space-y-2">
         {signals.map(sig => (
-          <div key={sig.id} className={cn(
-            'p-3 rounded-lg border text-sm',
-            sig.severity === 'critical' ? 'bg-destructive/5 border-destructive/20' :
-            sig.severity === 'warning' ? 'bg-warning/5 border-warning/20' :
-            'bg-muted/30 border-border'
-          )}>
+          <div
+            key={sig.id}
+            onClick={() => navigate(`/sales-executives/${sig.sales_executive_id}`)}
+            className={cn(
+              'p-3 rounded-lg border text-sm cursor-pointer transition-colors hover:ring-1 hover:ring-primary/30',
+              sig.severity === 'critical' ? 'bg-destructive/5 border-destructive/20' :
+              sig.severity === 'warning' ? 'bg-warning/5 border-warning/20' :
+              'bg-muted/30 border-border'
+            )}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
