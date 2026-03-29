@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,8 +25,17 @@ function formatFileSize(bytes: number | null) {
 }
 
 export default function TrainingPage() {
+  const [searchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{ name: string; url: string } | null>(null);
+
+  // Auto-select category from URL param (e.g. ?category=Belscripts)
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    if (cat && Object.keys(categoryConfig).includes(cat)) {
+      setSelectedCategory(cat);
+    }
+  }, [searchParams]);
 
   const { data: documents = [] } = useQuery({
     queryKey: ['training-documents'],
