@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
+import klikklaarIcon from '@/assets/klikklaar-icon.jpeg'; // brand icon
 
 interface NavItem {
   to: string;
