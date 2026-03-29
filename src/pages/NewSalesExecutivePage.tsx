@@ -370,6 +370,41 @@ export default function NewSalesExecutivePage() {
                 <Switch checked={form.external_access_required} onCheckedChange={v => update('external_access_required', v)} />
                 <Label>Externe toegang vereist</Label>
               </div>
+
+              {/* Employment type */}
+              <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+                <Label className="text-sm font-semibold">Dienstverband</Label>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={form.employment_type === 'employee'}
+                    onCheckedChange={v => update('employment_type', v ? 'employee' : 'commission')}
+                  />
+                  <Label>{form.employment_type === 'employee' ? '🏢 Vaste medewerker' : '💰 Provisie / bonus-basis'}</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {form.employment_type === 'employee'
+                    ? 'Volledige Pipedrive-toegang, zelfstandig leads toevoegen, eigen pipeline-weergave'
+                    : 'Leads worden toegewezen door coach/admin, beperkte CRM-weergave'}
+                </p>
+                {pipedriveCheck.found && (
+                  <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 rounded-md p-2">
+                    <span>✅ Gevonden in Pipedrive als {pipedriveCheck.userName}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Pipedrive check button */}
+              {form.email && !pipedriveCheck.found && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => checkPipedriveUser(form.email)}
+                  disabled={pipedriveCheck.loading}
+                >
+                  {pipedriveCheck.loading ? 'Controleren...' : '🔍 Controleer in Pipedrive'}
+                </Button>
+              )}
             </>
           )}
 
