@@ -10,6 +10,7 @@ import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 import PipedriveDashboardWidget from '@/components/dashboard/PipedriveDashboardWidget';
 import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
+import SEEodHistory from '@/components/dashboard/SEEodHistory';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
