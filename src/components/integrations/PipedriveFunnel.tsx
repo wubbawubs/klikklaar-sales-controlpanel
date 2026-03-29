@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ interface PipelineData {
   fetched_at: string;
 }
 
-export function PipedriveFunnel() {
+export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number }) {
   const [data, setData] = useState<PipelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +46,13 @@ export function PipedriveFunnel() {
     setLoading(true);
     setError(null);
     try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('pipedrive-deals');
-      if (fnError) throw fnError;
+      const params = pipedriveUserId ? { user_id: String(pipedriveUserId) } : {};
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals${queryString ? `?${queryString}` : ''}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      });
+      const result = await res.json();
       if (result?.error) throw new Error(result.error);
       setData(result);
     } catch (err: any) {
@@ -60,7 +64,7 @@ export function PipedriveFunnel() {
     }
   };
 
-  useEffect(() => { fetchDeals(); }, []);
+  useEffect(() => { fetchDeals(); }, [pipedriveUserId]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(value);

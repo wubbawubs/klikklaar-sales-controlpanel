@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, TrendingUp, Building2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Loader2, TrendingUp, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -22,7 +22,6 @@ export default function PipedriveDashboardWidget({ seId }: Props) {
   const [summary, setSummary] = useState<DealSummary[]>([]);
   const [totalDeals, setTotalDeals] = useState(0);
   const [totalValue, setTotalValue] = useState(0);
-  const [leadCount, setLeadCount] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -31,25 +30,56 @@ export default function PipedriveDashboardWidget({ seId }: Props) {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get assigned leads
-      const { data: leads } = await (supabase as any)
-        .from('pipedrive_lead_assignments')
-        .select('pipedrive_org_id')
-        .eq('sales_executive_id', seId);
+      // Get SE email to resolve Pipedrive user
+      const { data: se } = await supabase
+        .from('sales_executives')
+        .select('email, employment_type')
+        .eq('id', seId)
+        .single();
 
-      const orgIds = [...new Set((leads || []).map((l: any) => l.pipedrive_org_id).filter(Boolean))];
-      setLeadCount(leads?.length || 0);
+      if (!se) { setLoading(false); return; }
 
-      if (orgIds.length > 0) {
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?org_ids=${orgIds.join(',')}`,
+      const isEmployee = se.employment_type === 'employee';
+
+      if (isEmployee) {
+        // For employees: resolve Pipedrive user_id and fetch their deals directly
+        const userRes = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(se.email)}`,
           { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
         );
-        const result = await res.json();
-        const stages = (result.stages || []).filter((s: any) => s.deals_count > 0);
-        setSummary(stages.map((s: any) => ({ stageName: s.name, count: s.deals_count, value: s.deals_value })));
-        setTotalDeals(result.total_deals || 0);
-        setTotalValue(result.total_value || 0);
+        const userData = await userRes.json();
+
+        if (userData.found && userData.user?.id) {
+          const dealsRes = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?user_id=${userData.user.id}`,
+            { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+          );
+          const result = await dealsRes.json();
+          const stages = (result.stages || []).filter((s: any) => s.deals_count > 0);
+          setSummary(stages.map((s: any) => ({ stageName: s.name, count: s.deals_count, value: s.deals_value })));
+          setTotalDeals(result.total_deals || 0);
+          setTotalValue(result.total_value || 0);
+        }
+      } else {
+        // For commission-based: use assigned lead org_ids
+        const { data: leads } = await (supabase as any)
+          .from('pipedrive_lead_assignments')
+          .select('pipedrive_org_id')
+          .eq('sales_executive_id', seId);
+
+        const orgIds = [...new Set((leads || []).map((l: any) => l.pipedrive_org_id).filter(Boolean))];
+
+        if (orgIds.length > 0) {
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?org_ids=${orgIds.join(',')}`,
+            { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+          );
+          const result = await res.json();
+          const stages = (result.stages || []).filter((s: any) => s.deals_count > 0);
+          setSummary(stages.map((s: any) => ({ stageName: s.name, count: s.deals_count, value: s.deals_value })));
+          setTotalDeals(result.total_deals || 0);
+          setTotalValue(result.total_value || 0);
+        }
       }
     } catch {
       // silent
@@ -94,7 +124,7 @@ export default function PipedriveDashboardWidget({ seId }: Props) {
       <CardContent>
         {summary.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            Geen actieve deals gevonden. {leadCount === 0 ? 'Er zijn nog geen leads toegewezen.' : ''}
+            Geen actieve deals gevonden.
           </p>
         ) : (
           <div className="space-y-2">

@@ -48,6 +48,7 @@ serve(async (req) => {
   const url = new URL(req.url);
   const orgIdsParam = url.searchParams.get('org_ids'); // comma-separated org IDs
   const personIdsParam = url.searchParams.get('person_ids'); // comma-separated person IDs
+  const userIdParam = url.searchParams.get('user_id'); // Pipedrive user ID to filter by owner
 
   try {
     // Fetch all pipelines and find the target one
@@ -76,10 +77,17 @@ serve(async (req) => {
     // Fetch ALL deals with pagination
     let deals = await fetchAllDeals(BASE, PIPEDRIVE_API_TOKEN, targetPipeline.id);
 
-    // Filter by org_ids or person_ids if provided
+    // Filter by user_id (owner), org_ids, or person_ids if provided
+    const pipedriveUserId = userIdParam ? Number(userIdParam) : null;
     const orgIds = orgIdsParam ? orgIdsParam.split(',').map(Number).filter(Boolean) : null;
     const personIds = personIdsParam ? personIdsParam.split(',').map(Number).filter(Boolean) : null;
 
+    if (pipedriveUserId) {
+      deals = deals.filter((d: any) => {
+        const dealUserId = typeof d.user_id === 'object' ? d.user_id?.id : d.user_id;
+        return dealUserId === pipedriveUserId;
+      });
+    }
     if (orgIds && orgIds.length > 0) {
       deals = deals.filter((d: any) => {
         const dealOrgId = typeof d.org_id === 'object' ? d.org_id?.value : d.org_id;

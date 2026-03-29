@@ -135,12 +135,37 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
   };
 
   const fetchDeals = async () => {
-    const orgIds = [...new Set(leads.map(l => l.pipedrive_org_id).filter(Boolean))];
-    if (orgIds.length === 0) return;
     setDealsLoading(true);
     try {
+      // First check if this SE is an employee with a Pipedrive user
+      const { data: se } = await supabase
+        .from('sales_executives')
+        .select('email, employment_type')
+        .eq('id', salesExecutiveId)
+        .single();
+
+      let queryParam = '';
+      if (se?.employment_type === 'employee') {
+        // Resolve Pipedrive user_id for employees
+        const userRes = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(se.email)}`,
+          { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+        );
+        const userData = await userRes.json();
+        if (userData.found && userData.user?.id) {
+          queryParam = `user_id=${userData.user.id}`;
+        }
+      }
+      
+      if (!queryParam) {
+        // Fallback to org_ids from lead assignments
+        const orgIds = [...new Set(leads.map(l => l.pipedrive_org_id).filter(Boolean))];
+        if (orgIds.length === 0) { setDealsLoading(false); return; }
+        queryParam = `org_ids=${orgIds.join(',')}`;
+      }
+
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?org_ids=${orgIds.join(',')}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?${queryParam}`,
         { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
       );
       const result = await res.json();
