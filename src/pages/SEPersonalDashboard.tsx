@@ -94,6 +94,10 @@ export default function SEPersonalDashboard() {
       {isEmployee && <PipedriveDashboardWidget seId={seId} />}
 
       {/* 3. Taken checklist */}
+      {/* EOD afsluiten */}
+      <SEEndOfDayCTA seId={seId} seName={seName} />
+
+      {/* 3. Taken checklist */}
       <SETaskChecklist seId={seId} />
 
       {/* 3. Training & Advies */}
