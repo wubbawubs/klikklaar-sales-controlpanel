@@ -31,13 +31,17 @@ serve(async (req) => {
       .toISOString()
       .split("T")[0];
 
-    const [seRes, callsRes, leadsRes, activitiesRes, eodRes, signalsRes] =
+    // Fetch SE first (needed for EOD name matching)
+    const seRes = await supabase
+      .from("sales_executives")
+      .select("full_name, first_name, employment_type")
+      .eq("id", sales_executive_id)
+      .single();
+
+    const firstName = seRes.data?.first_name || sales_executive_id.slice(0, 4);
+
+    const [callsRes, leadsRes, activitiesRes, eodRes, signalsRes] =
       await Promise.all([
-        supabase
-          .from("sales_executives")
-          .select("full_name, first_name, employment_type")
-          .eq("id", sales_executive_id)
-          .single(),
         supabase
           .from("calls")
           .select("outcome, created_at, duration_seconds")
@@ -57,13 +61,7 @@ serve(async (req) => {
           .select(
             "day_score, energy_score, calls_attempted, real_conversations, appointments_set, deals_closed, good_things, blocker_text, work_date"
           )
-          .ilike(
-            "employee_name",
-            `%${
-              (seRes as any)?.data?.first_name ||
-              sales_executive_id.slice(0, 4)
-            }%`
-          )
+          .ilike("employee_name", `%${firstName}%`)
           .gte("work_date", monthAgo)
           .order("work_date", { ascending: false })
           .limit(7),
