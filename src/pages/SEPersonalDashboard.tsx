@@ -96,6 +96,21 @@ export default function SEPersonalDashboard() {
     fetchData();
   }, [user]);
 
+  const handleResolve = async (signalId: string) => {
+    setResolvingId(signalId);
+    const { error } = await supabase
+      .from('signals')
+      .update({ resolved: true, resolved_at: new Date().toISOString() })
+      .eq('id', signalId);
+    if (error) {
+      toast({ title: 'Fout', description: 'Kon signaal niet oplossen.', variant: 'destructive' });
+    } else {
+      setSignals(prev => prev.filter(s => s.id !== signalId));
+      toast({ title: 'Opgelost', description: 'Signaal is als afgehandeld gemarkeerd.' });
+    }
+    setResolvingId(null);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
   }
