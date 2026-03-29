@@ -93,6 +93,9 @@ export default function SEPersonalDashboard() {
         </div>
       </div>
 
+      {/* Health Monitor */}
+      <SEHealthBar health={health} />
+
       {/* 1. Performance bars */}
       <SEPerformanceBars seId={seId} />
 
