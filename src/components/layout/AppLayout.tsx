@@ -1,12 +1,46 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { AppSidebar } from './AppSidebar';
 
 export function AppLayout() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8 max-w-7xl mx-auto animate-fade-in">
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — always visible on lg+, slide-in on mobile */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 lg:static lg:z-auto
+          transform transition-transform duration-200 ease-in-out
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        <AppSidebar onCloseMobile={() => setMobileOpen(false)} />
+      </div>
+
+      <main className="flex-1 overflow-y-auto min-w-0">
+        {/* Mobile header with hamburger */}
+        <div className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-background/95 backdrop-blur border-b border-border/60 lg:hidden">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5 text-foreground" />
+          </button>
+          <span className="text-sm font-semibold text-foreground">Control Center</span>
+        </div>
+
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
           <Outlet />
         </div>
       </main>

@@ -14,6 +14,7 @@ import {
   ListChecks,
   Target,
   Phone,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -42,7 +43,11 @@ const navItems: NavItem[] = [
   { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', adminOnly: true },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onCloseMobile?: () => void;
+}
+
+export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
   const { signOut, user, isAdmin, roles } = useAuth();
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
@@ -52,15 +57,30 @@ export function AppSidebar() {
     return isCoachOrAdmin;
   });
 
+  const handleNavClick = () => {
+    // Close mobile sidebar on navigation
+    onCloseMobile?.();
+  };
+
   return (
     <aside className="flex flex-col h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       {/* Brand header */}
       <div className="px-6 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5">
-          <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-8" />
-          <div>
-            <h1 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">Control Center</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-8" />
+            <div>
+              <h1 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">Control Center</h1>
+            </div>
           </div>
+          {/* Close button — mobile only */}
+          <button
+            onClick={onCloseMobile}
+            className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
+            aria-label="Sluit menu"
+          >
+            <X className="h-5 w-5 text-sidebar-foreground/70" />
+          </button>
         </div>
       </div>
 
@@ -73,6 +93,7 @@ export function AppSidebar() {
               <NavLink
                 key={to}
                 to={to}
+                onClick={handleNavClick}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-150',
                   isActive
@@ -91,7 +112,7 @@ export function AppSidebar() {
       {/* User footer */}
       <div className="border-t border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase">
+          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase shrink-0">
             {user?.email?.charAt(0) || '?'}
           </div>
           <div className="flex-1 min-w-0">
