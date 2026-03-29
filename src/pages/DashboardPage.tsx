@@ -140,13 +140,13 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-page text-foreground">Dashboard</h1>
+          <h1 className="text-xl sm:text-page text-foreground">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">Overzicht van alle Sales Executive activiteiten</p>
         </div>
         <Link to="/sales-executives/new">
-          <Button size="lg">Nieuwe Sales Executive</Button>
+          <Button size="lg" className="w-full sm:w-auto">Nieuwe Sales Executive</Button>
         </Link>
       </div>
 
