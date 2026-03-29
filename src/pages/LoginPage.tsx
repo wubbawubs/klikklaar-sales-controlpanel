@@ -39,9 +39,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand mark */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 mb-4">
-            <span className="text-primary font-extrabold text-xl">K</span>
-          </div>
+          <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-14 mx-auto mb-4" />
           <h1 className="text-page text-foreground">Klikklaar SEO</h1>
           <p className="text-sm text-muted-foreground mt-1">Sales Executive Control Center</p>
         </div>
