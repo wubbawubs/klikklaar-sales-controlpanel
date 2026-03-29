@@ -179,11 +179,30 @@ Deno.serve(async (req) => {
 
     // Optionally scope to a single SE
     let targetSeId: string | null = null;
+    let isPing = false;
     try {
       const body = await req.json();
       targetSeId = body?.sales_executive_id || null;
+      isPing = body?.ping === true;
     } catch {
       // no body is fine
+    }
+
+    // Handle ping/health-check requests
+    if (isPing) {
+      return new Response(
+        JSON.stringify({ success: true, ping: "pong" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate UUID format if provided
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (targetSeId && !uuidRegex.test(targetSeId)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid sales_executive_id format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Get active SEs
