@@ -17,6 +17,7 @@ import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import AdminSignalsOverview from '@/components/dashboard/AdminSignalsOverview';
+import AdminNBAOverview from '@/components/dashboard/AdminNBAOverview';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
