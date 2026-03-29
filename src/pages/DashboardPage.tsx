@@ -191,6 +191,8 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
 
       <AdminSignalsOverview />
 
+      <HealthEventsLog />
+
       {/* SE Table */}
       <div className="bg-card rounded-xl border border-border/60 shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/60">
