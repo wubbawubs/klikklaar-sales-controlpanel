@@ -20,6 +20,7 @@ interface Signal {
 }
 
 export default function AdminSignalsOverview() {
+  const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
