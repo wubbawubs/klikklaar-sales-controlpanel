@@ -68,6 +68,7 @@ function AppRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/leads" element={<LeadManagementPage />} />
         <Route path="/calls" element={<CallLoggingPage />} />
+        <Route path="/pipedrive" element={<PipedrivePage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/eod" element={<EodPage />} />
 
