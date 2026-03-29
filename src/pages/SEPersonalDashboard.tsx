@@ -23,6 +23,7 @@ export default function SEPersonalDashboard() {
   const [seId, setSeId] = useState<string | null>(null);
   const [isEmployee, setIsEmployee] = useState(false);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
+  const health = useHealthCheck(seId, seName, isEmployee);
 
   useEffect(() => {
     if (!user) return;
