@@ -216,7 +216,7 @@ export default function LeadManagementPage() {
 
       {/* Table */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Laden...</div>
           ) : filtered.length === 0 ? (
