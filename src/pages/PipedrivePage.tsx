@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { PipedriveFunnel } from '@/components/integrations/PipedriveFunnel';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
 export default function PipedrivePage() {
@@ -13,14 +12,15 @@ export default function PipedrivePage() {
   const [seName, setSeName] = useState('');
   const [loading, setLoading] = useState(true);
   const [isEmployee, setIsEmployee] = useState(false);
+  const [pipedriveUserId, setPipedriveUserId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
+    const load = async () => {
       const normalizedEmail = (user.email ?? '').trim().toLowerCase();
       const { data } = await supabase
         .from('sales_executives')
-        .select('id, full_name, first_name, last_name, employment_type')
+        .select('id, full_name, first_name, last_name, employment_type, email')
         .or(`email.ilike.${normalizedEmail},user_id.eq.${user.id}`)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -29,11 +29,26 @@ export default function PipedrivePage() {
       if (data) {
         setSeId(data.id);
         setSeName(data.full_name || `${data.first_name} ${data.last_name}`);
-        setIsEmployee((data as any).employment_type === 'employee');
+        const emp = (data as any).employment_type === 'employee';
+        setIsEmployee(emp);
+
+        // For employees, resolve Pipedrive user_id
+        if (emp) {
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(data.email)}`,
+              { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+            );
+            const result = await res.json();
+            if (result.found && result.user?.id) {
+              setPipedriveUserId(result.user.id);
+            }
+          } catch {}
+        }
       }
       setLoading(false);
     };
-    fetch();
+    load();
   }, [user]);
 
   if (loading) {
@@ -70,7 +85,7 @@ export default function PipedrivePage() {
         </TabsList>
 
         <TabsContent value="pipeline">
-          <PipedriveFunnel />
+          <PipedriveFunnel pipedriveUserId={pipedriveUserId} />
         </TabsContent>
 
         <TabsContent value="crm">
