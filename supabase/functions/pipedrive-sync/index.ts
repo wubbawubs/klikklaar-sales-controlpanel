@@ -122,23 +122,37 @@ serve(async (req) => {
       if (stageOrder >= 4) status = 'qualified';
       else if (stageOrder >= 2) status = 'contacted';
 
-      // Upsert by pipedrive_deal_id
-      const { error: upsertErr } = await supabase
+      // Check if lead assignment already exists for this deal
+      const { data: existing } = await supabase
         .from('pipedrive_lead_assignments')
-        .upsert({
-          sales_executive_id: se.id,
-          pipedrive_deal_id: deal.id,
-          pipedrive_org_id: orgId || null,
-          pipedrive_person_id: personId || null,
-          org_name: orgName || deal.title,
-          person_name: personName,
-          person_email: personEmail,
-          person_phone: personPhone,
-          deal_title: deal.title,
-          status,
-        }, { onConflict: 'sales_executive_id,pipedrive_deal_id', ignoreDuplicates: false });
+        .select('id')
+        .eq('sales_executive_id', se.id)
+        .eq('pipedrive_deal_id', deal.id)
+        .maybeSingle();
 
-      if (!upsertErr) synced_leads++;
+      const leadData = {
+        sales_executive_id: se.id,
+        pipedrive_deal_id: deal.id,
+        pipedrive_org_id: orgId || null,
+        pipedrive_person_id: personId || null,
+        org_name: orgName || deal.title,
+        person_name: personName,
+        person_email: personEmail,
+        person_phone: personPhone,
+        deal_title: deal.title,
+        status,
+      };
+
+      let leadErr;
+      if (existing) {
+        const { error } = await supabase.from('pipedrive_lead_assignments').update(leadData).eq('id', existing.id);
+        leadErr = error;
+      } else {
+        const { error } = await supabase.from('pipedrive_lead_assignments').insert(leadData);
+        leadErr = error;
+      }
+      if (leadErr) console.error('Lead sync error:', leadErr.message);
+      else synced_leads++;
     }
 
     // Sync Pipedrive activities for this user
@@ -149,7 +163,6 @@ serve(async (req) => {
           PIPEDRIVE_API_TOKEN
         );
 
-        // Only sync last 30 days
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -157,24 +170,38 @@ serve(async (req) => {
           const actDate = new Date(act.add_time || act.due_date);
           if (actDate < thirtyDaysAgo) continue;
 
-          const { error: actErr } = await supabase
+          const { data: existingAct } = await supabase
             .from('pipedrive_activities')
-            .upsert({
-              sales_executive_id: se.id,
-              pipedrive_activity_id: act.id,
-              activity_type: act.type || 'call',
-              subject: act.subject || null,
-              note: act.note || null,
-              done: act.done === true || act.done === 1,
-              due_date: act.due_date || null,
-              duration_minutes: act.duration ? parseInt(act.duration) : null,
-              pipedrive_org_id: act.org_id || null,
-              pipedrive_person_id: act.person_id || null,
-              pipedrive_deal_id: act.deal_id || null,
-              synced_to_pipedrive: true,
-            }, { onConflict: 'sales_executive_id,pipedrive_activity_id', ignoreDuplicates: false });
+            .select('id')
+            .eq('sales_executive_id', se.id)
+            .eq('pipedrive_activity_id', act.id)
+            .maybeSingle();
 
-          if (!actErr) synced_activities++;
+          const actData = {
+            sales_executive_id: se.id,
+            pipedrive_activity_id: act.id,
+            activity_type: act.type || 'call',
+            subject: act.subject || null,
+            note: act.note || null,
+            done: act.done === true || act.done === 1,
+            due_date: act.due_date || null,
+            duration_minutes: act.duration ? parseInt(act.duration) : null,
+            pipedrive_org_id: act.org_id || null,
+            pipedrive_person_id: act.person_id || null,
+            pipedrive_deal_id: act.deal_id || null,
+            synced_to_pipedrive: true,
+          };
+
+          let actErr;
+          if (existingAct) {
+            const { error } = await supabase.from('pipedrive_activities').update(actData).eq('id', existingAct.id);
+            actErr = error;
+          } else {
+            const { error } = await supabase.from('pipedrive_activities').insert(actData);
+            actErr = error;
+          }
+          if (actErr) console.error('Activity sync error:', actErr.message);
+          else synced_activities++;
         }
       } catch (e) {
         console.error('Activity sync error:', e);
