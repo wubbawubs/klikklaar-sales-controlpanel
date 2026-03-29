@@ -137,6 +137,7 @@ export default function NewSalesExecutivePage() {
         external_guest_email: se.external_guest_email || '',
         external_access_required: se.external_access_required ?? false,
         status: se.status || 'active',
+        employment_type: (se as any).employment_type || 'commission',
         ...(ws ? {
           workspace_name: ws.workspace_name,
           sharepoint_site_name: ws.sharepoint_site_name || '',
