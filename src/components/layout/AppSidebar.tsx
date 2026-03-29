@@ -53,41 +53,60 @@ export function AppSidebar() {
 
   return (
     <aside className="flex flex-col h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-      <div className="p-5 border-b border-sidebar-border">
-        <h1 className="text-lg font-bold text-sidebar-primary-foreground">Klikklaar SEO</h1>
-        <p className="text-xs text-sidebar-foreground/60 mt-0.5">Control Center</p>
+      {/* Brand header */}
+      <div className="px-6 py-5 border-b border-sidebar-border">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
+            <span className="text-sidebar-primary font-bold text-sm">K</span>
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">Klikklaar SEO</h1>
+            <p className="text-[10px] text-sidebar-foreground/50 font-medium tracking-wide uppercase">Control Center</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3">
-        {visibleItems.map(({ to, icon: Icon, label }) => {
-          const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              className={cn(
-                'flex items-center gap-3 px-5 py-2.5 text-sm transition-colors',
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </NavLink>
-          );
-        })}
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-3 px-3">
+        <div className="space-y-0.5">
+          {visibleItems.map(({ to, icon: Icon, label }) => {
+            const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-150',
+                  isActive
+                    ? 'bg-sidebar-primary/15 text-sidebar-primary font-medium shadow-sm'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                )}
+              >
+                <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} />
+                {label}
+              </NavLink>
+            );
+          })}
+        </div>
       </nav>
 
-      <div className="border-t border-sidebar-border p-4">
-        <p className="text-xs text-sidebar-foreground/60 truncate mb-2">{user?.email}</p>
-        <button
-          onClick={signOut}
-          className="flex items-center gap-2 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Uitloggen
-        </button>
+      {/* User footer */}
+      <div className="border-t border-sidebar-border px-4 py-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase">
+            {user?.email?.charAt(0) || '?'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors mt-0.5"
+            >
+              <LogOut className="h-3 w-3" />
+              Uitloggen
+            </button>
+          </div>
+        </div>
       </div>
     </aside>
   );

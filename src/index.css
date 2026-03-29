@@ -2,61 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* KlikKlaar Design System — derived from klikklaarseo.nl + klikklaarweb.com */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Brand: teal primary, warm accent, dark navy text, clean surfaces */
+    --background: 210 15% 97%;
+    --foreground: 220 25% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 220 25% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 220 25% 14%;
 
-    --primary: 214 80% 42%;
+    /* Teal primary — KlikKlaar brand */
+    --primary: 168 76% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 94%;
-    --secondary-foreground: 215 25% 15%;
+    --secondary: 210 18% 93%;
+    --secondary-foreground: 220 20% 25%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 210 14% 95%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 200 70% 50%;
-    --accent-foreground: 0 0% 100%;
+    /* Teal accent lighter */
+    --accent: 170 60% 94%;
+    --accent-foreground: 168 76% 28%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 214 80% 42%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 168 76% 32%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 215 30% 18%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 200 70% 55%;
+    /* Sidebar — dark navy matching KlikKlaar nav */
+    --sidebar-background: 220 28% 12%;
+    --sidebar-foreground: 210 15% 85%;
+    --sidebar-primary: 168 70% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 24%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 215 25% 25%;
-    --sidebar-ring: 200 70% 55%;
+    --sidebar-accent: 220 25% 17%;
+    --sidebar-accent-foreground: 210 15% 92%;
+    --sidebar-border: 220 20% 18%;
+    --sidebar-ring: 168 70% 48%;
 
-    --success: 142 72% 40%;
+    /* Semantic colors */
+    --success: 158 64% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 25 95% 53%;
     --warning-foreground: 0 0% 100%;
     --info: 200 70% 50%;
     --info-foreground: 0 0% 100%;
+
+    /* Elevated surface */
+    --surface-elevated: 0 0% 100%;
   }
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   * {
@@ -64,6 +70,46 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Premium scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+}
+
+/* Utility classes for the design system */
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/60;
+  }
+
+  .section-heading {
+    @apply text-lg font-semibold tracking-tight text-foreground;
+  }
+
+  .page-heading {
+    @apply text-2xl font-bold tracking-tight text-foreground;
+  }
+
+  .caption {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .stat-number {
+    @apply text-2xl font-bold tabular-nums tracking-tight;
   }
 }
