@@ -54,24 +54,28 @@ export default function SEPersonalDashboard() {
     );
   }
 
+  const firstName = seName.split(' ')[0];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Welkom, {seName.split(' ')[0]}</h1>
-        <p className="text-muted-foreground text-sm mt-1">Dit is jouw overzicht voor vandaag</p>
+    <div className="space-y-8">
+      {/* Welcome header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/8 via-primary/4 to-transparent border border-primary/10 p-6">
+        <div>
+          <h1 className="text-page text-foreground">Welkom, {firstName}</h1>
+          <p className="text-muted-foreground text-sm mt-1">Dit is jouw overzicht voor vandaag</p>
+        </div>
       </div>
 
-      {/* 1. Performance bars — altijd zichtbaar, bescheiden */}
+      {/* 1. Performance bars */}
       <SEPerformanceBars seId={seId} />
 
-      {/* 2. Taken checklist — wat moet je doen */}
+      {/* 2. Taken checklist */}
       <SETaskChecklist seId={seId} />
 
-      {/* 3. Training & Advies — opt-in */}
+      {/* 3. Training & Advies */}
       <SETrainingAdviceCard seId={seId} seName={seName} />
 
-      {/* 4. Charts — op verzoek, met datumfilter */}
+      {/* 4. Charts */}
       <div className="space-y-4">
         <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

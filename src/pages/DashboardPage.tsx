@@ -138,17 +138,19 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-page text-foreground">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">Overzicht van alle Sales Executive activiteiten</p>
         </div>
         <Link to="/sales-executives/new">
-          <Button>Nieuwe Sales Executive</Button>
+          <Button size="lg">Nieuwe Sales Executive</Button>
         </Link>
       </div>
 
+      {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <StatCard title="Actieve SEs" value={stats.activeSEs} icon={Users} variant="info" />
         <StatCard title="Workspaces concept" value={stats.draftWorkspaces} icon={Package} />
@@ -164,6 +166,7 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
         <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
+      {/* Charts section */}
       <div className="space-y-4">
         <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -176,53 +179,54 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
 
       <AdminSignalsOverview />
 
-      <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold text-card-foreground">Sales Executives</h2>
+      {/* SE Table */}
+      <div className="bg-card rounded-xl border border-border/60 shadow-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border/60">
+          <h2 className="text-section text-card-foreground">Sales Executives</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-medium text-muted-foreground">Naam</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">E-mail</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Workspace</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Extern</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Pipedrive</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Exact</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Qapitaal</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">EOD</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Provisioning</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Acties</th>
+              <tr className="border-b border-border/60 bg-muted/40">
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Naam</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">E-mail</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Workspace</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Extern</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Pipedrive</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Exact</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Qapitaal</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">EOD</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Provisioning</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Acties</th>
               </tr>
             </thead>
             <tbody>
               {ses.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                     Nog geen Sales Executives aangemaakt.{' '}
-                    <Link to="/sales-executives/new" className="text-primary hover:underline">Maak de eerste aan</Link>
+                    <Link to="/sales-executives/new" className="text-primary hover:underline font-medium">Maak de eerste aan</Link>
                   </td>
                 </tr>
               ) : (
                 ses.map(se => (
-                  <tr key={se.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-3 font-medium text-foreground">{se.full_name}</td>
-                    <td className="p-3 text-muted-foreground">{se.email}</td>
-                    <td className="p-3"><StatusBadge status={se.status} /></td>
-                    <td className="p-3">
+                  <tr key={se.id} className="border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-medium text-foreground">{se.full_name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{se.email}</td>
+                    <td className="px-4 py-3"><StatusBadge status={se.status} /></td>
+                    <td className="px-4 py-3">
                       {se.workspace ? <StatusBadge status={se.workspace.sharepoint_status} /> : <span className="text-muted-foreground text-xs">—</span>}
                     </td>
-                    <td className="p-3 text-muted-foreground">{se.external_access_required ? 'Ja' : 'Nee'}</td>
-                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'pipedrive')} /></td>
-                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'exact')} /></td>
-                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'qapitaal')} /></td>
-                    <td className="p-3"><StatusBadge status={getIntegrationStatus(se, 'typeform')} /></td>
-                    <td className="p-3">
+                    <td className="px-4 py-3 text-muted-foreground">{se.external_access_required ? 'Ja' : 'Nee'}</td>
+                    <td className="px-4 py-3"><StatusBadge status={getIntegrationStatus(se, 'pipedrive')} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={getIntegrationStatus(se, 'exact')} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={getIntegrationStatus(se, 'qapitaal')} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={getIntegrationStatus(se, 'typeform')} /></td>
+                    <td className="px-4 py-3">
                       {se.workspace ? <StatusBadge status={se.workspace.sharepoint_status} /> : '—'}
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Link to={`/sales-executives/${se.id}`}>
                           <Button variant="ghost" size="icon" title="Bekijken"><Eye className="h-4 w-4" /></Button>
