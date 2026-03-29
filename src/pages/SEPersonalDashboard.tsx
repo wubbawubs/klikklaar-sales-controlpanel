@@ -13,8 +13,6 @@ import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
 import SEEodHistory from '@/components/dashboard/SEEodHistory';
 import CICoachingCard from '@/components/dashboard/CICoachingCard';
 import CIChatCard from '@/components/dashboard/CIChatCard';
-import SEHealthBar from '@/components/dashboard/SEHealthBar';
-import { useHealthCheck } from '@/hooks/useHealthCheck';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
@@ -23,7 +21,6 @@ export default function SEPersonalDashboard() {
   const [seId, setSeId] = useState<string | null>(null);
   const [isEmployee, setIsEmployee] = useState(false);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
-  const health = useHealthCheck(seId, seName, isEmployee);
 
   useEffect(() => {
     if (!user) return;
@@ -92,9 +89,6 @@ export default function SEPersonalDashboard() {
           <p className="text-muted-foreground text-sm mt-1">Dit is jouw overzicht voor vandaag</p>
         </div>
       </div>
-
-      {/* Health Monitor */}
-      <SEHealthBar health={health} />
 
       {/* 1. Performance bars */}
       <SEPerformanceBars seId={seId} />

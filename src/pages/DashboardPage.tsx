@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import SEPersonalDashboard from '@/pages/SEPersonalDashboard';
+import SEHealthBar from '@/components/dashboard/SEHealthBar';
+import { useHealthCheck } from '@/hooks/useHealthCheck';
 import {
   Users, Package, CheckCircle, AlertTriangle, Plug, ClipboardCheck,
   Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
@@ -51,6 +53,8 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   });
   const [loading, setLoading] = useState(true);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
+  // Health check runs as admin — uses a dummy SE context for system-level checks
+  const health = useHealthCheck('admin-system-check', 'Admin', true);
 
   const fetchData = async () => {
     const { data: seData } = await supabase.from('sales_executives').select('*');
@@ -153,6 +157,9 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
           <Button size="lg" className="w-full sm:w-auto">Nieuwe Sales Executive</Button>
         </Link>
       </div>
+
+      {/* Health Monitor */}
+      <SEHealthBar health={health} />
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

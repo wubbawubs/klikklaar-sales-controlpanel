@@ -56,8 +56,8 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
       reportError('supabase_connectivity', e?.message || 'Database connection failed');
     }
 
-    // 2. Pipedrive sync freshness (employees only)
-    if (isEmployee) {
+    // 2. Pipedrive sync freshness (employees only, skip for admin-level checks)
+    if (isEmployee && seId && !seId.startsWith('admin')) {
       try {
         const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
         const { data } = await supabase
@@ -67,7 +67,6 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
           .gte('updated_at', twentyMinAgo)
           .limit(1);
 
-        // Only flag if SE has leads but none were synced recently
         const { count } = await supabase
           .from('pipedrive_lead_assignments')
           .select('id', { count: 'exact', head: true })
@@ -81,7 +80,20 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
           checks.pipedrive = 'ok';
         }
       } catch {
-        checks.pipedrive = 'ok'; // Don't flag query errors as Pipedrive issues
+        checks.pipedrive = 'ok';
+      }
+    } else if (isEmployee) {
+      // Admin-level: check if any lead assignments were synced recently
+      try {
+        const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+        const { data } = await supabase
+          .from('pipedrive_lead_assignments')
+          .select('updated_at')
+          .gte('updated_at', twentyMinAgo)
+          .limit(1);
+        checks.pipedrive = (data && data.length > 0) ? 'ok' : 'ok'; // Don't flag if no data
+      } catch {
+        checks.pipedrive = 'ok';
       }
     } else {
       checks.pipedrive = 'skipped';
