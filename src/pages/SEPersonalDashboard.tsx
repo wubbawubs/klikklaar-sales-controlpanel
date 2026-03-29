@@ -13,6 +13,8 @@ import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
 import SEEodHistory from '@/components/dashboard/SEEodHistory';
 import CICoachingCard from '@/components/dashboard/CICoachingCard';
 import CIChatCard from '@/components/dashboard/CIChatCard';
+import SEHealthBar from '@/components/dashboard/SEHealthBar';
+import { useHealthCheck } from '@/hooks/useHealthCheck';
 
 export default function SEPersonalDashboard() {
   const { user } = useAuth();
