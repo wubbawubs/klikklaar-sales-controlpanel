@@ -35,63 +35,78 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">Klikklaar SEO</CardTitle>
-          <CardDescription>Sales Executive Control Center</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
+      <div className="w-full max-w-md">
+        {/* Brand mark */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 mb-4">
+            <span className="text-primary font-extrabold text-xl">K</span>
+          </div>
+          <h1 className="text-page text-foreground">Klikklaar SEO</h1>
+          <p className="text-sm text-muted-foreground mt-1">Sales Executive Control Center</p>
+        </div>
+
+        <Card className="shadow-elevated border-border/60">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-lg font-semibold">
+              {isSignUp ? 'Account aanmaken' : 'Inloggen'}
+            </CardTitle>
+            <CardDescription>
+              {isSignUp ? 'Maak een nieuw account aan' : 'Log in met je e-mailadres'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Volledige naam</Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Jan Jansen"
+                    required={isSignUp}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="fullName">Volledige naam</Label>
+                <Label htmlFor="email">E-mailadres</Label>
                 <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jan Jansen"
-                  required={isSignUp}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="jan@klikklaar.nl"
+                  required
                 />
               </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mailadres</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="jan@klikklaar.nl"
-                required
-              />
+              <div className="space-y-2">
+                <Label htmlFor="password">Wachtwoord</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full h-11" disabled={loading}>
+                {loading ? 'Laden...' : isSignUp ? 'Account aanmaken' : 'Inloggen'}
+              </Button>
+            </form>
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                {isSignUp ? 'Al een account? Inloggen' : 'Nog geen account? Registreren'}
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Wachtwoord</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Laden...' : isSignUp ? 'Account aanmaken' : 'Inloggen'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-primary hover:underline"
-            >
-              {isSignUp ? 'Al een account? Inloggen' : 'Nog geen account? Registreren'}
-            </button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
