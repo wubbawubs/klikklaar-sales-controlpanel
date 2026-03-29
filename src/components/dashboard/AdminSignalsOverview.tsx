@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Target } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Target, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface Signal {
   id: string;
@@ -21,8 +23,10 @@ interface Signal {
 
 export default function AdminSignalsOverview() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -48,6 +52,22 @@ export default function AdminSignalsOverview() {
     };
     fetch();
   }, []);
+
+  const handleResolve = async (e: React.MouseEvent, signalId: string) => {
+    e.stopPropagation();
+    setResolvingId(signalId);
+    const { error } = await supabase
+      .from('signals')
+      .update({ resolved: true, resolved_at: new Date().toISOString() })
+      .eq('id', signalId);
+    if (error) {
+      toast({ title: 'Fout', description: 'Kon signaal niet oplossen.', variant: 'destructive' });
+    } else {
+      setSignals(prev => prev.filter(s => s.id !== signalId));
+      toast({ title: 'Opgelost', description: 'Signaal is als afgehandeld gemarkeerd.' });
+    }
+    setResolvingId(null);
+  };
 
   if (loading) return null;
   if (signals.length === 0) return null;
@@ -93,14 +113,26 @@ export default function AdminSignalsOverview() {
                 {sig.description && <p className="text-muted-foreground text-xs mt-1">{sig.description}</p>}
                 {sig.action && <p className="text-primary text-xs mt-1 font-medium">→ {sig.action}</p>}
               </div>
-              <span className={cn(
-                'text-[10px] font-medium px-1.5 py-0.5 rounded uppercase shrink-0',
-                sig.severity === 'critical' ? 'bg-destructive/10 text-destructive' :
-                sig.severity === 'warning' ? 'bg-warning/10 text-warning' :
-                'bg-muted text-muted-foreground'
-              )}>
-                {sig.severity}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-success"
+                  onClick={(e) => handleResolve(e, sig.id)}
+                  disabled={resolvingId === sig.id}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                  Oplossen
+                </Button>
+                <span className={cn(
+                  'text-[10px] font-medium px-1.5 py-0.5 rounded uppercase',
+                  sig.severity === 'critical' ? 'bg-destructive/10 text-destructive' :
+                  sig.severity === 'warning' ? 'bg-warning/10 text-warning' :
+                  'bg-muted text-muted-foreground'
+                )}>
+                  {sig.severity}
+                </span>
+              </div>
             </div>
           </div>
         ))}
