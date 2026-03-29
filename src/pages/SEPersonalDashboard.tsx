@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { subWeeks } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Target, PhoneCall, Handshake, Trophy, CreditCard, ClipboardCheck, Briefcase,
-  Phone, PhoneOff, PhoneForwarded, Calendar, TrendingUp,
+  Phone, PhoneOff, PhoneForwarded, Calendar, TrendingUp, CheckCircle2,
 } from 'lucide-react';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
