@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import SEPersonalDashboard from '@/pages/SEPersonalDashboard';
+import SEHealthBar from '@/components/dashboard/SEHealthBar';
+import { useHealthCheck } from '@/hooks/useHealthCheck';
 import {
   Users, Package, CheckCircle, AlertTriangle, Plug, ClipboardCheck,
   Target, PhoneCall, Handshake, Trophy, CreditCard, Eye, Pencil, Play, Download, Trash2, Loader2,
