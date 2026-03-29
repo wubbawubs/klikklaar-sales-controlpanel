@@ -95,6 +95,9 @@ export default function SEPersonalDashboard() {
       {/* 2. Pipedrive widget (only for employees) */}
       {isEmployee && <PipedriveDashboardWidget seId={seId} />}
 
+      {/* CI Engine Coaching */}
+      <CICoachingCard seId={seId} />
+
       {/* 3. Taken checklist */}
       {/* EOD afsluiten */}
       <SEEndOfDayCTA seId={seId} seName={seName} />
