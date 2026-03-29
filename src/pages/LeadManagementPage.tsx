@@ -139,15 +139,15 @@ export default function LeadManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Lead Management</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Lead Management</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Beheer en herverdeel Pipedrive leads tussen sales executives
           </p>
         </div>
         {selectedLeads.size > 0 && (
-          <Button onClick={() => setReassignDialogOpen(true)}>
+          <Button onClick={() => setReassignDialogOpen(true)} className="w-full sm:w-auto">
             <ArrowRightLeft className="h-4 w-4 mr-2" />
             Herverdeel ({selectedLeads.size})
           </Button>
@@ -157,8 +157,8 @@ export default function LeadManagementPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
@@ -168,7 +168,7 @@ export default function LeadManagementPage() {
               />
             </div>
             <Select value={filterSe} onValueChange={setFilterSe}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Sales Executive" />
               </SelectTrigger>
@@ -180,7 +180,7 @@ export default function LeadManagementPage() {
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +216,7 @@ export default function LeadManagementPage() {
 
       {/* Table */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Laden...</div>
           ) : filtered.length === 0 ? (
