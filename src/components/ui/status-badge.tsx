@@ -22,6 +22,11 @@ const statusColors: Record<string, string> = {
   submitted: 'bg-success/10 text-success',
   reviewed: 'bg-primary/10 text-primary',
   follow_up_required: 'bg-warning/10 text-warning',
+  none: 'bg-muted text-muted-foreground',
+  no_follow_up: 'bg-muted text-muted-foreground',
+  in_progress: 'bg-info/10 text-info',
+  scheduled: 'bg-info/10 text-info',
+  cancelled: 'bg-muted text-muted-foreground',
 };
 
 const statusLabels: Record<string, string> = {
