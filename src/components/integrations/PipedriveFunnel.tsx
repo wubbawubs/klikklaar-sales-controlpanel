@@ -108,6 +108,8 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
     );
   }
 
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+
   return (
     <div className="space-y-3">
       {/* Header */}
@@ -146,9 +148,20 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
         style={{ scrollSnapType: 'x mandatory' }}
       >
         {data.stages.map((stage) => (
-          <StageColumn key={stage.id} stage={stage} formatCurrency={formatCurrency} />
+          <StageColumn key={stage.id} stage={stage} formatCurrency={formatCurrency} onDealClick={setSelectedDeal} />
         ))}
       </div>
+
+      {/* Deal detail sheet */}
+      <DealDetailSheet
+        open={!!selectedDeal}
+        onOpenChange={(open) => { if (!open) setSelectedDeal(null); }}
+        dealTitle={selectedDeal?.title}
+        dealValue={selectedDeal?.value}
+        dealExpectedClose={selectedDeal?.expected_close_date}
+        orgId={selectedDeal?.org_id}
+        personId={selectedDeal?.person_id}
+      />
     </div>
   );
 }
