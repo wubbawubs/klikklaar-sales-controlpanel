@@ -167,13 +167,12 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
   );
 }
 
-function StageColumn({ stage, formatCurrency }: { stage: Stage; formatCurrency: (v: number) => string }) {
+function StageColumn({ stage, formatCurrency, onDealClick }: { stage: Stage; formatCurrency: (v: number) => string; onDealClick: (deal: Deal) => void }) {
   return (
     <div
       className="flex-shrink-0 w-[240px] flex flex-col rounded-lg border bg-muted/30"
       style={{ scrollSnapAlign: 'start' }}
     >
-      {/* Column header */}
       <div className="px-3 py-2 border-b bg-muted/50 rounded-t-lg">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium truncate">{stage.name}</h4>
@@ -188,14 +187,13 @@ function StageColumn({ stage, formatCurrency }: { stage: Stage; formatCurrency: 
         )}
       </div>
 
-      {/* Deal cards */}
       <ScrollArea className="flex-1 max-h-[calc(100vh-280px)]">
         <div className="p-2 space-y-2">
           {stage.deals.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">Geen deals</p>
           ) : (
             stage.deals.map((deal) => (
-              <DealCard key={deal.id} deal={deal} formatCurrency={formatCurrency} />
+              <DealCard key={deal.id} deal={deal} formatCurrency={formatCurrency} onClick={() => onDealClick(deal)} />
             ))
           )}
         </div>
