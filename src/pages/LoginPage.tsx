@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import klikklaarLogo from '@/assets/klikklaar-seo-logo.jpeg';
+import klikklaarLogo from '@/assets/klikklaar-brand-logo.png';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -56,8 +56,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand mark */}
         <div className="text-center mb-8">
-          <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-14 mx-auto mb-4" />
-          <h1 className="text-page text-foreground">Klikklaar SEO</h1>
+          <img src={klikklaarLogo} alt="KlikKlaar" className="h-16 mx-auto mb-4" />
           <p className="text-sm text-muted-foreground mt-1">Sales Executive Control Center</p>
         </div>
 

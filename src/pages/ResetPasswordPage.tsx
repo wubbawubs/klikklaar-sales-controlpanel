@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import klikklaarLogo from '@/assets/klikklaar-seo-logo.jpeg';
+import klikklaarLogo from '@/assets/klikklaar-brand-logo.png';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img src={klikklaarLogo} alt="KlikKlaar SEO" className="h-14 mx-auto mb-4" />
+          <img src={klikklaarLogo} alt="KlikKlaar" className="h-16 mx-auto mb-4" />
           <h1 className="text-page text-foreground">Wachtwoord instellen</h1>
         </div>
 
