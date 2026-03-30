@@ -16,8 +16,11 @@ import {
   Phone,
   X,
   GitBranch,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg'; // brand icon
 
@@ -51,6 +54,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
   const { signOut, user, isAdmin, roles } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
 
@@ -123,13 +127,23 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors mt-0.5"
-            >
-              <LogOut className="h-3 w-3" />
-              Uitloggen
-            </button>
+            <div className="flex items-center gap-3 mt-0.5">
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
+              >
+                <LogOut className="h-3 w-3" />
+                Uitloggen
+              </button>
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
+                aria-label="Wissel thema"
+              >
+                {theme === 'light' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
+                {theme === 'light' ? 'Dark' : 'Light'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
