@@ -33,9 +33,11 @@ export default function HealthEventsLog() {
   const fetchEvents = async () => {
     setLoading(true);
     // Fetch health events with SE names
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: eventsData } = await supabase
       .from('health_events')
       .select('*')
+      .gte('created_at', oneDayAgo)
       .order('created_at', { ascending: false })
       .limit(50);
 

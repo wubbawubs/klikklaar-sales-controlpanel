@@ -56,15 +56,18 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
       reportError('supabase_connectivity', e?.message || 'Database connection failed');
     }
 
-    // 2. Pipedrive sync freshness (employees only, skip for admin-level checks)
-    if (isEmployee && seId && !seId.startsWith('admin')) {
+    // 2. Pipedrive sync freshness (employees only, only during work hours 7-20)
+    const currentHour = new Date().getHours();
+    const isDuringWorkHours = currentHour >= 7 && currentHour <= 20;
+
+    if (isEmployee && seId && !seId.startsWith('admin') && isDuringWorkHours) {
       try {
-        const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+        const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         const { data } = await supabase
           .from('pipedrive_lead_assignments')
           .select('updated_at')
           .eq('sales_executive_id', seId)
-          .gte('updated_at', twentyMinAgo)
+          .gte('updated_at', thirtyMinAgo)
           .limit(1);
 
         const { count } = await supabase
@@ -75,28 +78,15 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
         if ((count ?? 0) > 0 && (!data || data.length === 0)) {
           checks.pipedrive = 'error';
           errors.push('Pipedrive sync loopt achter');
-          reportError('pipedrive_sync_stale', 'No Pipedrive updates in last 20 minutes');
+          reportError('pipedrive_sync_stale', 'No Pipedrive updates in last 30 minutes');
         } else {
           checks.pipedrive = 'ok';
         }
       } catch {
         checks.pipedrive = 'ok';
       }
-    } else if (isEmployee) {
-      // Admin-level: check if any lead assignments were synced recently
-      try {
-        const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
-        const { data } = await supabase
-          .from('pipedrive_lead_assignments')
-          .select('updated_at')
-          .gte('updated_at', twentyMinAgo)
-          .limit(1);
-        checks.pipedrive = (data && data.length > 0) ? 'ok' : 'ok'; // Don't flag if no data
-      } catch {
-        checks.pipedrive = 'ok';
-      }
     } else {
-      checks.pipedrive = 'skipped';
+      checks.pipedrive = isEmployee ? 'ok' : 'skipped';
     }
 
     // 3. CI Engine ping

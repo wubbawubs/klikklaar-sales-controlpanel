@@ -1,0 +1,1 @@
+DELETE FROM public.health_events WHERE created_at < now() - interval '1 hour';
