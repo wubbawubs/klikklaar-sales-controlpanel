@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
   { to: '/integrations', icon: Plug, label: 'Integraties', visibility: 'admin' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },
-  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'admin' },
+  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'coach+admin' },
   { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
   { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', visibility: 'admin' },
 ];
