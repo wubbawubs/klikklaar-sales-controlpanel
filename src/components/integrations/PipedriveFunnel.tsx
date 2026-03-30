@@ -16,6 +16,8 @@ interface Deal {
   currency: string;
   person_name: string | null;
   org_name: string | null;
+  org_id: number | null;
+  person_id: number | null;
   owner_name: string | null;
   expected_close_date: string | null;
 }
