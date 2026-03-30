@@ -24,7 +24,10 @@ interface Props {
 export default function SETaskChecklist({ seId }: Props) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
+  const displayTasks = tasks.slice(0, 8);
+  const selectedTask = selectedIdx !== null ? displayTasks[selectedIdx] ?? null : null;
 
   useEffect(() => {
     const fetchTasks = async () => {
