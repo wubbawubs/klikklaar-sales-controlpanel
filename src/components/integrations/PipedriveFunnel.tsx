@@ -111,8 +111,6 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
     );
   }
 
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-
   return (
     <div className="space-y-3">
       {/* Header */}
