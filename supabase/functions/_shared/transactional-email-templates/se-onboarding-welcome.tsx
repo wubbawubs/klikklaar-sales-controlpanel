@@ -153,7 +153,7 @@ export const template = {
   previewData: {
     firstName: 'Huub',
     lastName: 'Rood',
-    email: 'huub.rood@klikklaar.nl',
+    email: 'huub@klikklaarseo.nl',
     temporaryPassword: 'Welkom2026!',
     coachName: 'Jouw Coach',
     coachEmail: 'coach@klikklaar.nl',
