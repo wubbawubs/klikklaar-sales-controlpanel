@@ -84,7 +84,19 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[420px] sm:max-w-[420px] p-0 flex flex-col">
         <SheetHeader className="p-5 pb-3">
-          <SheetTitle className="text-base leading-tight">{dealTitle || org?.name || 'Details'}</SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="text-base leading-tight flex-1">{dealTitle || org?.name || 'Details'}</SheetTitle>
+            {(onPrev || onNext) && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onPrev} onClick={() => onPrev?.()}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onNext} onClick={() => onNext?.()}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
           {dealValue != null && (
             <SheetDescription className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4 text-primary" />
