@@ -3,8 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface DealDetailSheetProps {
   open: boolean;
@@ -14,6 +15,10 @@ interface DealDetailSheetProps {
   dealExpectedClose?: string | null;
   orgId?: number | null;
   personId?: number | null;
+  leadAssignmentId?: string | null;
+  orgName?: string | null;
+  personName?: string | null;
+  personPhone?: string | null;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 }
@@ -55,11 +60,22 @@ const headers = {
 };
 const BASE = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
 
-export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, onPrev, onNext }: DealDetailSheetProps) {
+export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, onPrev, onNext }: DealDetailSheetProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [persons, setPersons] = useState<Person[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+
+  const handleLogCall = () => {
+    const params = new URLSearchParams();
+    if (orgName || org?.name) params.set('org', orgName || org?.name || '');
+    if (personName || persons[0]?.name) params.set('contact', personName || persons[0]?.name || '');
+    if (personPhone || persons[0]?.phone?.[0]) params.set('phone', personPhone || persons[0]?.phone?.[0] || '');
+    if (leadAssignmentId) params.set('lead', leadAssignmentId);
+    onOpenChange(false);
+    navigate(`/calls?${params.toString()}`);
+  };
 
   useEffect(() => {
     if (!open || !orgId) return;
@@ -107,6 +123,14 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
             </SheetDescription>
           )}
         </SheetHeader>
+
+        {/* Log Call CTA */}
+        <div className="px-5 pb-2">
+          <Button onClick={handleLogCall} className="w-full gap-2" size="sm">
+            <PhoneCall className="h-4 w-4" />
+            Log call
+          </Button>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center flex-1">

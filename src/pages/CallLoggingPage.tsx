@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +31,7 @@ export default function CallLoggingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome>('not_reached');
@@ -40,6 +42,23 @@ export default function CallLoggingPage() {
   const [callbackDate, setCallbackDate] = useState('');
   const [callbackTime, setCallbackTime] = useState('');
   const [selectedLead, setSelectedLead] = useState<string>('none');
+
+  // Prefill from URL params (e.g. from DealDetailSheet)
+  useEffect(() => {
+    const org = searchParams.get('org');
+    const contact = searchParams.get('contact');
+    const phone = searchParams.get('phone');
+    const lead = searchParams.get('lead');
+    if (org || contact || phone || lead) {
+      if (org) setOrgName(org);
+      if (contact) setContactName(contact);
+      if (phone) setContactPhone(phone);
+      if (lead) setSelectedLead(lead);
+      setShowForm(true);
+      // Clean up URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, []);
 
   // Get SE id
   const { data: seData } = useQuery({

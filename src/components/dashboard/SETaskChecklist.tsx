@@ -15,6 +15,10 @@ interface TaskItem {
   orgId?: number | null;
   personId?: number | null;
   dealTitle?: string | null;
+  leadAssignmentId?: string | null;
+  orgName?: string | null;
+  personName?: string | null;
+  personPhone?: string | null;
 }
 
 interface Props {
@@ -46,7 +50,7 @@ export default function SETaskChecklist({ seId }: Props) {
         // Untouched leads with Pipedrive IDs
         supabase
           .from('pipedrive_lead_assignments')
-          .select('id, org_name, person_name, deal_title, pipedrive_org_id, pipedrive_person_id')
+          .select('id, org_name, person_name, person_phone, deal_title, pipedrive_org_id, pipedrive_person_id')
           .eq('sales_executive_id', seId)
           .in('status', ['assigned'])
           .order('created_at', { ascending: true }),
@@ -66,14 +70,14 @@ export default function SETaskChecklist({ seId }: Props) {
         ...(interestRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
       ];
 
-      let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null }> = {};
+      let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
       if (assignmentIds.length > 0) {
         const { data: assignments } = await supabase
           .from('pipedrive_lead_assignments')
-          .select('id, pipedrive_org_id, pipedrive_person_id, deal_title')
+          .select('id, pipedrive_org_id, pipedrive_person_id, deal_title, org_name, person_name, person_phone')
           .in('id', assignmentIds);
         (assignments || []).forEach(a => {
-          assignmentMap[a.id] = { pipedrive_org_id: a.pipedrive_org_id, pipedrive_person_id: a.pipedrive_person_id, deal_title: a.deal_title };
+          assignmentMap[a.id] = a;
         });
       }
 
@@ -92,6 +96,10 @@ export default function SETaskChecklist({ seId }: Props) {
           orgId: assignment?.pipedrive_org_id ?? null,
           personId: assignment?.pipedrive_person_id ?? null,
           dealTitle: assignment?.deal_title ?? null,
+          leadAssignmentId: cb.lead_assignment_id ?? null,
+          orgName: cb.org_name ?? assignment?.org_name ?? null,
+          personName: cb.contact_name ?? assignment?.person_name ?? null,
+          personPhone: assignment?.person_phone ?? null,
         });
       });
 
@@ -110,6 +118,10 @@ export default function SETaskChecklist({ seId }: Props) {
           orgId: assignment?.pipedrive_org_id ?? null,
           personId: assignment?.pipedrive_person_id ?? null,
           dealTitle: assignment?.deal_title ?? null,
+          leadAssignmentId: c.lead_assignment_id ?? null,
+          orgName: c.org_name ?? assignment?.org_name ?? null,
+          personName: c.contact_name ?? assignment?.person_name ?? null,
+          personPhone: assignment?.person_phone ?? null,
         });
       });
 
@@ -124,6 +136,10 @@ export default function SETaskChecklist({ seId }: Props) {
           orgId: lead.pipedrive_org_id ?? null,
           personId: lead.pipedrive_person_id ?? null,
           dealTitle: lead.deal_title ?? null,
+          leadAssignmentId: lead.id,
+          orgName: lead.org_name ?? null,
+          personName: lead.person_name ?? null,
+          personPhone: lead.person_phone ?? null,
         });
       });
 
@@ -211,6 +227,10 @@ export default function SETaskChecklist({ seId }: Props) {
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
         orgId={selectedTask?.orgId}
         personId={selectedTask?.personId}
+        leadAssignmentId={selectedTask?.leadAssignmentId}
+        orgName={selectedTask?.orgName}
+        personName={selectedTask?.personName}
+        personPhone={selectedTask?.personPhone}
         onPrev={selectedIdx !== null && selectedIdx > 0 ? () => setSelectedIdx(selectedIdx - 1) : null}
         onNext={selectedIdx !== null && selectedIdx < displayTasks.length - 1 ? () => setSelectedIdx(selectedIdx + 1) : null}
       />
