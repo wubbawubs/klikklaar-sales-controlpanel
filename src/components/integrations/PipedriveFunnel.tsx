@@ -44,6 +44,7 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
   const fetchDeals = async () => {
     setLoading(true);
