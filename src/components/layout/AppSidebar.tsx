@@ -20,6 +20,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg'; // brand icon
 
