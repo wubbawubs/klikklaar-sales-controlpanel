@@ -598,6 +598,13 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Lead detail sheet */}
+      <DealDetailSheet
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        orgId={detailOrgId}
+      />
     </div>
   );
 }
