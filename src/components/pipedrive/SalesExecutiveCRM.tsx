@@ -376,7 +376,8 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedLead(lead);
                             setShowActivityDialog(true);
                             if (lead.pipedrive_org_id) fetchPipedriveActivities(lead.pipedrive_org_id);
