@@ -215,6 +215,10 @@ export default function SETaskChecklist({ seId }: Props) {
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
         orgId={selectedTask?.orgId}
         personId={selectedTask?.personId}
+        leadAssignmentId={selectedTask?.leadAssignmentId}
+        orgName={selectedTask?.orgName}
+        personName={selectedTask?.personName}
+        personPhone={selectedTask?.personPhone}
         onPrev={selectedIdx !== null && selectedIdx > 0 ? () => setSelectedIdx(selectedIdx - 1) : null}
         onNext={selectedIdx !== null && selectedIdx < displayTasks.length - 1 ? () => setSelectedIdx(selectedIdx + 1) : null}
       />
