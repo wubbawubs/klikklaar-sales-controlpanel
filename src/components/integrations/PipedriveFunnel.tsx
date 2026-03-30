@@ -202,9 +202,9 @@ function StageColumn({ stage, formatCurrency, onDealClick }: { stage: Stage; for
   );
 }
 
-function DealCard({ deal, formatCurrency }: { deal: Deal; formatCurrency: (v: number) => string }) {
+function DealCard({ deal, formatCurrency, onClick }: { deal: Deal; formatCurrency: (v: number) => string; onClick: () => void }) {
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow cursor-default">
+    <Card className="shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer" onClick={onClick}>
       <CardContent className="p-2.5 space-y-1.5">
         <p className="text-sm font-medium leading-tight line-clamp-2">{deal.title}</p>
 
