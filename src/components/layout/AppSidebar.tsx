@@ -16,6 +16,8 @@ import {
   Phone,
   X,
   GitBranch,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
