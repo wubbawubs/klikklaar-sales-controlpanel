@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = roles.includes('super_admin') || roles.includes('admin');
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, isAdmin, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, roles, isAdmin, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
