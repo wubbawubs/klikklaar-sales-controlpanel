@@ -15,6 +15,10 @@ interface TaskItem {
   orgId?: number | null;
   personId?: number | null;
   dealTitle?: string | null;
+  leadAssignmentId?: string | null;
+  orgName?: string | null;
+  personName?: string | null;
+  personPhone?: string | null;
 }
 
 interface Props {
