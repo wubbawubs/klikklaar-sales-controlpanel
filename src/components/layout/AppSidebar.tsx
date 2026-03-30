@@ -60,9 +60,13 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
 
+  const isCoach = roles.includes('coach') && !isAdmin;
+
   const visibleItems = navItems.filter(item => {
-    if (!item.adminOnly) return true;
-    return isCoachOrAdmin;
+    if (!item.visibility) return true;
+    if (item.visibility === 'admin') return isAdmin;
+    if (item.visibility === 'coach+admin') return isCoachOrAdmin;
+    return true;
   });
 
   const handleNavClick = () => {
