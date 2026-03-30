@@ -39,12 +39,20 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Public form routes - accessible without authentication
+  // Public routes - accessible without authentication
   if (location.pathname.startsWith('/form/')) {
     return (
       <Routes>
         <Route path="/form/:slug/success" element={<FormSuccessPage />} />
         <Route path="/form/:slug" element={<PublicFormPage />} />
+      </Routes>
+    );
+  }
+
+  if (location.pathname === '/reset-password') {
+    return (
+      <Routes>
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     );
   }
