@@ -19,13 +19,30 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isSignUp) {
-        await signUp(email, password, fullName);
-        toast.success('Account aangemaakt! Controleer je e-mail voor bevestiging.');
-      } else {
-        await signIn(email, password);
-        toast.success('Succesvol ingelogd');
-      }
+      await signIn(email, password);
+      toast.success('Succesvol ingelogd');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Er is een fout opgetreden';
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error('Vul je e-mailadres in');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success('Wachtwoord-reset e-mail verstuurd! Controleer je inbox.');
+      setShowForgotPassword(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Er is een fout opgetreden';
       toast.error(message);
