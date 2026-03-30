@@ -70,14 +70,14 @@ export default function SETaskChecklist({ seId }: Props) {
         ...(interestRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
       ];
 
-      let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null }> = {};
+      let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
       if (assignmentIds.length > 0) {
         const { data: assignments } = await supabase
           .from('pipedrive_lead_assignments')
-          .select('id, pipedrive_org_id, pipedrive_person_id, deal_title')
+          .select('id, pipedrive_org_id, pipedrive_person_id, deal_title, org_name, person_name, person_phone')
           .in('id', assignmentIds);
         (assignments || []).forEach(a => {
-          assignmentMap[a.id] = { pipedrive_org_id: a.pipedrive_org_id, pipedrive_person_id: a.pipedrive_person_id, deal_title: a.deal_title };
+          assignmentMap[a.id] = a;
         });
       }
 
