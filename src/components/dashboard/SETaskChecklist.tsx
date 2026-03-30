@@ -50,7 +50,7 @@ export default function SETaskChecklist({ seId }: Props) {
         // Untouched leads with Pipedrive IDs
         supabase
           .from('pipedrive_lead_assignments')
-          .select('id, org_name, person_name, deal_title, pipedrive_org_id, pipedrive_person_id')
+          .select('id, org_name, person_name, person_phone, deal_title, pipedrive_org_id, pipedrive_person_id')
           .eq('sales_executive_id', seId)
           .in('status', ['assigned'])
           .order('created_at', { ascending: true }),
