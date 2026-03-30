@@ -136,6 +136,10 @@ export default function SETaskChecklist({ seId }: Props) {
           orgId: lead.pipedrive_org_id ?? null,
           personId: lead.pipedrive_person_id ?? null,
           dealTitle: lead.deal_title ?? null,
+          leadAssignmentId: lead.id,
+          orgName: lead.org_name ?? null,
+          personName: lead.person_name ?? null,
+          personPhone: lead.person_phone ?? null,
         });
       });
 
