@@ -64,22 +64,26 @@ export default function TrainingPage() {
     ? documents.filter(d => d.category === selectedCategory)
     : [];
 
-  const getPublicUrl = (filePath: string) => {
-    const { data } = supabase.storage.from('training-documents').getPublicUrl(filePath);
-    return data.publicUrl;
+  const getSignedUrl = async (filePath: string): Promise<string> => {
+    const { data, error } = await supabase.storage
+      .from('training-documents')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+    if (error || !data?.signedUrl) throw error;
+    return data.signedUrl;
   };
 
-  const handleDownload = (filePath: string, fileName: string) => {
+  const handleDownload = async (filePath: string, fileName: string) => {
+    const url = await getSignedUrl(filePath);
     const a = document.createElement('a');
-    a.href = getPublicUrl(filePath);
+    a.href = url;
     a.download = fileName;
     a.target = '_blank';
     a.click();
   };
 
-  const handlePreview = (filePath: string, displayName: string) => {
-    const publicUrl = getPublicUrl(filePath);
-    const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicUrl)}`;
+  const handlePreview = async (filePath: string, displayName: string) => {
+    const signedUrl = await getSignedUrl(filePath);
+    const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
     setPreviewDoc({ name: displayName, url: viewerUrl });
   };
 
