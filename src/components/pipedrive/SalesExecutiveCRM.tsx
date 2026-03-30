@@ -327,7 +327,12 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
           ) : (
             <div className="space-y-2">
               {filteredLeads.map(lead => (
-                <Card key={lead.id} className="hover:border-primary/50 transition-colors">
+                 <Card key={lead.id} className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => {
+                    if (lead.pipedrive_org_id) {
+                      setDetailOrgId(lead.pipedrive_org_id);
+                      setDetailOpen(true);
+                    }
+                  }}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
