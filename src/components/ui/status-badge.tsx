@@ -49,6 +49,11 @@ const statusLabels: Record<string, string> = {
   design_only: 'Alleen ontwerp',
   export_package: 'Export pakket',
   controlled_execution: 'Gecontroleerde uitvoering',
+  none: 'Geen',
+  no_follow_up: 'Geen opvolging',
+  in_progress: 'Bezig',
+  scheduled: 'Gepland',
+  cancelled: 'Geannuleerd',
 };
 
 interface StatusBadgeProps {
