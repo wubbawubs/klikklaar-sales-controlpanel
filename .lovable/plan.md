@@ -1,76 +1,72 @@
 
 
-# Health Check & Downtime Eliminator Engine
+# Plan: Interactieve Deal Cards + Lead Details + Call Logging Verrijking
 
-## Wat wordt er gebouwd
+## Samenvatting
 
-Een continu draaiend health-monitoring systeem dat op de achtergrond alle kritieke processen van de SE-omgeving bewaakt. Bij fouten ontvang jij (admin/coach) direct een e-mail en wordt de fout gelogd. De SE ziet een subtiele statusbalk op het dashboard.
+Drie verbeteringen zodat Huub tijdens het bellen alle informatie direct bij de hand heeft:
 
----
-
-## Architectuur
-
-```text
-┌─────────────────────────────────────────┐
-│  SE Dashboard (browser)                 │
-│                                         │
-│  useHealthCheck() hook                  │
-│  - Elke 60s: checks uitvoeren          │
-│  - Bij fout → POST health-alert        │
-│  - Statusbalk bovenaan dashboard        │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────┐
-│  Edge Function: health-alert             │
-│  - Ontvangt foutmelding + context        │
-│  - Logt in health_events tabel           │
-│  - Stuurt e-mail via Resend (of log)     │
-│  - Deduplicatie: max 1 mail/30min/type   │
-└──────────────────────────────────────────┘
-```
+1. **Klikbare deal cards in de Kanban** — opent een detailpaneel met organisatie-info, contactpersonen, deal-waarde en laatste notities/activiteiten uit Pipedrive
+2. **Klikbare leads in het CRM/dashboard** — zelfde detailweergave wanneer je op een lead klikt
+3. **Verrijkte Call Logging** — bij het selecteren van een lead worden alle Pipedrive-gegevens (organisatie, contacten, eerdere notities, deals) getoond voordat de call wordt gelogd
 
 ---
 
-## Stappen
+## Wat er verandert voor Huub
 
-### 1. Database: `health_events` tabel
-Nieuwe tabel voor het loggen van health check resultaten:
-- `id`, `sales_executive_id`, `check_type` (pipedrive_sync, ci_engine, supabase_connectivity, edge_functions), `status` (ok/warning/critical), `error_message`, `error_code`, `suggested_fix`, `created_at`, `notified` (boolean)
-- RLS: SE's kunnen eigen events lezen, admins alles
+- In de **Pipedrive Kanban** (`/pipedrive` → Pipeline tab): klik op een deal card → een **Sheet/Drawer** schuift open met:
+  - Deal titel, waarde, verwachte sluitdatum
+  - Organisatie-details (adres, eigenaar, aantal deals)
+  - Contactpersonen met telefoon en e-mail (direct klikbaar)
+  - Laatste 10 activiteiten/notities uit Pipedrive
 
-### 2. Edge Function: `health-alert`
-- Ontvangt: `seId`, `seName`, `checkType`, `errorMessage`, `errorCode`
-- Deduplicatie: checkt of dezelfde `check_type` + `sales_executive_id` al gemeld is in laatste 30 min
-- Logt in `health_events`
-- Stuurt e-mail naar admin (hergebruikt Resend-patroon van `notify-coach`)
-- Genereert `suggested_fix` op basis van bekende foutcodes
+- In het **CRM leads overzicht** (`/pipedrive` → Mijn CRM tab): klik op een lead-rij → zelfde detailpaneel met organisatie + contacten + activiteiten
 
-### 3. Client-side: `useHealthCheck` hook
-Draait elke 60 seconden de volgende checks:
-1. **Supabase connectivity** — simpele `SELECT 1` query
-2. **Pipedrive sync status** — check `pipedrive_lead_assignments.updated_at` niet ouder dan 20 min (alleen employees)
-3. **CI Engine beschikbaarheid** — ping `ci-coaching` functie met lege body
-4. **Edge Functions** — basis connectivity test naar `signal-engine`
-
-Bij een falende check → `supabase.functions.invoke('health-alert', ...)` met foutdetails.
-
-### 4. Dashboard: `SEHealthBar` component
-- Subtiele statusbalk bovenaan het SE-dashboard (onder de welkomstbanner)
-- Groen "Alle systemen operationeel" als alles ok is
-- Oranje/rood bij waarschuwingen met korte beschrijving
-- Automatisch vernieuwd door de hook
-
-### 5. Integratie in `SEPersonalDashboard.tsx`
-- `useHealthCheck(seId, isEmployee)` hook toevoegen
-- `<SEHealthBar>` component renderen boven de performance bars
+- In **Call Logging** (`/calls`): wanneer een lead wordt geselecteerd uit de dropdown, verschijnt een **informatiekaart** onder de selector met:
+  - Organisatie-info en alle contactpersonen
+  - Laatste 5 activiteiten/notities
+  - Openstaande deals voor die organisatie
+  - Pas daarna de call-resultaten invullen
 
 ---
 
-## Technische details
+## Technische aanpak
 
-- **Deduplicatie**: voorkomt e-mailstorm bij aanhoudende fouten — max 1 notificatie per 30 min per check-type per SE
-- **Suggested fixes**: mapping van bekende errors (bijv. `PIPEDRIVE_API_TOKEN not set` → "Controleer de Pipedrive API token in de instellingen")
-- **E-mail**: hergebruikt het bestaande Resend-patroon uit `notify-coach`
-- **Geen extra secrets nodig**: RESEND_API_KEY is al beschikbaar (of fallback naar console log)
+### 1. Nieuw component: `DealDetailSheet.tsx`
+- Herbruikbaar Sheet (sidebar drawer) component
+- Props: `dealId`, `orgId`, `personId`, `open`, `onOpenChange`
+- Bij openen: parallel 3 edge functions aanroepen:
+  - `pipedrive-organizations?org_id=X` → org details + personen
+  - `pipedrive-activities?org_id=X` → laatste activiteiten/notities
+  - `pipedrive-deals?org_ids=X` → alle deals voor die org
+- Toont alles in een gestructureerd paneel
+
+### 2. Aanpassing `PipedriveFunnel.tsx` (Kanban)
+- `DealCard` component krijgt `onClick` → opent `DealDetailSheet`
+- Cursor wordt `pointer`, visuele hover-feedback
+
+### 3. Aanpassing `SalesExecutiveCRM.tsx` (Leads tab)
+- Elke lead-rij wordt klikbaar → opent `DealDetailSheet` met de `org_id` van die lead
+- De bestaande "Log" knop blijft naast de klik-functionaliteit
+
+### 4. Aanpassing `CallLoggingPage.tsx`
+- Nieuw component `LeadInfoPanel` dat verschijnt zodra een lead geselecteerd wordt
+- Haalt org-details, contacten en recente activiteiten op via dezelfde edge functions
+- Toont dit als een uitklapbare kaart boven het call-formulier
+
+### 5. Geen database- of edge function wijzigingen nodig
+- Alle benodigde endpoints bestaan al (`pipedrive-organizations`, `pipedrive-persons`, `pipedrive-activities`, `pipedrive-deals`)
+- Geen migraties nodig
+
+---
+
+## Bestanden
+
+| Bestand | Actie |
+|---|---|
+| `src/components/pipedrive/DealDetailSheet.tsx` | Nieuw — herbruikbaar detailpaneel |
+| `src/components/pipedrive/LeadInfoPanel.tsx` | Nieuw — informatiekaart voor call logging |
+| `src/components/integrations/PipedriveFunnel.tsx` | Wijzigen — deal cards klikbaar maken |
+| `src/components/pipedrive/SalesExecutiveCRM.tsx` | Wijzigen — lead rijen klikbaar maken |
+| `src/pages/CallLoggingPage.tsx` | Wijzigen — LeadInfoPanel toevoegen |
 
