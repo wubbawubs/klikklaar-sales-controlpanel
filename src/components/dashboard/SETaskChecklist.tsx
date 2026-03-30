@@ -24,7 +24,10 @@ interface Props {
 export default function SETaskChecklist({ seId }: Props) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
+  const displayTasks = tasks.slice(0, 8);
+  const selectedTask = selectedIdx !== null ? displayTasks[selectedIdx] ?? null : null;
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -167,13 +170,13 @@ export default function SETaskChecklist({ seId }: Props) {
             </div>
           ) : (
             <ul className="space-y-1">
-              {tasks.slice(0, 8).map(task => {
+              {displayTasks.map((task, idx) => {
                 const Icon = task.icon;
                 const hasContext = !!(task.orgId || task.personId);
                 return (
                   <li key={task.id}>
                     <button
-                      onClick={() => setSelectedTask(task)}
+                      onClick={() => setSelectedIdx(idx)}
                       className="w-full flex items-center gap-3 py-2 px-2 -mx-0 rounded-md hover:bg-muted/50 transition-colors group text-left"
                     >
                       <Icon className={cn('h-3.5 w-3.5 shrink-0', priorityColors[task.priority])} />
@@ -204,10 +207,12 @@ export default function SETaskChecklist({ seId }: Props) {
       {/* Direct klantkaart — opent DealDetailSheet met alle context */}
       <DealDetailSheet
         open={!!selectedTask}
-        onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
+        onOpenChange={(open) => { if (!open) setSelectedIdx(null); }}
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
         orgId={selectedTask?.orgId}
         personId={selectedTask?.personId}
+        onPrev={selectedIdx !== null && selectedIdx > 0 ? () => setSelectedIdx(selectedIdx - 1) : null}
+        onNext={selectedIdx !== null && selectedIdx < displayTasks.length - 1 ? () => setSelectedIdx(selectedIdx + 1) : null}
       />
     </>
   );

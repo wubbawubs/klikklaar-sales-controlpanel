@@ -3,7 +3,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar } from 'lucide-react';
+import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DealDetailSheetProps {
   open: boolean;
@@ -13,6 +14,8 @@ interface DealDetailSheetProps {
   dealExpectedClose?: string | null;
   orgId?: number | null;
   personId?: number | null;
+  onPrev?: (() => void) | null;
+  onNext?: (() => void) | null;
 }
 
 interface OrgDetail {
@@ -52,7 +55,7 @@ const headers = {
 };
 const BASE = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
 
-export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId }: DealDetailSheetProps) {
+export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, onPrev, onNext }: DealDetailSheetProps) {
   const [loading, setLoading] = useState(false);
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [persons, setPersons] = useState<Person[]>([]);
@@ -81,7 +84,19 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[420px] sm:max-w-[420px] p-0 flex flex-col">
         <SheetHeader className="p-5 pb-3">
-          <SheetTitle className="text-base leading-tight">{dealTitle || org?.name || 'Details'}</SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="text-base leading-tight flex-1">{dealTitle || org?.name || 'Details'}</SheetTitle>
+            {(onPrev || onNext) && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onPrev} onClick={() => onPrev?.()}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onNext} onClick={() => onNext?.()}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
           {dealValue != null && (
             <SheetDescription className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4 text-primary" />
