@@ -207,10 +207,12 @@ export default function SETaskChecklist({ seId }: Props) {
       {/* Direct klantkaart — opent DealDetailSheet met alle context */}
       <DealDetailSheet
         open={!!selectedTask}
-        onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
+        onOpenChange={(open) => { if (!open) setSelectedIdx(null); }}
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
         orgId={selectedTask?.orgId}
         personId={selectedTask?.personId}
+        onPrev={selectedIdx !== null && selectedIdx > 0 ? () => setSelectedIdx(selectedIdx - 1) : null}
+        onNext={selectedIdx !== null && selectedIdx < displayTasks.length - 1 ? () => setSelectedIdx(selectedIdx + 1) : null}
       />
     </>
   );
