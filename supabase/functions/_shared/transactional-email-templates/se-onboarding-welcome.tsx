@@ -32,121 +32,112 @@ const SEOnboardingWelcomeEmail = ({
 }: SEOnboardingProps) => (
   <Html lang="nl" dir="ltr">
     <Head />
-    <Preview>Welkom bij {SITE_NAME} — je onboarding start {startDate} om {startTime}</Preview>
+    <Preview>Welkom bij {SITE_NAME} — onboarding {startDate} om {startTime}</Preview>
     <Body style={main}>
       <Container style={container}>
-        {/* Header */}
         <Section style={header}>
           <Text style={brandText}>KlikKlaar</Text>
         </Section>
 
-        {/* Welkom */}
         <Heading style={h1}>
-          Welkom, {firstName}! 🎉
+          Hoi {firstName},
         </Heading>
         <Text style={text}>
-          Leuk dat je aan boord komt bij <strong>{SITE_NAME}</strong>. We hebben alles klaargezet
-          zodat je direct kunt starten met je onboarding.
+          Welkom bij het team. Hieronder vind je alle informatie die je nodig hebt
+          om {startDate} goed van start te gaan.
         </Text>
 
         <Hr style={hr} />
 
-        {/* Inloggegevens */}
-        <Heading as="h2" style={h2}>🔐 Je inloggegevens</Heading>
+        <Heading as="h2" style={h2}>Inloggegevens</Heading>
         <Section style={infoBox}>
-          <Text style={infoLabel}>Platform:</Text>
+          <Text style={infoLabel}>Platform</Text>
           <Link href={PLATFORM_URL} style={infoLink}>{PLATFORM_URL}</Link>
 
-          <Text style={infoLabel}>E-mailadres:</Text>
+          <Text style={infoLabel}>E-mailadres</Text>
           <Text style={infoValue}>{email}</Text>
 
-          <Text style={infoLabel}>Tijdelijk wachtwoord:</Text>
+          <Text style={infoLabel}>Tijdelijk wachtwoord</Text>
           <Text style={infoValue}>{temporaryPassword}</Text>
 
           <Text style={smallNote}>
-            ⚠️ Wijzig je wachtwoord direct na je eerste inlog via "Wachtwoord vergeten?" op de loginpagina.
+            Wijzig je wachtwoord direct na de eerste inlog via "Wachtwoord vergeten?" op de loginpagina.
           </Text>
         </Section>
 
         <Button style={primaryButton} href={PLATFORM_URL}>
-          Ga naar het platform →
+          Inloggen op het platform
         </Button>
 
         <Hr style={hr} />
 
-        {/* Begeleiding */}
-        <Heading as="h2" style={h2}>👤 Je begeleider</Heading>
+        <Heading as="h2" style={h2}>Je begeleider</Heading>
         <Text style={text}>
-          Tijdens je onboarding en eerste weken word je begeleid door <strong>{coachName}</strong>.
-          Neem gerust contact op bij vragen.
+          Tijdens de onboarding en je eerste weken word je begeleid door {coachName}.
+          Neem contact op als je ergens tegenaan loopt.
         </Text>
         <Section style={infoBox}>
-          <Text style={infoLabel}>Coach:</Text>
+          <Text style={infoLabel}>Coach</Text>
           <Text style={infoValue}>{coachName}</Text>
 
-          <Text style={infoLabel}>E-mail:</Text>
+          <Text style={infoLabel}>E-mail</Text>
           <Link href={`mailto:${coachEmail}`} style={infoLink}>{coachEmail}</Link>
         </Section>
 
         <Hr style={hr} />
 
-        {/* Ochtendprogramma */}
-        <Heading as="h2" style={h2}>📋 Programma onboarding ochtend</Heading>
+        <Heading as="h2" style={h2}>Programma onboarding ochtend</Heading>
         <Text style={text}>
-          <strong>{startDate} — start om {startTime}</strong>
+          {startDate} — start om {startTime}
         </Text>
         <Section style={scheduleBox}>
-          <Text style={scheduleItem}>☕ <strong>{startTime}</strong> — Welkom & kennismaking</Text>
-          <Text style={scheduleItem}>📖 <strong>{startTime.replace(/\d{2}$/, '30')}</strong> — Platform rondleiding & inlog testen</Text>
-          <Text style={scheduleItem}>📞 <strong>10:00</strong> — Belscript & productlijnen doorlopen</Text>
-          <Text style={scheduleItem}>🎯 <strong>10:30</strong> — Eerste leads & CRM uitleg</Text>
-          <Text style={scheduleItem}>💬 <strong>11:00</strong> — Eerste belpraktijk met coach</Text>
-          <Text style={scheduleItem}>📝 <strong>11:30</strong> — EOD-formulier & dagelijkse routine</Text>
-          <Text style={scheduleItem}>❓ <strong>12:00</strong> — Vragen & afsluiting ochtend</Text>
+          <Text style={scheduleItem}><strong>{startTime}</strong> — Welkom en kennismaking</Text>
+          <Text style={scheduleItem}><strong>{startTime.replace(/\d{2}$/, '30')}</strong> — Platform rondleiding, inlog testen</Text>
+          <Text style={scheduleItem}><strong>10:00</strong> — Belscript en productlijnen doorlopen</Text>
+          <Text style={scheduleItem}><strong>10:30</strong> — Eerste leads en CRM uitleg</Text>
+          <Text style={scheduleItem}><strong>11:00</strong> — Belpraktijk met coach</Text>
+          <Text style={scheduleItem}><strong>11:30</strong> — EOD-formulier en dagelijkse routine</Text>
+          <Text style={scheduleItem}><strong>12:00</strong> — Vragen en afsluiting</Text>
         </Section>
 
         {productLines && productLines.length > 0 && (
           <>
             <Hr style={hr} />
-            <Heading as="h2" style={h2}>📦 Jouw productlijnen</Heading>
+            <Heading as="h2" style={h2}>Productlijnen</Heading>
             <Text style={text}>
-              Je gaat aan de slag met de volgende productlijnen:{' '}
-              <strong>{productLines.join(', ')}</strong>
+              Je gaat werken met: <strong>{productLines.join(', ')}</strong>
             </Text>
           </>
         )}
 
         <Hr style={hr} />
 
-        {/* Handige links */}
-        <Heading as="h2" style={h2}>🔗 Handige links</Heading>
+        <Heading as="h2" style={h2}>Handige links</Heading>
         <Section style={linksBox}>
           <Text style={linkItem}>
-            📊 <Link href={`${PLATFORM_URL}/dashboard`} style={infoLink}>Jouw Dashboard</Link>
+            <Link href={`${PLATFORM_URL}/dashboard`} style={infoLink}>Dashboard</Link>
           </Text>
           <Text style={linkItem}>
-            📞 <Link href={`${PLATFORM_URL}/call-logging`} style={infoLink}>Belregistratie</Link>
+            <Link href={`${PLATFORM_URL}/call-logging`} style={infoLink}>Belregistratie</Link>
           </Text>
           <Text style={linkItem}>
-            📚 <Link href={`${PLATFORM_URL}/training`} style={infoLink}>Trainingsmateriaal</Link>
+            <Link href={`${PLATFORM_URL}/training`} style={infoLink}>Trainingsmateriaal</Link>
           </Text>
           <Text style={linkItem}>
-            📝 <Link href={`${PLATFORM_URL}/eod`} style={infoLink}>EOD Formulier</Link>
+            <Link href={`${PLATFORM_URL}/eod`} style={infoLink}>EOD Formulier</Link>
           </Text>
         </Section>
 
         <Hr style={hr} />
 
-        {/* Footer */}
         <Text style={footer}>
-          Tot {startDate}! 👋
+          Tot {startDate}.
         </Text>
         <Text style={footer}>
           Team KlikKlaar Sales
         </Text>
         <Text style={smallFooter}>
-          Deze e-mail is verstuurd als onderdeel van je onboarding bij KlikKlaar.
-          Heb je vragen? Neem contact op met {coachName} via{' '}
+          Vragen? Neem contact op met {coachName} via{' '}
           <Link href={`mailto:${coachEmail}`} style={footerLink}>{coachEmail}</Link>.
         </Text>
       </Container>
@@ -157,7 +148,7 @@ const SEOnboardingWelcomeEmail = ({
 export const template = {
   component: SEOnboardingWelcomeEmail,
   subject: (data: Record<string, any>) =>
-    `Welkom bij KlikKlaar Sales, ${data.firstName || 'collega'}! — Onboarding informatie`,
+    `KlikKlaar Sales — Onboarding informatie ${data.firstName || ''} ${data.lastName || ''}`.trim(),
   displayName: 'SE Onboarding Welkom',
   previewData: {
     firstName: 'Huub',
@@ -254,8 +245,7 @@ const infoLink = {
 
 const smallNote = {
   fontSize: '12px',
-  color: '#e53e3e',
-  fontStyle: 'italic' as const,
+  color: '#c53030',
   margin: '8px 0 0',
 }
 
