@@ -7,6 +7,7 @@ import { RefreshCw, User, Building2, ChevronLeft, ChevronRight } from 'lucide-re
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
 
 interface Deal {
   id: number;
@@ -15,6 +16,8 @@ interface Deal {
   currency: string;
   person_name: string | null;
   org_name: string | null;
+  org_id: number | null;
+  person_id: number | null;
   owner_name: string | null;
   expected_close_date: string | null;
 }
@@ -41,6 +44,7 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
   const fetchDeals = async () => {
     setLoading(true);
@@ -145,20 +149,30 @@ export function PipedriveFunnel({ pipedriveUserId }: { pipedriveUserId?: number 
         style={{ scrollSnapType: 'x mandatory' }}
       >
         {data.stages.map((stage) => (
-          <StageColumn key={stage.id} stage={stage} formatCurrency={formatCurrency} />
+          <StageColumn key={stage.id} stage={stage} formatCurrency={formatCurrency} onDealClick={setSelectedDeal} />
         ))}
       </div>
+
+      {/* Deal detail sheet */}
+      <DealDetailSheet
+        open={!!selectedDeal}
+        onOpenChange={(open) => { if (!open) setSelectedDeal(null); }}
+        dealTitle={selectedDeal?.title}
+        dealValue={selectedDeal?.value}
+        dealExpectedClose={selectedDeal?.expected_close_date}
+        orgId={selectedDeal?.org_id}
+        personId={selectedDeal?.person_id}
+      />
     </div>
   );
 }
 
-function StageColumn({ stage, formatCurrency }: { stage: Stage; formatCurrency: (v: number) => string }) {
+function StageColumn({ stage, formatCurrency, onDealClick }: { stage: Stage; formatCurrency: (v: number) => string; onDealClick: (deal: Deal) => void }) {
   return (
     <div
       className="flex-shrink-0 w-[240px] flex flex-col rounded-lg border bg-muted/30"
       style={{ scrollSnapAlign: 'start' }}
     >
-      {/* Column header */}
       <div className="px-3 py-2 border-b bg-muted/50 rounded-t-lg">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium truncate">{stage.name}</h4>
@@ -173,14 +187,13 @@ function StageColumn({ stage, formatCurrency }: { stage: Stage; formatCurrency: 
         )}
       </div>
 
-      {/* Deal cards */}
       <ScrollArea className="flex-1 max-h-[calc(100vh-280px)]">
         <div className="p-2 space-y-2">
           {stage.deals.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">Geen deals</p>
           ) : (
             stage.deals.map((deal) => (
-              <DealCard key={deal.id} deal={deal} formatCurrency={formatCurrency} />
+              <DealCard key={deal.id} deal={deal} formatCurrency={formatCurrency} onClick={() => onDealClick(deal)} />
             ))
           )}
         </div>
@@ -189,9 +202,9 @@ function StageColumn({ stage, formatCurrency }: { stage: Stage; formatCurrency: 
   );
 }
 
-function DealCard({ deal, formatCurrency }: { deal: Deal; formatCurrency: (v: number) => string }) {
+function DealCard({ deal, formatCurrency, onClick }: { deal: Deal; formatCurrency: (v: number) => string; onClick: () => void }) {
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow cursor-default">
+    <Card className="shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer" onClick={onClick}>
       <CardContent className="p-2.5 space-y-1.5">
         <p className="text-sm font-medium leading-tight line-clamp-2">{deal.title}</p>
 

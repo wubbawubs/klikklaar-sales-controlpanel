@@ -13,6 +13,7 @@ import { Phone, PhoneOff, PhoneForwarded, Calendar, Handshake, XCircle, Plus, Cl
 import { format, isToday, parseISO } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { LeadInfoPanel } from '@/components/pipedrive/LeadInfoPanel';
 
 const OUTCOMES = [
   { value: 'not_reached', label: 'Niet bereikbaar', icon: PhoneOff, color: 'text-muted-foreground' },
@@ -211,6 +212,14 @@ export default function CallLoggingPage() {
                 </Select>
               </div>
             )}
+
+            {/* Lead Info Panel - shows context when a lead is selected */}
+            {selectedLead !== 'none' && (() => {
+              const lead = leads?.find(l => l.id === selectedLead);
+              return lead?.pipedrive_org_id ? (
+                <LeadInfoPanel orgId={lead.pipedrive_org_id} orgName={lead.org_name} />
+              ) : null;
+            })()}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">

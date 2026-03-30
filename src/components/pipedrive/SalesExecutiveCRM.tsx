@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Building2, User, Phone, Mail, Plus, PhoneCall, CheckCircle2, Clock, Loader2, ExternalLink, Search, DollarSign, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
 
 interface LeadAssignment {
   id: string;
@@ -91,6 +92,8 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
   const [dealStages, setDealStages] = useState<DealStage[]>([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsTotalValue, setDealsTotalValue] = useState(0);
+  const [detailOrgId, setDetailOrgId] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // New activity form
   const [activityForm, setActivityForm] = useState({
@@ -324,7 +327,12 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
           ) : (
             <div className="space-y-2">
               {filteredLeads.map(lead => (
-                <Card key={lead.id} className="hover:border-primary/50 transition-colors">
+                 <Card key={lead.id} className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => {
+                    if (lead.pipedrive_org_id) {
+                      setDetailOrgId(lead.pipedrive_org_id);
+                      setDetailOpen(true);
+                    }
+                  }}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
@@ -368,7 +376,8 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedLead(lead);
                             setShowActivityDialog(true);
                             if (lead.pipedrive_org_id) fetchPipedriveActivities(lead.pipedrive_org_id);
@@ -589,6 +598,13 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Lead detail sheet */}
+      <DealDetailSheet
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        orgId={detailOrgId}
+      />
     </div>
   );
 }
