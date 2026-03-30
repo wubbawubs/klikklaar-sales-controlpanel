@@ -193,20 +193,22 @@ serve(async (req) => {
           3 // max 3 pages = 300 activities
         );
 
-        const actRows = activities.map((act: any) => ({
-          sales_executive_id: se.id,
-          pipedrive_activity_id: act.id,
-          activity_type: act.type || 'call',
-          subject: act.subject || null,
-          note: act.note || null,
-          done: act.done === true || act.done === 1,
-          due_date: act.due_date || null,
-          duration_minutes: act.duration ? parseInt(act.duration) : null,
-          pipedrive_org_id: act.org_id || null,
-          pipedrive_person_id: act.person_id || null,
-          pipedrive_deal_id: act.deal_id || null,
-          synced_to_pipedrive: true,
-        }));
+        const actRows = activities
+          .filter((act: any) => act.id != null)
+          .map((act: any) => ({
+            sales_executive_id: se.id,
+            pipedrive_activity_id: act.id,
+            activity_type: act.type || 'call',
+            subject: act.subject || null,
+            note: act.note || null,
+            done: act.done === true || act.done === 1,
+            due_date: act.due_date || null,
+            duration_minutes: act.duration ? parseInt(act.duration) : null,
+            pipedrive_org_id: act.org_id || null,
+            pipedrive_person_id: act.person_id || null,
+            pipedrive_deal_id: act.deal_id || null,
+            synced_to_pipedrive: true,
+          }));
 
         // Upsert in batches of 50
         for (let i = 0; i < actRows.length; i += 50) {
