@@ -7,6 +7,7 @@ import { RefreshCw, User, Building2, ChevronLeft, ChevronRight } from 'lucide-re
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
 
 interface Deal {
   id: number;
