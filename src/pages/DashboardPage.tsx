@@ -58,12 +58,33 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
   const health = useHealthCheck('admin-system-check', 'Admin', true);
 
   const fetchData = async () => {
-    const { data: seData } = await supabase.from('sales_executives').select('*');
-    const { data: wsData } = await supabase.from('workspaces').select('*');
-    const { data: icData } = await supabase.from('integration_configs').select('*');
-    const { data: jobData } = await supabase.from('provisioning_jobs').select('*');
-    const { data: eodData } = await supabase.from('eod_submissions').select('*');
-    const { data: eventData } = await supabase.from('integration_events').select('*');
+    const today = new Date().toISOString().split('T')[0];
+
+    const [
+      { data: seData },
+      { data: wsData },
+      { data: icData },
+      { data: jobData },
+      { data: eodData },
+      { data: eventData },
+      { count: openLeadsCount },
+      { data: callbacksData },
+      { count: openDealsCount },
+      { count: wonDealsCount },
+      { count: totalCallsCount },
+    ] = await Promise.all([
+      supabase.from('sales_executives').select('*'),
+      supabase.from('workspaces').select('*'),
+      supabase.from('integration_configs').select('*'),
+      supabase.from('provisioning_jobs').select('*'),
+      supabase.from('eod_submissions').select('*'),
+      supabase.from('integration_events').select('*'),
+      supabase.from('pipedrive_lead_assignments').select('id', { count: 'exact', head: true }).in('status', ['assigned']),
+      supabase.from('calls').select('id').eq('outcome', 'callback').not('callback_date', 'is', null).lte('callback_date', today),
+      supabase.from('pipedrive_lead_assignments').select('id', { count: 'exact', head: true }).in('status', ['assigned', 'contacted', 'qualified']),
+      supabase.from('pipedrive_lead_assignments').select('id', { count: 'exact', head: true }).eq('status', 'won'),
+      supabase.from('calls').select('id', { count: 'exact', head: true }),
+    ]);
 
     const seList = (seData || []) as SalesExecutive[];
     const wsList = (wsData || []) as Workspace[];
@@ -78,8 +99,6 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
       }),
     }));
 
-    const today = new Date().toISOString().split('T')[0];
-
     setStats({
       activeSEs: seList.filter(s => s.status === 'active').length,
       draftWorkspaces: wsList.filter(w => w.sharepoint_status === 'draft').length,
@@ -88,7 +107,11 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
       integrationErrors: (eventData || []).filter(e => e.processing_status === 'failed').length,
       eodExpected: seList.filter(s => s.status === 'active').length,
       eodReceived: (eodData || []).filter(e => e.session_date === today && e.status !== 'pending').length,
-      openLeads: 0, callbacksToday: 0, openDeals: 0, wonDeals: 0, activeSubscriptions: 0,
+      openLeads: openLeadsCount ?? 0,
+      callbacksToday: (callbacksData || []).length,
+      openDeals: openDealsCount ?? 0,
+      wonDeals: wonDealsCount ?? 0,
+      activeSubscriptions: totalCallsCount ?? 0,
     });
 
     setSes(rows);
@@ -175,7 +198,7 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
         <StatCard title="Callbacks vandaag" value={stats.callbacksToday} icon={PhoneCall} variant="warning" />
         <StatCard title="Open deals" value={stats.openDeals} icon={Handshake} />
         <StatCard title="Gewonnen deals" value={stats.wonDeals} icon={Trophy} variant="success" />
-        <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
+        <StatCard title="Totaal calls" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
       {/* Charts section */}
