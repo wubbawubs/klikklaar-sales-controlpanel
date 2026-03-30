@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import klikklaarLogo from '@/assets/klikklaar-brand-logo.png';
+import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -55,9 +55,19 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         {/* Brand mark */}
-        <div className="text-center mb-8">
-          <img src={klikklaarLogo} alt="KlikKlaar" className="h-16 mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground mt-1">Sales Executive Control Center</p>
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <img src={klikklaarIcon} alt="KlikKlaar" className="h-12 w-12 rounded-xl" />
+          <div className="text-left">
+            <div className="text-lg font-bold leading-tight">
+              <span className="text-foreground">KlikKlaar</span>
+              <span className="text-purple-400">SEO</span>
+            </div>
+            <div className="text-lg font-bold leading-tight">
+              <span className="text-foreground">KlikKlaar</span>
+              <span className="text-emerald-400">WEB</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground tracking-widest uppercase mt-0.5">Control Center</p>
+          </div>
         </div>
 
         <Card className="shadow-elevated border-border/60">
