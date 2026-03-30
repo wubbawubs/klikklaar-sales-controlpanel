@@ -130,6 +130,7 @@ export type Database = {
           metadata_json: Json | null
           product_lines: string[] | null
           real_conversations: number | null
+          sales_executive_id: string | null
           submission_id: string
           team: string | null
           work_date: string | null
@@ -153,6 +154,7 @@ export type Database = {
           metadata_json?: Json | null
           product_lines?: string[] | null
           real_conversations?: number | null
+          sales_executive_id?: string | null
           submission_id: string
           team?: string | null
           work_date?: string | null
@@ -176,6 +178,7 @@ export type Database = {
           metadata_json?: Json | null
           product_lines?: string[] | null
           real_conversations?: number | null
+          sales_executive_id?: string | null
           submission_id?: string
           team?: string | null
           work_date?: string | null
@@ -186,6 +189,13 @@ export type Database = {
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eod_submission_data_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
             referencedColumns: ["id"]
           },
           {
