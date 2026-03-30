@@ -15,6 +15,10 @@ interface DealDetailSheetProps {
   dealExpectedClose?: string | null;
   orgId?: number | null;
   personId?: number | null;
+  leadAssignmentId?: string | null;
+  orgName?: string | null;
+  personName?: string | null;
+  personPhone?: string | null;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 }
