@@ -12,7 +12,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { sales_executive_id } = await req.json();
+    const body = await req.json();
+
+    // Health-check ping — return immediately without DB work
+    if (body.ping === true) {
+      return new Response(
+        JSON.stringify({ status: "ok", service: "ci-coaching" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { sales_executive_id } = body;
     if (!sales_executive_id) throw new Error("sales_executive_id required");
 
     const supabase = createClient(
