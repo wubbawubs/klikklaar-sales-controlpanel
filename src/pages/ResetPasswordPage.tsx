@@ -60,9 +60,19 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src={klikklaarLogo} alt="KlikKlaar" className="h-16 mx-auto mb-4" />
-          <h1 className="text-page text-foreground">Wachtwoord instellen</h1>
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <img src={klikklaarIcon} alt="KlikKlaar" className="h-12 w-12 rounded-xl" />
+          <div className="text-left">
+            <div className="text-lg font-bold leading-tight">
+              <span className="text-foreground">KlikKlaar</span>
+              <span className="text-purple-400">SEO</span>
+            </div>
+            <div className="text-lg font-bold leading-tight">
+              <span className="text-foreground">KlikKlaar</span>
+              <span className="text-emerald-400">WEB</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground tracking-widest uppercase mt-0.5">Control Center</p>
+          </div>
         </div>
 
         <Card className="shadow-elevated border-border/60">
