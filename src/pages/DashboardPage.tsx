@@ -198,7 +198,7 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
         <StatCard title="Callbacks vandaag" value={stats.callbacksToday} icon={PhoneCall} variant="warning" />
         <StatCard title="Open deals" value={stats.openDeals} icon={Handshake} />
         <StatCard title="Gewonnen deals" value={stats.wonDeals} icon={Trophy} variant="success" />
-        <StatCard title="Actieve abonnementen" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
+        <StatCard title="Totaal calls" value={stats.activeSubscriptions} icon={CreditCard} variant="info" />
       </div>
 
       {/* Charts section */}
