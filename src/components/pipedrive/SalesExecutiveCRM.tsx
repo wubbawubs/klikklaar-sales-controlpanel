@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Building2, User, Phone, Mail, Plus, PhoneCall, CheckCircle2, Clock, Loader2, ExternalLink, Search, DollarSign, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
 
 interface LeadAssignment {
   id: string;
