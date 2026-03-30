@@ -14,6 +14,8 @@ interface DealDetailSheetProps {
   dealExpectedClose?: string | null;
   orgId?: number | null;
   personId?: number | null;
+  onPrev?: (() => void) | null;
+  onNext?: (() => void) | null;
 }
 
 interface OrgDetail {
