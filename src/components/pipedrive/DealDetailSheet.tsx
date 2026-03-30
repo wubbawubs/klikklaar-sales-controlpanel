@@ -124,6 +124,14 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
           )}
         </SheetHeader>
 
+        {/* Log Call CTA */}
+        <div className="px-5 pb-2">
+          <Button onClick={handleLogCall} className="w-full gap-2" size="sm">
+            <PhoneCall className="h-4 w-4" />
+            Log call
+          </Button>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center flex-1">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
