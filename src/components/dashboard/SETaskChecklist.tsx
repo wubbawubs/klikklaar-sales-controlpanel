@@ -170,7 +170,7 @@ export default function SETaskChecklist({ seId }: Props) {
             </div>
           ) : (
             <ul className="space-y-1">
-              {tasks.slice(0, 8).map(task => {
+              {displayTasks.map((task, idx) => {
                 const Icon = task.icon;
                 const hasContext = !!(task.orgId || task.personId);
                 return (
