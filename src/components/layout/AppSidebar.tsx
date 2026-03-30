@@ -24,28 +24,30 @@ import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg'; // brand icon
 
+type NavVisibility = 'all' | 'admin' | 'coach+admin';
+
 interface NavItem {
   to: string;
   icon: any;
   label: string;
-  adminOnly?: boolean;
+  visibility?: NavVisibility; // default: 'all' (everyone sees it)
 }
 
 const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/sales-executives', icon: Users, label: 'Sales Executives', adminOnly: true },
-  { to: '/sales-executives/new', icon: UserPlus, label: 'Nieuwe SE', adminOnly: true },
-  { to: '/provisioning', icon: Package, label: 'Provisioning', adminOnly: true },
-  { to: '/artifacts', icon: FileJson, label: 'Artifacts', adminOnly: true },
+  { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
+  { to: '/sales-executives/new', icon: UserPlus, label: 'Nieuwe SE', visibility: 'admin' },
+  { to: '/provisioning', icon: Package, label: 'Provisioning', visibility: 'admin' },
+  { to: '/artifacts', icon: FileJson, label: 'Artifacts', visibility: 'admin' },
   { to: '/leads', icon: Target, label: 'Mijn Leads' },
   { to: '/pipedrive', icon: GitBranch, label: 'Pipedrive' },
   { to: '/calls', icon: Phone, label: 'Call Logging' },
-  { to: '/integrations', icon: Plug, label: 'Integraties', adminOnly: true },
+  { to: '/integrations', icon: Plug, label: 'Integraties', visibility: 'admin' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },
-  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', adminOnly: true },
-  { to: '/settings', icon: Settings, label: 'Instellingen', adminOnly: true },
-  { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', adminOnly: true },
+  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'admin' },
+  { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
+  { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', visibility: 'admin' },
 ];
 
 interface AppSidebarProps {
