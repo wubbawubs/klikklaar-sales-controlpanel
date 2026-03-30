@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
 import NewSalesExecutivePage from "@/pages/NewSalesExecutivePage";
@@ -38,12 +39,20 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Public form routes - accessible without authentication
+  // Public routes - accessible without authentication
   if (location.pathname.startsWith('/form/')) {
     return (
       <Routes>
         <Route path="/form/:slug/success" element={<FormSuccessPage />} />
         <Route path="/form/:slug" element={<PublicFormPage />} />
+      </Routes>
+    );
+  }
+
+  if (location.pathname === '/reset-password') {
+    return (
+      <Routes>
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     );
   }
