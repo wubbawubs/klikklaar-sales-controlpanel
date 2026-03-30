@@ -54,6 +54,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
   const { signOut, user, isAdmin, roles } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
 
