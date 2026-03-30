@@ -60,11 +60,22 @@ const headers = {
 };
 const BASE = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
 
-export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, onPrev, onNext }: DealDetailSheetProps) {
+export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, onPrev, onNext }: DealDetailSheetProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [persons, setPersons] = useState<Person[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+
+  const handleLogCall = () => {
+    const params = new URLSearchParams();
+    if (orgName || org?.name) params.set('org', orgName || org?.name || '');
+    if (personName || persons[0]?.name) params.set('contact', personName || persons[0]?.name || '');
+    if (personPhone || persons[0]?.phone?.[0]) params.set('phone', personPhone || persons[0]?.phone?.[0] || '');
+    if (leadAssignmentId) params.set('lead', leadAssignmentId);
+    onOpenChange(false);
+    navigate(`/calls?${params.toString()}`);
+  };
 
   useEffect(() => {
     if (!open || !orgId) return;
