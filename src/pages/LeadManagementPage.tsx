@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 import type { SalesExecutive } from '@/types/database';
 import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
+import SELeadsList from '@/components/leads/SELeadsList';
 
 interface LeadAssignment {
   id: string;
