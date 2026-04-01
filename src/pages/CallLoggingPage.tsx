@@ -85,7 +85,7 @@ export default function CallLoggingPage() {
         .from('pipedrive_lead_assignments')
         .select('*')
         .eq('sales_executive_id', seData!.id)
-        .in('status', ['assigned', 'in_progress']);
+        .in('status', ['assigned', 'in_progress', 'contacted']);
       return data ?? [];
     },
     enabled: !!seData?.id,
@@ -122,10 +122,26 @@ export default function CallLoggingPage() {
         notes: notes || null,
       });
       if (error) throw error;
+
+      // Update lead assignment status when a call is logged against it
+      if (selectedLead !== 'none') {
+        const newStatus = ['interest', 'appointment', 'deal'].includes(selectedOutcome)
+          ? 'qualified'
+          : 'contacted';
+        await supabase
+          .from('pipedrive_lead_assignments')
+          .update({ status: newStatus })
+          .eq('id', selectedLead)
+          .eq('sales_executive_id', seData!.id);
+      }
     },
     onSuccess: () => {
       toast({ title: 'Call gelogd', description: `${OUTCOMES.find(o => o.value === selectedOutcome)?.label} geregistreerd.` });
+      // Invalidate all related queries so dashboard components refresh
       queryClient.invalidateQueries({ queryKey: ['calls-today'] });
+      queryClient.invalidateQueries({ queryKey: ['se-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['se-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['se-performance'] });
       resetForm();
     },
     onError: (err: any) => {

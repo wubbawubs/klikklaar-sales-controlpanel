@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PhoneForwarded, Target, TrendingUp, ClipboardList, Phone, ArrowRight } from 'lucide-react';
+import { PhoneForwarded, Target, TrendingUp, ClipboardList, Phone, ArrowRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
 
@@ -33,121 +33,167 @@ export default function SETaskChecklist({ seId }: Props) {
   const displayTasks = tasks.slice(0, 8);
   const selectedTask = selectedIdx !== null ? displayTasks[selectedIdx] ?? null : null;
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      const today = new Date().toISOString().split('T')[0];
+  const fetchTasks = useCallback(async () => {
+    const today = new Date().toISOString().split('T')[0];
 
-      const [callbacksRes, leadsRes, interestRes] = await Promise.all([
-        // Callbacks with lead assignment data for org/person IDs
-        supabase
-          .from('calls')
-          .select('id, contact_name, org_name, callback_date, lead_assignment_id')
-          .eq('sales_executive_id', seId)
-          .eq('outcome', 'callback')
-          .lte('callback_date', today)
-          .not('callback_date', 'is', null)
-          .order('callback_date', { ascending: true }),
-        // Untouched leads with Pipedrive IDs
-        supabase
-          .from('pipedrive_lead_assignments')
-          .select('id, org_name, person_name, person_phone, deal_title, pipedrive_org_id, pipedrive_person_id')
-          .eq('sales_executive_id', seId)
-          .in('status', ['assigned'])
-          .order('created_at', { ascending: true }),
-        // Interest follow-ups with lead assignment
-        supabase
-          .from('calls')
-          .select('id, contact_name, org_name, created_at, lead_assignment_id')
-          .eq('sales_executive_id', seId)
-          .eq('outcome', 'interest')
-          .order('created_at', { ascending: false })
-          .limit(10),
-      ]);
+    const [callbacksRes, leadsRes, interestRes, allCallsRes] = await Promise.all([
+      // Callbacks with lead assignment data
+      supabase
+        .from('calls')
+        .select('id, contact_name, org_name, callback_date, lead_assignment_id, created_at')
+        .eq('sales_executive_id', seId)
+        .eq('outcome', 'callback')
+        .lte('callback_date', today)
+        .not('callback_date', 'is', null)
+        .order('callback_date', { ascending: true }),
+      // Untouched leads (only 'assigned' status)
+      supabase
+        .from('pipedrive_lead_assignments')
+        .select('id, org_name, person_name, person_phone, deal_title, pipedrive_org_id, pipedrive_person_id')
+        .eq('sales_executive_id', seId)
+        .in('status', ['assigned'])
+        .order('created_at', { ascending: true }),
+      // Interest follow-ups
+      supabase
+        .from('calls')
+        .select('id, contact_name, org_name, created_at, lead_assignment_id')
+        .eq('sales_executive_id', seId)
+        .eq('outcome', 'interest')
+        .order('created_at', { ascending: false })
+        .limit(10),
+      // All calls for this SE today + recent — to check follow-ups
+      supabase
+        .from('calls')
+        .select('id, lead_assignment_id, created_at, outcome')
+        .eq('sales_executive_id', seId)
+        .order('created_at', { ascending: false })
+        .limit(200),
+    ]);
 
-      // Collect lead_assignment_ids to fetch org/person IDs for callbacks and interest calls
-      const assignmentIds = [
-        ...(callbacksRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
-        ...(interestRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
-      ];
+    // Build a map: lead_assignment_id → most recent call
+    const latestCallByLead = new Map<string, { created_at: string; outcome: string }>();
+    (allCallsRes.data || []).forEach(c => {
+      if (!c.lead_assignment_id) return;
+      const existing = latestCallByLead.get(c.lead_assignment_id);
+      if (!existing || c.created_at > existing.created_at) {
+        latestCallByLead.set(c.lead_assignment_id, { created_at: c.created_at, outcome: c.outcome });
+      }
+    });
 
-      let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
-      if (assignmentIds.length > 0) {
-        const { data: assignments } = await supabase
-          .from('pipedrive_lead_assignments')
-          .select('id, pipedrive_org_id, pipedrive_person_id, deal_title, org_name, person_name, person_phone')
-          .in('id', assignmentIds);
-        (assignments || []).forEach(a => {
-          assignmentMap[a.id] = a;
-        });
+    // Collect lead_assignment_ids for enrichment
+    const assignmentIds = [
+      ...(callbacksRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
+      ...(interestRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
+    ];
+
+    let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
+    if (assignmentIds.length > 0) {
+      const { data: assignments } = await supabase
+        .from('pipedrive_lead_assignments')
+        .select('id, pipedrive_org_id, pipedrive_person_id, deal_title, org_name, person_name, person_phone')
+        .in('id', assignmentIds);
+      (assignments || []).forEach(a => {
+        assignmentMap[a.id] = a;
+      });
+    }
+
+    const items: TaskItem[] = [];
+
+    // Overdue callbacks — but only if no follow-up call was made AFTER the callback
+    (callbacksRes.data || []).forEach(cb => {
+      // Check if there's a newer call for this lead after this callback was created
+      if (cb.lead_assignment_id) {
+        const latestCall = latestCallByLead.get(cb.lead_assignment_id);
+        if (latestCall && latestCall.created_at > cb.created_at && latestCall.outcome !== 'callback') {
+          return; // Already followed up — skip this task
+        }
       }
 
-      const items: TaskItem[] = [];
-
-      // Overdue callbacks — high priority
-      (callbacksRes.data || []).forEach(cb => {
-        const isOverdue = cb.callback_date! < today;
-        const assignment = cb.lead_assignment_id ? assignmentMap[cb.lead_assignment_id] : null;
-        items.push({
-          id: `cb-${cb.id}`,
-          icon: PhoneForwarded,
-          label: `Bel terug: ${cb.contact_name || cb.org_name || 'Contact'}`,
-          sublabel: isOverdue ? `Gepland: ${cb.callback_date}` : 'Vandaag',
-          priority: 'high',
-          orgId: assignment?.pipedrive_org_id ?? null,
-          personId: assignment?.pipedrive_person_id ?? null,
-          dealTitle: assignment?.deal_title ?? null,
-          leadAssignmentId: cb.lead_assignment_id ?? null,
-          orgName: cb.org_name ?? assignment?.org_name ?? null,
-          personName: cb.contact_name ?? assignment?.person_name ?? null,
-          personPhone: assignment?.person_phone ?? null,
-        });
+      const isOverdue = cb.callback_date! < today;
+      const assignment = cb.lead_assignment_id ? assignmentMap[cb.lead_assignment_id] : null;
+      items.push({
+        id: `cb-${cb.id}`,
+        icon: PhoneForwarded,
+        label: `Bel terug: ${cb.contact_name || cb.org_name || 'Contact'}`,
+        sublabel: isOverdue ? `Gepland: ${cb.callback_date}` : 'Vandaag',
+        priority: 'high',
+        orgId: assignment?.pipedrive_org_id ?? null,
+        personId: assignment?.pipedrive_person_id ?? null,
+        dealTitle: assignment?.deal_title ?? null,
+        leadAssignmentId: cb.lead_assignment_id ?? null,
+        orgName: cb.org_name ?? assignment?.org_name ?? null,
+        personName: cb.contact_name ?? assignment?.person_name ?? null,
+        personPhone: assignment?.person_phone ?? null,
       });
+    });
 
-      // Interest follow-ups older than 2 days
-      (interestRes.data || []).filter(c => {
-        const daysSince = Math.floor((Date.now() - new Date(c.created_at).getTime()) / (1000 * 60 * 60 * 24));
-        return daysSince >= 2;
-      }).forEach(c => {
-        const assignment = c.lead_assignment_id ? assignmentMap[c.lead_assignment_id] : null;
-        items.push({
-          id: `fu-${c.id}`,
-          icon: TrendingUp,
-          label: `Opvolgen: ${c.contact_name || c.org_name || 'Contact'}`,
-          sublabel: 'Toonde interesse, nog niet opgevolgd',
-          priority: 'high',
-          orgId: assignment?.pipedrive_org_id ?? null,
-          personId: assignment?.pipedrive_person_id ?? null,
-          dealTitle: assignment?.deal_title ?? null,
-          leadAssignmentId: c.lead_assignment_id ?? null,
-          orgName: c.org_name ?? assignment?.org_name ?? null,
-          personName: c.contact_name ?? assignment?.person_name ?? null,
-          personPhone: assignment?.person_phone ?? null,
-        });
+    // Interest follow-ups older than 2 days — but only if not already followed up
+    (interestRes.data || []).filter(c => {
+      const daysSince = Math.floor((Date.now() - new Date(c.created_at).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince < 2) return false;
+      // Check if there's a newer call after this interest call
+      if (c.lead_assignment_id) {
+        const latestCall = latestCallByLead.get(c.lead_assignment_id);
+        if (latestCall && latestCall.created_at > c.created_at) {
+          return false; // Already followed up
+        }
+      }
+      return true;
+    }).forEach(c => {
+      const assignment = c.lead_assignment_id ? assignmentMap[c.lead_assignment_id] : null;
+      items.push({
+        id: `fu-${c.id}`,
+        icon: TrendingUp,
+        label: `Opvolgen: ${c.contact_name || c.org_name || 'Contact'}`,
+        sublabel: 'Toonde interesse, nog niet opgevolgd',
+        priority: 'high',
+        orgId: assignment?.pipedrive_org_id ?? null,
+        personId: assignment?.pipedrive_person_id ?? null,
+        dealTitle: assignment?.deal_title ?? null,
+        leadAssignmentId: c.lead_assignment_id ?? null,
+        orgName: c.org_name ?? assignment?.org_name ?? null,
+        personName: c.contact_name ?? assignment?.person_name ?? null,
+        personPhone: assignment?.person_phone ?? null,
       });
+    });
 
-      // Untouched leads — medium priority
-      (leadsRes.data || []).forEach(lead => {
-        items.push({
-          id: `lead-${lead.id}`,
-          icon: Target,
-          label: `Bel: ${lead.org_name || lead.person_name || 'Nieuwe lead'}`,
-          sublabel: lead.deal_title || 'Nog niet gebeld',
-          priority: 'medium',
-          orgId: lead.pipedrive_org_id ?? null,
-          personId: lead.pipedrive_person_id ?? null,
-          dealTitle: lead.deal_title ?? null,
-          leadAssignmentId: lead.id,
-          orgName: lead.org_name ?? null,
-          personName: lead.person_name ?? null,
-          personPhone: lead.person_phone ?? null,
-        });
+    // Untouched leads — medium priority
+    (leadsRes.data || []).forEach(lead => {
+      items.push({
+        id: `lead-${lead.id}`,
+        icon: Target,
+        label: `Bel: ${lead.org_name || lead.person_name || 'Nieuwe lead'}`,
+        sublabel: lead.deal_title || 'Nog niet gebeld',
+        priority: 'medium',
+        orgId: lead.pipedrive_org_id ?? null,
+        personId: lead.pipedrive_person_id ?? null,
+        dealTitle: lead.deal_title ?? null,
+        leadAssignmentId: lead.id,
+        orgName: lead.org_name ?? null,
+        personName: lead.person_name ?? null,
+        personPhone: lead.person_phone ?? null,
       });
+    });
 
-      setTasks(items);
-      setLoading(false);
-    };
-    fetchTasks();
+    setTasks(items);
+    setLoading(false);
   }, [seId]);
+
+  // Initial fetch + auto-refresh every 30 seconds
+  useEffect(() => {
+    fetchTasks();
+    const interval = setInterval(fetchTasks, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchTasks]);
+
+  // Also refresh when the page becomes visible (user navigated away and back)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchTasks();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [fetchTasks]);
 
   if (loading) return null;
 
@@ -188,7 +234,6 @@ export default function SETaskChecklist({ seId }: Props) {
             <ul className="space-y-1">
               {displayTasks.map((task, idx) => {
                 const Icon = task.icon;
-                const hasContext = !!(task.orgId || task.personId);
                 return (
                   <li key={task.id}>
                     <button
@@ -223,7 +268,7 @@ export default function SETaskChecklist({ seId }: Props) {
       {/* Direct klantkaart — opent DealDetailSheet met alle context */}
       <DealDetailSheet
         open={!!selectedTask}
-        onOpenChange={(open) => { if (!open) setSelectedIdx(null); }}
+        onOpenChange={(open) => { if (!open) { setSelectedIdx(null); fetchTasks(); } }}
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
         orgId={selectedTask?.orgId}
         personId={selectedTask?.personId}
