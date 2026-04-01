@@ -85,7 +85,7 @@ export default function CallLoggingPage() {
         .from('pipedrive_lead_assignments')
         .select('*')
         .eq('sales_executive_id', seData!.id)
-        .in('status', ['assigned', 'in_progress']);
+        .in('status', ['assigned', 'in_progress', 'contacted']);
       return data ?? [];
     },
     enabled: !!seData?.id,
