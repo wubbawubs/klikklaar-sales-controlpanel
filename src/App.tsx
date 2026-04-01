@@ -28,6 +28,7 @@ import NotificationsPage from "@/pages/NotificationsPage";
 import PublicFormPage from "@/pages/public/PublicFormPage";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
+import UnsubscribePage from "@/pages/UnsubscribePage";
 import EvaluatiesDashboard from "@/pages/evaluaties/EvaluatiesDashboard";
 import FormulierenPage from "@/pages/evaluaties/FormulierenPage";
 import FormulierDetailPage from "@/pages/evaluaties/FormulierDetailPage";
@@ -56,6 +57,14 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+      </Routes>
+    );
+  }
+
+  if (location.pathname === '/unsubscribe') {
+    return (
+      <Routes>
+        <Route path="/unsubscribe" element={<UnsubscribePage />} />
       </Routes>
     );
   }
