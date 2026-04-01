@@ -61,6 +61,14 @@ function AppRoutes() {
     );
   }
 
+  if (location.pathname === '/unsubscribe') {
+    return (
+      <Routes>
+        <Route path="/unsubscribe" element={<UnsubscribePage />} />
+      </Routes>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
