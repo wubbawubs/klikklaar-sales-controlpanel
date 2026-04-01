@@ -22,6 +22,7 @@ import AuditLogsPage from "@/pages/AuditLogsPage";
 import LeadManagementPage from "@/pages/LeadManagementPage";
 import CallLoggingPage from "@/pages/CallLoggingPage";
 import NotFound from "@/pages/NotFound";
+import AccountPage from "@/pages/AccountPage";
 import PipedrivePage from "@/pages/PipedrivePage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import PublicFormPage from "@/pages/public/PublicFormPage";
