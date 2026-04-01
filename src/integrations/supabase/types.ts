@@ -699,6 +699,7 @@ export type Database = {
         Row: {
           assigned_at: string | null
           assigned_by: string | null
+          branche: string | null
           created_at: string | null
           deal_title: string | null
           id: string
@@ -714,10 +715,12 @@ export type Database = {
           sales_executive_id: string
           status: string
           updated_at: string | null
+          website: string | null
         }
         Insert: {
           assigned_at?: string | null
           assigned_by?: string | null
+          branche?: string | null
           created_at?: string | null
           deal_title?: string | null
           id?: string
@@ -733,10 +736,12 @@ export type Database = {
           sales_executive_id: string
           status?: string
           updated_at?: string | null
+          website?: string | null
         }
         Update: {
           assigned_at?: string | null
           assigned_by?: string | null
+          branche?: string | null
           created_at?: string | null
           deal_title?: string | null
           id?: string
@@ -752,6 +757,7 @@ export type Database = {
           sales_executive_id?: string
           status?: string
           updated_at?: string | null
+          website?: string | null
         }
         Relationships: [
           {
