@@ -1,72 +1,101 @@
 
 
-# Plan: Interactieve Deal Cards + Lead Details + Call Logging Verrijking
+# PWA + Push Notificaties — Implementatieplan
 
-## Samenvatting
+## Overzicht
 
-Drie verbeteringen zodat Huub tijdens het bellen alle informatie direct bij de hand heeft:
+Het KlikKlaar Sales Control Panel wordt een installeerbare PWA met push-notificaties. Handmatige service worker (geen vite-plugin-pwa) met preview-guard zodat de Lovable editor niet breekt.
 
-1. **Klikbare deal cards in de Kanban** — opent een detailpaneel met organisatie-info, contactpersonen, deal-waarde en laatste notities/activiteiten uit Pipedrive
-2. **Klikbare leads in het CRM/dashboard** — zelfde detailweergave wanneer je op een lead klikt
-3. **Verrijkte Call Logging** — bij het selecteren van een lead worden alle Pipedrive-gegevens (organisatie, contacten, eerdere notities, deals) getoond voordat de call wordt gelogd
+**Merkgegevens**: Teal primary (#0F9B7A), dark navy sidebar, KlikKlaar brand icon beschikbaar.
 
 ---
 
-## Wat er verandert voor Huub
+## Stappen
 
-- In de **Pipedrive Kanban** (`/pipedrive` → Pipeline tab): klik op een deal card → een **Sheet/Drawer** schuift open met:
-  - Deal titel, waarde, verwachte sluitdatum
-  - Organisatie-details (adres, eigenaar, aantal deals)
-  - Contactpersonen met telefoon en e-mail (direct klikbaar)
-  - Laatste 10 activiteiten/notities uit Pipedrive
+### 1. Manifest & Iconen
+- Maak `public/manifest.json` (name: "KlikKlaar Control Center", short_name: "KlikKlaar", theme_color: "#0F9B7A", display: "standalone")
+- Genereer `public/icons/icon-192.png` en `icon-512.png` op basis van bestaande `src/assets/klikklaar-icon.jpeg`
+- Voeg manifest link + apple-mobile-web-app meta tags toe aan `index.html`
 
-- In het **CRM leads overzicht** (`/pipedrive` → Mijn CRM tab): klik op een lead-rij → zelfde detailpaneel met organisatie + contacten + activiteiten
+### 2. Service Worker (`public/sw.js`)
+- Minimal shell cache (alleen "/")
+- Network-first navigatie strategie
+- Push event handler → toon notificatie met titel, body, icon, action_url
+- Notification click handler → deep link naar action_url
+- Badge support via `navigator.setAppBadge`
 
-- In **Call Logging** (`/calls`): wanneer een lead wordt geselecteerd uit de dropdown, verschijnt een **informatiekaart** onder de selector met:
-  - Organisatie-info en alle contactpersonen
-  - Laatste 5 activiteiten/notities
-  - Openstaande deals voor die organisatie
-  - Pas daarna de call-resultaten invullen
+### 3. SW Registratie in `src/main.tsx`
+- Guard: registreer NIET in iframes of op `id-preview--` / `lovableproject.com` hosts
+- Bestaande service workers unregisteren in preview context
+
+### 4. iOS Installatie Prompt Component
+- Detecteer iPhone/iPad via userAgent
+- Toon instructiebanner ("Deel → Zet op beginscherm") als niet standalone
+- Dismiss opslaan in localStorage
+
+### 5. Database Tabellen (3 migraties)
+- `push_subscriptions` (user_id, endpoint, p256dh_key, auth_key, platform, is_installed, enabled, created_at)
+- `notification_preferences` (user_id, push_enabled, email_enabled, quiet_hours_start, quiet_hours_end)
+- `notifications` (user_id, title, body, type, action_url, is_read, metadata_json, created_at)
+- RLS: users eigen data, admins alles
+- Realtime enabled op `notifications` tabel
+
+### 6. VAPID Keys
+- Genereer VAPID keypair via edge function of script
+- Sla op als secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+- Frontend krijgt public key via `VITE_VAPID_PUBLIC_KEY` environment variable (of hardcoded public key)
+
+### 7. Edge Functions (3 stuks)
+- **register-push-subscription**: Slaat PushSubscription op per geauthenticeerde user
+- **unregister-push-subscription**: Verwijdert subscription
+- **send-push-notification**: Verstuurt web-push met VAPID auth naar alle actieve subscriptions van een user
+
+### 8. Push Toggle Component
+- Knop in Settings of header
+- Vraagt permissie ALLEEN na klik
+- Status: aan / uit / niet-ondersteund / geblokkeerd
+- Roept register/unregister edge function aan
+
+### 9. Notification Bell in Sidebar
+- Bell icon met unread count badge in `AppSidebar.tsx`
+- Realtime subscription op `notifications` tabel (user's eigen records, is_read = false)
+- Max "99+" weergave
+- Klik → navigeer naar `/notifications` pagina (nieuw)
+
+### 10. Notifications Pagina
+- Lijst van notificaties met titel, body, tijdstip, gelezen/ongelezen
+- Markeer als gelezen bij klik
+- Markeer alles als gelezen
+
+### 11. Automatische Push bij Events
+- Database trigger op `notifications` INSERT → roep `send-push-notification` aan via `pg_net`
+- Check of user `push_enabled = true` in preferences
+- Respecteer quiet hours
 
 ---
 
-## Technische aanpak
+## Technische details
 
-### 1. Nieuw component: `DealDetailSheet.tsx`
-- Herbruikbaar Sheet (sidebar drawer) component
-- Props: `dealId`, `orgId`, `personId`, `open`, `onOpenChange`
-- Bij openen: parallel 3 edge functions aanroepen:
-  - `pipedrive-organizations?org_id=X` → org details + personen
-  - `pipedrive-activities?org_id=X` → laatste activiteiten/notities
-  - `pipedrive-deals?org_ids=X` → alle deals voor die org
-- Toont alles in een gestructureerd paneel
+**Bestanden die worden aangemaakt:**
+- `public/manifest.json`
+- `public/icons/icon-192.png`, `icon-512.png`
+- `public/sw.js`
+- `src/components/pwa/IOSInstallPrompt.tsx`
+- `src/components/pwa/PushToggle.tsx`
+- `src/components/pwa/NotificationBell.tsx`
+- `src/pages/NotificationsPage.tsx`
+- `supabase/functions/register-push-subscription/index.ts`
+- `supabase/functions/unregister-push-subscription/index.ts`
+- `supabase/functions/send-push-notification/index.ts`
+- 3 database migraties
 
-### 2. Aanpassing `PipedriveFunnel.tsx` (Kanban)
-- `DealCard` component krijgt `onClick` → opent `DealDetailSheet`
-- Cursor wordt `pointer`, visuele hover-feedback
+**Bestanden die worden gewijzigd:**
+- `index.html` — manifest link + meta tags
+- `src/main.tsx` — SW registratie met preview guard
+- `src/components/layout/AppSidebar.tsx` — NotificationBell toevoegen
+- `src/App.tsx` — /notifications route toevoegen
 
-### 3. Aanpassing `SalesExecutiveCRM.tsx` (Leads tab)
-- Elke lead-rij wordt klikbaar → opent `DealDetailSheet` met de `org_id` van die lead
-- De bestaande "Log" knop blijft naast de klik-functionaliteit
+**VAPID public key**: Wordt als publishable key in de codebase opgenomen (is veilig, het is een public key). Private key als Supabase secret.
 
-### 4. Aanpassing `CallLoggingPage.tsx`
-- Nieuw component `LeadInfoPanel` dat verschijnt zodra een lead geselecteerd wordt
-- Haalt org-details, contacten en recente activiteiten op via dezelfde edge functions
-- Toont dit als een uitklapbare kaart boven het call-formulier
-
-### 5. Geen database- of edge function wijzigingen nodig
-- Alle benodigde endpoints bestaan al (`pipedrive-organizations`, `pipedrive-persons`, `pipedrive-activities`, `pipedrive-deals`)
-- Geen migraties nodig
-
----
-
-## Bestanden
-
-| Bestand | Actie |
-|---|---|
-| `src/components/pipedrive/DealDetailSheet.tsx` | Nieuw — herbruikbaar detailpaneel |
-| `src/components/pipedrive/LeadInfoPanel.tsx` | Nieuw — informatiekaart voor call logging |
-| `src/components/integrations/PipedriveFunnel.tsx` | Wijzigen — deal cards klikbaar maken |
-| `src/components/pipedrive/SalesExecutiveCRM.tsx` | Wijzigen — lead rijen klikbaar maken |
-| `src/pages/CallLoggingPage.tsx` | Wijzigen — LeadInfoPanel toevoegen |
+**Geen vite-plugin-pwa** — handmatige SW voor volledige controle en preview-compatibiliteit.
 
