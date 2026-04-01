@@ -21,50 +21,62 @@ export default function SEPerformanceBars({ seId }: Props) {
   const [weekMetrics, setWeekMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchMetrics = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [todayRes, weekRes] = await Promise.all([
+      supabase
+        .from('calls')
+        .select('id, outcome')
+        .eq('sales_executive_id', seId)
+        .gte('created_at', `${today}T00:00:00`),
+      supabase
+        .from('calls')
+        .select('id, outcome')
+        .eq('sales_executive_id', seId)
+        .gte('created_at', weekAgo),
+    ]);
+
+    const todayCalls = todayRes.data || [];
+    const weekCalls = weekRes.data || [];
+
+    const todayReached = todayCalls.filter(c => c.outcome !== 'not_reached').length;
+    const todayInterest = todayCalls.filter(c => ['interest', 'appointment', 'deal'].includes(c.outcome)).length;
+
+    const weekReached = weekCalls.filter(c => c.outcome !== 'not_reached').length;
+    const weekInterest = weekCalls.filter(c => ['interest', 'appointment', 'deal'].includes(c.outcome)).length;
+    const weekAppointments = weekCalls.filter(c => c.outcome === 'appointment').length;
+
+    setTodayMetrics([
+      { label: 'Calls', value: todayCalls.length, target: 20, color: 'bg-primary' },
+      { label: 'Bereikt', value: todayReached, target: 10, color: 'bg-primary' },
+      { label: 'Positief', value: todayInterest, target: 3, color: 'bg-success' },
+    ]);
+
+    setWeekMetrics([
+      { label: 'Calls', value: weekCalls.length, target: 100, color: 'bg-primary' },
+      { label: 'Bereikt', value: weekReached, target: 50, color: 'bg-primary' },
+      { label: 'Positief', value: weekInterest, target: 15, color: 'bg-success' },
+      { label: 'Afspraken', value: weekAppointments, target: 5, color: 'bg-success' },
+    ]);
+
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetch = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30_000);
+    return () => clearInterval(interval);
+  }, [seId]);
 
-      const [todayRes, weekRes] = await Promise.all([
-        supabase
-          .from('calls')
-          .select('id, outcome')
-          .eq('sales_executive_id', seId)
-          .gte('created_at', `${today}T00:00:00`),
-        supabase
-          .from('calls')
-          .select('id, outcome')
-          .eq('sales_executive_id', seId)
-          .gte('created_at', weekAgo),
-      ]);
-
-      const todayCalls = todayRes.data || [];
-      const weekCalls = weekRes.data || [];
-
-      const todayReached = todayCalls.filter(c => c.outcome !== 'not_reached').length;
-      const todayInterest = todayCalls.filter(c => ['interest', 'appointment', 'deal'].includes(c.outcome)).length;
-
-      const weekReached = weekCalls.filter(c => c.outcome !== 'not_reached').length;
-      const weekInterest = weekCalls.filter(c => ['interest', 'appointment', 'deal'].includes(c.outcome)).length;
-      const weekAppointments = weekCalls.filter(c => c.outcome === 'appointment').length;
-
-      setTodayMetrics([
-        { label: 'Calls', value: todayCalls.length, target: 20, color: 'bg-primary' },
-        { label: 'Bereikt', value: todayReached, target: 10, color: 'bg-primary' },
-        { label: 'Positief', value: todayInterest, target: 3, color: 'bg-success' },
-      ]);
-
-      setWeekMetrics([
-        { label: 'Calls', value: weekCalls.length, target: 100, color: 'bg-primary' },
-        { label: 'Bereikt', value: weekReached, target: 50, color: 'bg-primary' },
-        { label: 'Positief', value: weekInterest, target: 15, color: 'bg-success' },
-        { label: 'Afspraken', value: weekAppointments, target: 5, color: 'bg-success' },
-      ]);
-
-      setLoading(false);
+  // Refresh on tab focus
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchMetrics();
     };
-    fetch();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [seId]);
 
   if (loading) return null;
