@@ -40,7 +40,18 @@ const statusColors: Record<string, string> = {
 };
 
 export default function LeadManagementPage() {
-  const [leads, setLeads] = useState<LeadAssignment[]>([]);
+  const { isAdmin, roles } = useAuth();
+  const isCoachOrAdmin = isAdmin || roles.includes('coach');
+
+  // SE's see their own lead list
+  if (!isCoachOrAdmin) {
+    return <SELeadsList />;
+  }
+
+  return <AdminLeadManagement />;
+}
+
+function AdminLeadManagement() {
   const [ses, setSes] = useState<SalesExecutive[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
