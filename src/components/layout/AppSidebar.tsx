@@ -137,7 +137,7 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
-            <div className="flex items-center gap-3 mt-0.5">
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               <button
                 onClick={signOut}
                 className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
