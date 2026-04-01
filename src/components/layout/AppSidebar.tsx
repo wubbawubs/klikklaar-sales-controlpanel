@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { NotificationBell } from '@/components/pwa/NotificationBell';
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg'; // brand icon
 
@@ -89,14 +90,17 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
             </div>
             <span className="text-[10px] font-semibold text-sidebar-accent-foreground tracking-widest uppercase">Control Center</span>
           </div>
-          {/* Close button — mobile only */}
-          <button
-            onClick={onCloseMobile}
-            className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
-            aria-label="Sluit menu"
-          >
-            <X className="h-5 w-5 text-sidebar-foreground/70" />
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            {/* Close button — mobile only */}
+            <button
+              onClick={onCloseMobile}
+              className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
+              aria-label="Sluit menu"
+            >
+              <X className="h-5 w-5 text-sidebar-foreground/70" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -133,7 +137,7 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
-            <div className="flex items-center gap-3 mt-0.5">
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               <button
                 onClick={signOut}
                 className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"

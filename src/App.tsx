@@ -23,7 +23,9 @@ import LeadManagementPage from "@/pages/LeadManagementPage";
 import CallLoggingPage from "@/pages/CallLoggingPage";
 import NotFound from "@/pages/NotFound";
 import PipedrivePage from "@/pages/PipedrivePage";
+import NotificationsPage from "@/pages/NotificationsPage";
 import PublicFormPage from "@/pages/public/PublicFormPage";
+import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
 import EvaluatiesDashboard from "@/pages/evaluaties/EvaluatiesDashboard";
 import FormulierenPage from "@/pages/evaluaties/FormulierenPage";
@@ -80,6 +82,7 @@ function AppRoutes() {
         <Route path="/pipedrive" element={<PipedrivePage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/eod" element={<EodPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
 
         {/* Admin/Coach only routes */}
         <Route path="/sales-executives" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutivesPage /></ProtectedRoute>} />
@@ -110,6 +113,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
+          <IOSInstallPrompt />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
