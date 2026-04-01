@@ -84,6 +84,7 @@ function AppRoutes() {
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/eod" element={<EodPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/account" element={<AccountPage />} />
 
         {/* Admin/Coach only routes */}
         <Route path="/sales-executives" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutivesPage /></ProtectedRoute>} />
