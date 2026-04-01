@@ -52,6 +52,7 @@ export default function LeadManagementPage() {
 }
 
 function AdminLeadManagement() {
+  const [leads, setLeads] = useState<LeadAssignment[]>([]);
   const [ses, setSes] = useState<SalesExecutive[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
