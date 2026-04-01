@@ -617,6 +617,75 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          push_enabled: boolean | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          push_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          push_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          body: string | null
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          metadata_json: Json | null
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          metadata_json?: Json | null
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          metadata_json?: Json | null
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pipedrive_activities: {
         Row: {
           activity_type: string
@@ -845,6 +914,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string | null
+          enabled: boolean | null
+          endpoint: string
+          id: string
+          is_installed: boolean | null
+          p256dh_key: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string | null
+          enabled?: boolean | null
+          endpoint: string
+          id?: string
+          is_installed?: boolean | null
+          p256dh_key: string
+          platform?: string
+          user_id: string
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          endpoint?: string
+          id?: string
+          is_installed?: boolean | null
+          p256dh_key?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       sales_executives: {
         Row: {
