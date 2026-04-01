@@ -90,14 +90,17 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
             </div>
             <span className="text-[10px] font-semibold text-sidebar-accent-foreground tracking-widest uppercase">Control Center</span>
           </div>
-          {/* Close button — mobile only */}
-          <button
-            onClick={onCloseMobile}
-            className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
-            aria-label="Sluit menu"
-          >
-            <X className="h-5 w-5 text-sidebar-foreground/70" />
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            {/* Close button — mobile only */}
+            <button
+              onClick={onCloseMobile}
+              className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
+              aria-label="Sluit menu"
+            >
+              <X className="h-5 w-5 text-sidebar-foreground/70" />
+            </button>
+          </div>
         </div>
       </div>
 
