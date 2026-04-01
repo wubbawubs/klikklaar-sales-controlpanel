@@ -24,7 +24,7 @@ export function useProfile() {
       .select('*')
       .eq('user_id', user.id)
       .maybeSingle();
-    setProfile(data as UserProfile | null);
+    setProfile(data as unknown as UserProfile | null);
     setLoading(false);
   }, [user]);
 
