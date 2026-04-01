@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { AppSidebar } from './AppSidebar';
+import { UserAccountMenu } from './UserAccountMenu';
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -28,16 +29,19 @@ export function AppLayout() {
       </div>
 
       <main className="flex-1 overflow-y-auto min-w-0">
-        {/* Mobile header with hamburger */}
-        <div className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-background/95 backdrop-blur border-b border-border/60 lg:hidden">
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5 text-foreground" />
-          </button>
-          <span className="text-sm font-semibold text-foreground">Control Center</span>
+        {/* Top bar */}
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-background/95 backdrop-blur border-b border-border/60">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors lg:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5 text-foreground" />
+            </button>
+            <span className="text-sm font-semibold text-foreground lg:hidden">Control Center</span>
+          </div>
+          <UserAccountMenu />
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
