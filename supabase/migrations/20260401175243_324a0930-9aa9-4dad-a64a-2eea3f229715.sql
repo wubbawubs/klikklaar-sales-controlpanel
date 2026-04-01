@@ -1,0 +1,1 @@
+INSERT INTO notifications (user_id, title, body, type, action_url) VALUES ('913e9b1e-0d98-477b-a2b2-0747737a3186', '🔔 Push test na publicatie', 'Als je dit op je telefoon ziet, werkt het push-systeem end-to-end! 🎉', 'test', '/notifications');
