@@ -18,6 +18,7 @@ import {
   GitBranch,
   Sun,
   Moon,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -49,6 +50,7 @@ const navItems: NavItem[] = [
   { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'coach+admin' },
   { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
   { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', visibility: 'admin' },
+  { to: '/email-monitoring', icon: Mail, label: 'E-mail Monitor', visibility: 'admin' },
 ];
 
 interface AppSidebarProps {
