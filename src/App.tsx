@@ -19,6 +19,7 @@ import TrainingPage from "@/pages/TrainingPage";
 import EodPage from "@/pages/EodPage";
 import SettingsPage from "@/pages/SettingsPage";
 import AuditLogsPage from "@/pages/AuditLogsPage";
+import EmailMonitoringPage from "@/pages/EmailMonitoringPage";
 import LeadManagementPage from "@/pages/LeadManagementPage";
 import CallLoggingPage from "@/pages/CallLoggingPage";
 import NotFound from "@/pages/NotFound";
