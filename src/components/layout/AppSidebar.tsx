@@ -18,6 +18,7 @@ import {
   GitBranch,
   Sun,
   Moon,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
