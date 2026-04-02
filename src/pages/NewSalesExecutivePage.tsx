@@ -286,6 +286,27 @@ export default function NewSalesExecutivePage() {
           await (supabase as any).from('pipedrive_lead_assignments').insert(leadRows);
         }
 
+        // Send SE onboarding welcome email
+        try {
+          await supabase.functions.invoke('send-transactional-email', {
+            body: {
+              templateName: 'se-onboarding-welcome',
+              recipientEmail: form.email,
+              idempotencyKey: `se-onboarding-${se.id}`,
+              templateData: {
+                firstName: form.first_name,
+                lastName: form.last_name,
+                email: form.email,
+                startDate: form.start_date || 'Binnenkort',
+                startTime: '09:00',
+                productLines: form.product_lines,
+              },
+            },
+          });
+        } catch (emailErr) {
+          console.error('Onboarding email failed:', emailErr);
+        }
+
         toast.success('Sales Executive succesvol aangemaakt');
         navigate(`/sales-executives/${se.id}`);
       }
