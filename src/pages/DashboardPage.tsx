@@ -21,6 +21,7 @@ import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import AdminSignalsOverview from '@/components/dashboard/AdminSignalsOverview';
 import AdminNBAOverview from '@/components/dashboard/AdminNBAOverview';
 import HealthEventsLog from '@/components/dashboard/HealthEventsLog';
+import PerRepAnalytics from '@/components/dashboard/PerRepAnalytics';
 
 interface SERow extends SalesExecutive {
   workspace?: Workspace;
@@ -209,6 +210,8 @@ function AdminDashboard({ user, toast }: { user: any; toast: any }) {
           <WeeklyActivitiesChart from={chartRange.from} to={chartRange.to} />
         </div>
       </div>
+
+      <PerRepAnalytics />
 
       <AdminNBAOverview />
 
