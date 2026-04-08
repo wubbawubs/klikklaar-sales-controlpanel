@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { subWeeks } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,8 +19,11 @@ export default function SEPersonalDashboard() {
   const [loading, setLoading] = useState(true);
   const [seName, setSeName] = useState('');
   const [seId, setSeId] = useState<string | null>(null);
+  const [seEmail, setSeEmail] = useState('');
   const [isEmployee, setIsEmployee] = useState(false);
+  const [hasLeads, setHasLeads] = useState(true);
   const [chartRange, setChartRange] = useState({ from: subWeeks(new Date(), 8), to: new Date() });
+  const signalFired = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -28,7 +31,7 @@ export default function SEPersonalDashboard() {
       const normalizedEmail = (user.email ?? '').trim().toLowerCase();
       const { data: seData } = await supabase
         .from('sales_executives')
-        .select('id, full_name, first_name, last_name, employment_type')
+        .select('id, full_name, first_name, last_name, employment_type, email')
         .or(`email.ilike.${normalizedEmail},user_id.eq.${user.id}`)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -37,15 +40,21 @@ export default function SEPersonalDashboard() {
       if (!seData) { setLoading(false); return; }
       setSeId(seData.id);
       setSeName(seData.full_name || `${seData.first_name} ${seData.last_name}`);
+      setSeEmail(seData.email);
       setIsEmployee((seData as any).employment_type === 'employee');
 
-      // Trigger signal engine + Pipedrive sync (fire-and-forget)
-      supabase.functions.invoke('signal-engine', {
-        body: { sales_executive_id: seData.id },
-      }).catch(() => {});
+      // Check leads count (fast, head-only)
+      const { count } = await supabase
+        .from('pipedrive_lead_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('sales_executive_id', seData.id)
+        .in('status', ['assigned', 'in_progress']);
+      setHasLeads((count ?? 0) > 0);
 
-      if ((seData as any).employment_type === 'employee') {
-        supabase.functions.invoke('pipedrive-sync', {
+      // Fire signal engine only once (prevent StrictMode double-fire)
+      if (!signalFired.current) {
+        signalFired.current = true;
+        supabase.functions.invoke('signal-engine', {
           body: { sales_executive_id: seData.id },
         }).catch(() => {});
       }
@@ -55,9 +64,13 @@ export default function SEPersonalDashboard() {
     fetchSE();
   }, [user]);
 
-  // 10-minute sync interval for employees
+  // 10-minute Pipedrive sync interval for employees
   useEffect(() => {
     if (!seId || !isEmployee) return;
+    // Initial sync
+    supabase.functions.invoke('pipedrive-sync', {
+      body: { sales_executive_id: seId },
+    }).catch(() => {});
     const interval = setInterval(() => {
       supabase.functions.invoke('pipedrive-sync', {
         body: { sales_executive_id: seId },
@@ -93,26 +106,25 @@ export default function SEPersonalDashboard() {
       {/* 1. Performance bars */}
       <SEPerformanceBars seId={seId} />
 
-      {/* 2. Pipedrive widget (only for employees) */}
-      {isEmployee && <PipedriveDashboardWidget seId={seId} />}
+      {/* 2. Pipedrive widget (only for employees) — pass email to avoid re-query */}
+      {isEmployee && <PipedriveDashboardWidget seId={seId} seEmail={seEmail} />}
 
-      {/* CI Engine Coaching */}
-      <CICoachingCard seId={seId} />
+      {/* Persoonlijke tips — with hasLeads prop */}
+      <CICoachingCard seId={seId} hasLeads={hasLeads} />
 
-      {/* 3. Taken checklist */}
       {/* EOD afsluiten */}
       <SEEndOfDayCTA seId={seId} seName={seName} />
 
-      {/* 3. Taken checklist */}
+      {/* Taken checklist */}
       <SETaskChecklist seId={seId} />
 
       {/* EOD Historie */}
       <SEEodHistory seName={seName} />
 
-      {/* 3. Training & Advies */}
+      {/* Training & Advies */}
       <SETrainingAdviceCard seId={seId} seName={seName} />
 
-      {/* 4. Charts */}
+      {/* Charts */}
       <div className="space-y-4">
         <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -121,7 +133,7 @@ export default function SEPersonalDashboard() {
         </div>
       </div>
 
-      {/* CI Engine Chat (floating) */}
+      {/* Assistent Chat (floating) */}
       <CIChatCard seId={seId} seName={seName} />
     </div>
   );

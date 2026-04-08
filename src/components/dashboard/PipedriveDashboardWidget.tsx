@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 interface Props {
   seId: string;
+  seEmail?: string;
 }
 
 interface DealSummary {
@@ -16,7 +17,7 @@ interface DealSummary {
   value: number;
 }
 
-export default function PipedriveDashboardWidget({ seId }: Props) {
+export default function PipedriveDashboardWidget({ seId, seEmail }: Props) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DealSummary[]>([]);
@@ -30,56 +31,35 @@ export default function PipedriveDashboardWidget({ seId }: Props) {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get SE email to resolve Pipedrive user
-      const { data: se } = await supabase
-        .from('sales_executives')
-        .select('email, employment_type')
-        .eq('id', seId)
-        .single();
+      // Use passed email or fetch it
+      let email = seEmail;
+      if (!email) {
+        const { data: se } = await supabase
+          .from('sales_executives')
+          .select('email')
+          .eq('id', seId)
+          .single();
+        if (!se) { setLoading(false); return; }
+        email = se.email;
+      }
 
-      if (!se) { setLoading(false); return; }
+      // For employees: resolve Pipedrive user_id and fetch their deals directly
+      const userRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(email!)}`,
+        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const userData = await userRes.json();
 
-      const isEmployee = se.employment_type === 'employee';
-
-      if (isEmployee) {
-        // For employees: resolve Pipedrive user_id and fetch their deals directly
-        const userRes = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-users?email=${encodeURIComponent(se.email)}`,
+      if (userData.found && userData.user?.id) {
+        const dealsRes = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?user_id=${userData.user.id}`,
           { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
         );
-        const userData = await userRes.json();
-
-        if (userData.found && userData.user?.id) {
-          const dealsRes = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?user_id=${userData.user.id}`,
-            { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
-          );
-          const result = await dealsRes.json();
-          const stages = (result.stages || []).filter((s: any) => s.deals_count > 0);
-          setSummary(stages.map((s: any) => ({ stageName: s.name, count: s.deals_count, value: s.deals_value })));
-          setTotalDeals(result.total_deals || 0);
-          setTotalValue(result.total_value || 0);
-        }
-      } else {
-        // For commission-based: use assigned lead org_ids
-        const { data: leads } = await (supabase as any)
-          .from('pipedrive_lead_assignments')
-          .select('pipedrive_org_id')
-          .eq('sales_executive_id', seId);
-
-        const orgIds = [...new Set((leads || []).map((l: any) => l.pipedrive_org_id).filter(Boolean))];
-
-        if (orgIds.length > 0) {
-          const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-deals?org_ids=${orgIds.join(',')}`,
-            { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
-          );
-          const result = await res.json();
-          const stages = (result.stages || []).filter((s: any) => s.deals_count > 0);
-          setSummary(stages.map((s: any) => ({ stageName: s.name, count: s.deals_count, value: s.deals_value })));
-          setTotalDeals(result.total_deals || 0);
-          setTotalValue(result.total_value || 0);
-        }
+        const result = await dealsRes.json();
+        const stages = (result.stages || []).filter((s: any) => s.deals_count > 0);
+        setSummary(stages.map((s: any) => ({ stageName: s.name, count: s.deals_count, value: s.deals_value })));
+        setTotalDeals(result.total_deals || 0);
+        setTotalValue(result.total_value || 0);
       }
     } catch {
       // silent
