@@ -166,7 +166,7 @@ export default function CIChatCard({ seId, seName }: Props) {
               <div className="p-1 rounded-md bg-primary/10">
                 <Sparkles className="h-4 w-4 text-primary" />
               </div>
-              CI Engine Chat
+              Assistent
             </CardTitle>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
               <X className="h-4 w-4" />
