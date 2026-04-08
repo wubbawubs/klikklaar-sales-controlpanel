@@ -281,107 +281,120 @@ function AdminLeadManagement() {
 
       {/* Table */}
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Laden...</div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">Geen leads gevonden</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]">
-                    <input
-                      type="checkbox"
-                      checked={selectedLeads.size === filtered.length && filtered.length > 0}
-                      onChange={toggleAll}
-                      className="rounded border-muted-foreground"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[30px]"></TableHead>
-                  <TableHead>Organisatie</TableHead>
-                  <TableHead>Contactpersoon</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Sales Executive</TableHead>
-                  <TableHead>Activiteiten</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Toegewezen</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map(lead => {
-                  const isExpanded = expandedLeads.has(lead.id);
-                  const count = activityCounts[lead.id] || 0;
-                  return (
-                    <>
-                      <TableRow key={lead.id} className={`${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''} ${count > 0 ? 'cursor-pointer' : ''}`}>
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selectedLeads.has(lead.id)}
-                            onChange={() => toggleSelect(lead.id)}
-                            className="rounded border-muted-foreground"
-                          />
-                        </TableCell>
-                        <TableCell className="px-1">
-                          {count > 0 && (
-                            <button onClick={() => toggleExpand(lead.id)} className="p-1 rounded hover:bg-accent">
-                              {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                            </button>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.size === filtered.length && filtered.length > 0}
+                          onChange={toggleAll}
+                          className="rounded border-muted-foreground"
+                        />
+                      </TableHead>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead className="min-w-[140px]">Organisatie</TableHead>
+                      <TableHead className="min-w-[120px]">Contact</TableHead>
+                      <TableHead className="min-w-[140px]">Info</TableHead>
+                      <TableHead className="min-w-[120px]">SE</TableHead>
+                      <TableHead className="w-20">Act.</TableHead>
+                      <TableHead className="w-28">Status</TableHead>
+                      <TableHead className="w-28">Datum</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paged.map(lead => {
+                      const isExpanded = expandedLeads.has(lead.id);
+                      const count = activityCounts[lead.id] || 0;
+                      return (
+                        <>
+                          <TableRow key={lead.id} className={`${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''} ${count > 0 ? 'cursor-pointer' : ''}`}>
+                            <TableCell>
+                              <input
+                                type="checkbox"
+                                checked={selectedLeads.has(lead.id)}
+                                onChange={() => toggleSelect(lead.id)}
+                                className="rounded border-muted-foreground"
+                              />
+                            </TableCell>
+                            <TableCell className="px-1">
+                              {count > 0 && (
+                                <button onClick={() => toggleExpand(lead.id)} className="p-1 rounded hover:bg-accent">
+                                  {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                </button>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="font-medium truncate max-w-[200px]">{lead.org_name || '—'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="truncate max-w-[160px] block">{lead.person_name || '—'}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-0.5 text-xs text-muted-foreground">
+                                {lead.person_email && (
+                                  <div className="flex items-center gap-1 truncate max-w-[180px]"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{lead.person_email}</span></div>
+                                )}
+                                {lead.person_phone && (
+                                  <div className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{lead.person_phone}</div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm truncate max-w-[120px] block">{seMap[lead.sales_executive_id]?.full_name || '—'}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <PhoneCall className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm font-medium">{count}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={statusColors[lead.status] || ''}>
+                                {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {lead.assigned_at ? new Date(lead.assigned_at).toLocaleDateString('nl-NL') : '—'}
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow key={`${lead.id}-activities`}>
+                              <TableCell colSpan={9} className="p-0 bg-muted/30">
+                                <LeadActivityHistory leadAssignmentId={lead.id} />
+                              </TableCell>
+                            </TableRow>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="font-medium">{lead.org_name || '—'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span>{lead.person_name || '—'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-0.5 text-xs text-muted-foreground">
-                            {lead.person_email && (
-                              <div className="flex items-center gap-1"><Mail className="h-3 w-3" />{lead.person_email}</div>
-                            )}
-                            {lead.person_phone && (
-                              <div className="flex items-center gap-1"><Phone className="h-3 w-3" />{lead.person_phone}</div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{seMap[lead.sales_executive_id]?.full_name || '—'}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <PhoneCall className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm font-medium">{count}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className={statusColors[lead.status] || ''}>
-                            {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {lead.assigned_at ? new Date(lead.assigned_at).toLocaleDateString('nl-NL') : '—'}
-                        </TableCell>
-                      </TableRow>
-                      {isExpanded && (
-                        <TableRow key={`${lead.id}-activities`}>
-                          <TableCell colSpan={9} className="p-0 bg-muted/30">
-                            <LeadActivityHistory leadAssignmentId={lead.id} />
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border/60">
+                  <span className="text-sm text-muted-foreground">
+                    {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} van {filtered.length} leads
+                  </span>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Vorige</Button>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Volgende</Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
