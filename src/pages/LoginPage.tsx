@@ -33,9 +33,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
