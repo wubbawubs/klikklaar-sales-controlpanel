@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -100,11 +100,11 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
     new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[420px] sm:max-w-[420px] p-0 flex flex-col">
-        <SheetHeader className="p-5 pb-3">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl w-[95vw] p-0 flex flex-col max-h-[85vh] gap-0">
+        <DialogHeader className="p-5 pb-3">
           <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="text-base leading-tight flex-1">{dealTitle || org?.name || 'Details'}</SheetTitle>
+            <DialogTitle className="text-base leading-tight flex-1">{dealTitle || org?.name || 'Details'}</DialogTitle>
             {(onPrev || onNext) && (
               <div className="flex items-center gap-1 shrink-0">
                 <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onPrev} onClick={() => onPrev?.()}>
@@ -117,15 +117,15 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
             )}
           </div>
           {dealValue != null && (
-            <SheetDescription className="flex items-center gap-2 text-sm">
+            <DialogDescription className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4 text-primary" />
               <span className="font-semibold text-primary">{formatCurrency(dealValue)}</span>
               {dealExpectedClose && (
                 <span className="text-muted-foreground">· Verwacht {new Date(dealExpectedClose).toLocaleDateString('nl-NL')}</span>
               )}
-            </SheetDescription>
+            </DialogDescription>
           )}
-        </SheetHeader>
+        </DialogHeader>
 
         {/* Log Call CTA */}
         <div className="px-5 pb-2">
@@ -243,7 +243,7 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
             </div>
           </ScrollArea>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
