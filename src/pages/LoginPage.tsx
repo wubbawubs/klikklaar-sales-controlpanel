@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      setShowSplash(true);
+      toast.success('Succesvol ingelogd');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Er is een fout opgetreden';
       toast.error(message);
