@@ -60,6 +60,7 @@ function AdminLeadManagement() {
   const [search, setSearch] = useState('');
   const [filterSe, setFilterSe] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterBranche, setFilterBranche] = useState<string>('all');
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [targetSeId, setTargetSeId] = useState('');
@@ -138,12 +139,14 @@ function AdminLeadManagement() {
   const filtered = leads.filter(l => {
     if (filterSe !== 'all' && l.sales_executive_id !== filterSe) return false;
     if (filterStatus !== 'all' && l.status !== filterStatus) return false;
+    if (filterBranche !== 'all' && (l.branche || '—') !== filterBranche) return false;
     if (search) {
       const q = search.toLowerCase();
       return (
         l.org_name?.toLowerCase().includes(q) ||
         l.person_name?.toLowerCase().includes(q) ||
         l.person_email?.toLowerCase().includes(q) ||
+        l.branche?.toLowerCase().includes(q) ||
         seMap[l.sales_executive_id]?.full_name?.toLowerCase().includes(q)
       );
     }
@@ -200,6 +203,7 @@ function AdminLeadManagement() {
   };
 
   const uniqueStatuses = [...new Set(leads.map(l => l.status))];
+  const uniqueBranches = [...new Set(leads.map(l => l.branche || '—'))].sort();
 
   return (
     <div className="space-y-6">
