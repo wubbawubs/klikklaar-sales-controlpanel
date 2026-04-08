@@ -286,6 +286,27 @@ export default function NewSalesExecutivePage() {
           await (supabase as any).from('pipedrive_lead_assignments').insert(leadRows);
         }
 
+        // Provision auth account (creates login + assigns role + sends reset email)
+        try {
+          const { data: provisionResult, error: provisionError } = await supabase.functions.invoke('provision-se-user', {
+            body: {
+              email: form.email,
+              firstName: form.first_name,
+              lastName: form.last_name,
+              salesExecutiveId: se.id,
+            },
+          });
+          if (provisionError) {
+            console.error('Account provisioning failed:', provisionError);
+            toast.warning('SE aangemaakt, maar login-account kon niet worden aangemaakt. Maak het account handmatig aan.');
+          } else {
+            toast.success('Login-account aangemaakt — SE ontvangt een wachtwoord-reset e-mail');
+          }
+        } catch (provErr) {
+          console.error('Account provisioning error:', provErr);
+          toast.warning('SE aangemaakt, maar login-account kon niet worden aangemaakt');
+        }
+
         // Send SE onboarding welcome email
         try {
           await supabase.functions.invoke('send-transactional-email', {
