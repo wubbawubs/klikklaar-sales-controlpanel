@@ -167,7 +167,7 @@ function AdminLeadManagement() {
   };
 
   const toggleAll = () => {
-    if (selectedLeads.size === filtered.length) {
+    if (selectedLeads.size > 0) {
       setSelectedLeads(new Set());
     } else {
       setSelectedLeads(new Set(filtered.map(l => l.id)));
