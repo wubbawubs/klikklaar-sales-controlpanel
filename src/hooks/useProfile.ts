@@ -32,9 +32,13 @@ export function useProfile() {
 
   const updateProfile = async (updates: Partial<Pick<UserProfile, 'full_name' | 'avatar_url'>>) => {
     if (!user) return;
+    // Only send fields that exist in the DB schema
+    const dbUpdates: Record<string, string | undefined> = {};
+    if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
+    // avatar_url is stored in user metadata, not profiles table
     const { error } = await supabase
       .from('profiles')
-      .update(updates)
+      .update(dbUpdates)
       .eq('user_id', user.id);
     if (error) throw error;
     await fetchProfile();
