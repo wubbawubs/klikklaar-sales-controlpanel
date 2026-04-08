@@ -149,9 +149,10 @@ function AdminLeadManagement() {
     return true;
   });
 
-  // Reset page when filters change
+  // Reset page when filters change  
+  const safePage = Math.min(page, Math.max(0, Math.ceil(filtered.length / PAGE_SIZE) - 1));
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const paged = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const toggleSelect = (id: string) => {
     setSelectedLeads(prev => {
