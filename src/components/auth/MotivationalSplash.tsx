@@ -30,8 +30,8 @@ export function MotivationalSplash({ onComplete }: MotivationalSplashProps) {
 
   useEffect(() => {
     const enterTimer = setTimeout(() => setPhase('visible'), 50);
-    const exitTimer = setTimeout(() => setPhase('exit'), 2800);
-    const doneTimer = setTimeout(() => onComplete(), 3400);
+    const exitTimer = setTimeout(() => setPhase('exit'), 3360);
+    const doneTimer = setTimeout(() => onComplete(), 4080);
 
     return () => {
       clearTimeout(enterTimer);
