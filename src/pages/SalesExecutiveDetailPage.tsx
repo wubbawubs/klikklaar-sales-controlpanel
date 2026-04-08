@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog, ProvisioningJob } from '@/types/database';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
+import { ArtifactsList } from '@/components/dashboard/ArtifactsList';
+import { EodDetailList } from '@/components/dashboard/EodDetailList';
 
 function SelectedFormsList({ formIds }: { formIds: string[] }) {
   const [forms, setForms] = useState<{ id: string; title: string }[]>([]);
@@ -359,23 +361,7 @@ export default function SalesExecutiveDetailPage() {
         </TabsContent>
 
         <TabsContent value="artifacts">
-          {artifacts.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">Nog geen artifacts gegenereerd</CardContent></Card>
-          ) : (
-            <div className="space-y-3">
-              {artifacts.map(a => (
-                <Card key={a.id}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{a.artifact_name}</p>
-                      <p className="text-sm text-muted-foreground">{a.artifact_type} • v{a.version} • {a.artifact_format}</p>
-                    </div>
-                    <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Download</Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <ArtifactsList artifacts={artifacts} />
         </TabsContent>
 
         <TabsContent value="provisioning">
