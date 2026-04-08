@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Building2, User, Phone, Mail, Plus, PhoneCall, CheckCircle2, Clock, Loader2, ExternalLink, Search, DollarSign, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
+import { ExpandableNote } from '@/components/ui/expandable-note';
 
 interface LeadAssignment {
   id: string;
@@ -481,7 +482,7 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{act.subject || act.activity_type}</p>
-                    {act.note && <p className="text-xs text-muted-foreground truncate">{act.note}</p>}
+                    {act.note && <ExpandableNote text={act.note} title={`Notitie — ${act.subject || 'Activiteit'}`} />}
                     {act.outcome && <Badge variant="outline" className="text-xs mt-1">{act.outcome}</Badge>}
                   </div>
                   <div className="text-right text-xs text-muted-foreground">

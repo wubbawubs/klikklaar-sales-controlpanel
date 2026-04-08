@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
+import { ExpandableNote } from '@/components/ui/expandable-note';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -212,9 +213,14 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
                           <Badge variant="outline" className="text-[10px] shrink-0">{act.type}</Badge>
                         </div>
                         {act.note && (
-                          <div className="flex items-start gap-2 ml-7">
-                            <FileText className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-                            <p className="text-xs text-muted-foreground line-clamp-3">{act.note.replace(/<[^>]*>/g, '')}</p>
+                          <div className="ml-7">
+                            <ExpandableNote
+                              text={act.note}
+                              title={`Notitie — ${act.subject || 'Activiteit'}`}
+                              icon="file"
+                              lineClamp={3}
+                              stripHtml
+                            />
                           </div>
                         )}
                         <div className="flex items-center gap-2 ml-7 text-[10px] text-muted-foreground">

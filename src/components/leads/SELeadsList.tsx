@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
+import { ExpandableNote } from '@/components/ui/expandable-note';
 
 interface Lead {
   id: string;
@@ -334,11 +335,8 @@ export default function SELeadsList() {
                         </TableCell>
                         <TableCell>
                           {lead.notes && (
-                            <div className="flex items-start gap-1">
-                              <StickyNote className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                              <span className="text-[11px] text-muted-foreground line-clamp-2 max-w-[200px]">
-                                {lead.notes}
-                              </span>
+                            <div className="max-w-[200px]">
+                              <ExpandableNote text={lead.notes} title={`Notitie — ${lead.org_name || 'Lead'}`} />
                             </div>
                           )}
                         </TableCell>
