@@ -10,7 +10,7 @@ import { ArrowLeft, Play, Download, Pencil, Loader2, FileJson, FileSpreadsheet }
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
-import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
+import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog, ProvisioningJob } from '@/types/database';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 
 function SelectedFormsList({ formIds }: { formIds: string[] }) {
@@ -34,6 +34,7 @@ export default function SalesExecutiveDetailPage() {
   const [eods, setEods] = useState<EodSubmission[]>([]);
   const [artifacts, setArtifacts] = useState<GeneratedArtifact[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [provJobs, setProvJobs] = useState<ProvisioningJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
 
@@ -92,14 +93,16 @@ export default function SalesExecutiveDetailPage() {
         const { data: wsData } = await supabase.from('workspaces').select('*').eq('sales_executive_id', id).maybeSingle();
         setWorkspace(wsData);
         if (wsData) {
-          const [icRes, eodRes, artRes] = await Promise.all([
+          const [icRes, eodRes, artRes, provRes] = await Promise.all([
             supabase.from('integration_configs').select('*').eq('workspace_id', wsData.id),
             supabase.from('eod_submissions').select('*').eq('sales_executive_id', id).order('session_date', { ascending: false }),
             supabase.from('generated_artifacts').select('*').eq('workspace_id', wsData.id).order('created_at', { ascending: false }),
+            supabase.from('provisioning_jobs').select('*').eq('workspace_id', wsData.id).order('created_at', { ascending: false }),
           ]);
           setIntegrations(icRes.data || []);
           setEods(eodRes.data || []);
           setArtifacts(artRes.data || []);
+          setProvJobs(provRes.data || []);
         }
         const { data: logData } = await supabase.from('audit_logs').select('*').eq('entity_id', id).order('created_at', { ascending: false }).limit(50);
         setLogs(logData || []);
@@ -213,6 +216,7 @@ export default function SalesExecutiveDetailPage() {
           <TabsTrigger value="sharepoint">SharePoint</TabsTrigger>
           <TabsTrigger value="integrations">Integraties</TabsTrigger>
           <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
+          <TabsTrigger value="provisioning">Provisioning</TabsTrigger>
           <TabsTrigger value="eod">EOD</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
@@ -370,6 +374,56 @@ export default function SalesExecutiveDetailPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="provisioning">
+          {provJobs.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">
+              Nog geen provisioning-jobs uitgevoerd. Klik op "Provisioneren" om workspace-bestanden te genereren.
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {provJobs.map(j => {
+                const typeLabel: Record<string, string> = {
+                  'design_only': '📄 Alleen ontwerp — Bestanden klaarzetten zonder deployment',
+                  'export_package': '📦 Exportpakket — ZIP met alle configuratiebestanden',
+                  'controlled_execution': '🚀 Volledige uitvoering — Automatisch aanmaken van SharePoint-site',
+                };
+                const statusLabel: Record<string, string> = {
+                  'pending': '⏳ In afwachting — Job staat in de wachtrij',
+                  'running': '🔄 Bezig — Job wordt nu uitgevoerd',
+                  'completed': '✅ Afgerond — Alles succesvol aangemaakt',
+                  'failed': '❌ Mislukt — Er is een fout opgetreden',
+                };
+                return (
+                  <Card key={j.id}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{typeLabel[j.job_type] || j.job_type}</p>
+                        <StatusBadge status={j.status} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {statusLabel[j.status || 'pending'] || j.status}
+                      </p>
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>Aangemaakt: {j.created_at ? new Date(j.created_at).toLocaleString('nl-NL') : '—'}</span>
+                        {j.finished_at && <span>Afgerond: {new Date(j.finished_at).toLocaleString('nl-NL')}</span>}
+                        {j.artifact_version && <span>Versie: v{j.artifact_version}</span>}
+                      </div>
+                      {j.manual_actions_required && j.manual_actions_required.length > 0 && (
+                        <div className="mt-2 p-3 bg-muted rounded-md">
+                          <p className="text-xs font-medium mb-1">⚠️ Handmatige acties vereist:</p>
+                          <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                            {j.manual_actions_required.map((a, i) => <li key={i}>{a}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>

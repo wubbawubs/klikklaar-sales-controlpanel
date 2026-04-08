@@ -12,7 +12,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
 import NewSalesExecutivePage from "@/pages/NewSalesExecutivePage";
 import SalesExecutiveDetailPage from "@/pages/SalesExecutiveDetailPage";
-import ProvisioningPage from "@/pages/ProvisioningPage";
+
 import ArtifactsPage from "@/pages/ArtifactsPage";
 import IntegrationsPage from "@/pages/IntegrationsPage";
 import TrainingPage from "@/pages/TrainingPage";
@@ -101,7 +101,7 @@ function AppRoutes() {
         <Route path="/sales-executives/new" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><NewSalesExecutivePage /></ProtectedRoute>} />
         <Route path="/sales-executives/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutiveDetailPage /></ProtectedRoute>} />
         <Route path="/sales-executives/:id/edit" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><NewSalesExecutivePage /></ProtectedRoute>} />
-        <Route path="/provisioning" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ProvisioningPage /></ProtectedRoute>} />
+        <Route path="/provisioning" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutivesPage /></ProtectedRoute>} />
         <Route path="/artifacts" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ArtifactsPage /></ProtectedRoute>} />
         <Route path="/integrations" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/integraties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
