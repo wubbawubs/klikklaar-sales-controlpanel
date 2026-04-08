@@ -26,10 +26,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      toast.success('Succesvol ingelogd');
+      setShowSplash(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Er is een fout opgetreden';
       toast.error(message);
+    } finally {
+      setLoading(false);
+    }
     } finally {
       setLoading(false);
     }
