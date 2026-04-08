@@ -312,7 +312,8 @@ function AdminLeadManagement() {
                       <TableHead className="w-10">
                         <input
                           type="checkbox"
-                          checked={selectedLeads.size === filtered.length && filtered.length > 0}
+                          checked={selectedLeads.size > 0 && selectedLeads.size === filtered.length}
+                          ref={el => { if (el) el.indeterminate = selectedLeads.size > 0 && selectedLeads.size < filtered.length; }}
                           onChange={toggleAll}
                           className="rounded border-muted-foreground"
                         />
