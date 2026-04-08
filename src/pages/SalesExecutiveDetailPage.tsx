@@ -378,7 +378,56 @@ export default function SalesExecutiveDetailPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="eod">
+        <TabsContent value="provisioning">
+          {provJobs.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">
+              Nog geen provisioning-jobs uitgevoerd. Klik op "Provisioneren" om workspace-bestanden te genereren.
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {provJobs.map(j => {
+                const typeLabel: Record<string, string> = {
+                  'design_only': '📄 Alleen ontwerp — Bestanden klaarzetten zonder deployment',
+                  'export_package': '📦 Exportpakket — ZIP met alle configuratiebestanden',
+                  'controlled_execution': '🚀 Volledige uitvoering — Automatisch aanmaken van SharePoint-site',
+                };
+                const statusLabel: Record<string, string> = {
+                  'pending': '⏳ In afwachting — Job staat in de wachtrij',
+                  'running': '🔄 Bezig — Job wordt nu uitgevoerd',
+                  'completed': '✅ Afgerond — Alles succesvol aangemaakt',
+                  'failed': '❌ Mislukt — Er is een fout opgetreden',
+                };
+                return (
+                  <Card key={j.id}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{typeLabel[j.job_type] || j.job_type}</p>
+                        <StatusBadge status={j.status} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {statusLabel[j.status || 'pending'] || j.status}
+                      </p>
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>Aangemaakt: {j.created_at ? new Date(j.created_at).toLocaleString('nl-NL') : '—'}</span>
+                        {j.finished_at && <span>Afgerond: {new Date(j.finished_at).toLocaleString('nl-NL')}</span>}
+                        {j.artifact_version && <span>Versie: v{j.artifact_version}</span>}
+                      </div>
+                      {j.manual_actions_required && j.manual_actions_required.length > 0 && (
+                        <div className="mt-2 p-3 bg-muted rounded-md">
+                          <p className="text-xs font-medium mb-1">⚠️ Handmatige acties vereist:</p>
+                          <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                            {j.manual_actions_required.map((a, i) => <li key={i}>{a}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
           {eods.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Nog geen EOD-inzendingen</CardContent></Card>
           ) : (
