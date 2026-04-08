@@ -254,22 +254,22 @@ function AdminLeadManagement() {
       </Card>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Totaal leads</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{leads.length}</p></CardContent>
+          <CardHeader className="p-3 pb-1"><CardTitle className="text-xs font-medium text-muted-foreground">Totaal</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><p className="text-2xl font-bold">{leads.length}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Toegewezen</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{leads.filter(l => l.status === 'assigned').length}</p></CardContent>
+          <CardHeader className="p-3 pb-1"><CardTitle className="text-xs font-medium text-muted-foreground">Toegewezen</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><p className="text-2xl font-bold">{leads.filter(l => l.status === 'assigned').length}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Gecontacteerd</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{leads.filter(l => l.status === 'contacted').length}</p></CardContent>
+          <CardHeader className="p-3 pb-1"><CardTitle className="text-xs font-medium text-muted-foreground">Gecontacteerd</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><p className="text-2xl font-bold">{leads.filter(l => l.status === 'contacted').length}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Gekwalificeerd</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{leads.filter(l => l.status === 'qualified').length}</p></CardContent>
+          <CardHeader className="p-3 pb-1"><CardTitle className="text-xs font-medium text-muted-foreground">Gekwalificeerd</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><p className="text-2xl font-bold">{leads.filter(l => l.status === 'qualified').length}</p></CardContent>
         </Card>
       </div>
 
