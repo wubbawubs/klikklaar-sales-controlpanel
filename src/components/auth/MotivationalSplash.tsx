@@ -73,7 +73,7 @@ export function MotivationalSplash({ onComplete }: MotivationalSplashProps) {
 
         {quote.author && (
           <p className="mt-4 text-sm text-muted-foreground font-medium tracking-wide uppercase">
-            — {quote.author}
+            | {quote.author}
           </p>
         )}
 
