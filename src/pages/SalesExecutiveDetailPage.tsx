@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog, ProvisioningJob } from '@/types/database';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
+import { ArtifactsList } from '@/components/dashboard/ArtifactsList';
+import { EodDetailList } from '@/components/dashboard/EodDetailList';
 
 function SelectedFormsList({ formIds }: { formIds: string[] }) {
   const [forms, setForms] = useState<{ id: string; title: string }[]>([]);
@@ -359,23 +361,7 @@ export default function SalesExecutiveDetailPage() {
         </TabsContent>
 
         <TabsContent value="artifacts">
-          {artifacts.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">Nog geen artifacts gegenereerd</CardContent></Card>
-          ) : (
-            <div className="space-y-3">
-              {artifacts.map(a => (
-                <Card key={a.id}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{a.artifact_name}</p>
-                      <p className="text-sm text-muted-foreground">{a.artifact_type} • v{a.version} • {a.artifact_format}</p>
-                    </div>
-                    <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Download</Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <ArtifactsList artifacts={artifacts} />
         </TabsContent>
 
         <TabsContent value="provisioning">
@@ -429,30 +415,7 @@ export default function SalesExecutiveDetailPage() {
         </TabsContent>
 
         <TabsContent value="eod">
-          {eods.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">Nog geen EOD-inzendingen</CardContent></Card>
-          ) : (
-            <div className="bg-card rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Datum</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Opvolging</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Notities</th>
-                </tr></thead>
-                <tbody>
-                  {eods.map(eod => (
-                    <tr key={eod.id} className="border-b last:border-0">
-                      <td className="p-3">{new Date(eod.session_date).toLocaleDateString('nl-NL')}</td>
-                      <td className="p-3"><StatusBadge status={eod.status} /></td>
-                      <td className="p-3"><StatusBadge status={eod.follow_up_status} /></td>
-                      <td className="p-3 text-muted-foreground"><td className="p-3 text-muted-foreground">{eod.coach_notes || ','}</td></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <EodDetailList eods={eods} salesExecutiveId={id!} />
         </TabsContent>
 
         <TabsContent value="logs">
