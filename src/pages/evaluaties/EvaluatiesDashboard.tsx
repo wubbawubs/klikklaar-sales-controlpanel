@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, BarChart3, ClipboardList, ExternalLink, Users, TrendingUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { FileText, BarChart3, ClipboardList, ExternalLink, Users, TrendingUp, ChevronDown, ChevronRight, ThumbsUp, AlertTriangle, Target, MessageCircle, Phone, MessageSquare, CalendarCheck, Star, Zap } from 'lucide-react';
 import EodPage from '@/pages/EodPage';
 
 export default function EvaluatiesDashboard() {
@@ -14,6 +15,7 @@ export default function EvaluatiesDashboard() {
   const [recentSubs, setRecentSubs] = useState<any[]>([]);
   const [eodUrl, setEodUrl] = useState('');
   const [lastSubmission, setLastSubmission] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => { loadData(); }, []);
 
@@ -31,6 +33,10 @@ export default function EvaluatiesDashboard() {
     setStats({ activeForms: fc || 0, todaySubmissions: todaySubs?.length || 0, avgDayScore: Math.round(avgDay * 10) / 10, coachingNeeded: coaching });
   };
 
+  const toggleItem = (id: string) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const StatCard = ({ title, value, icon }: { title: string; value: any; icon: React.ReactNode }) => (
     <Card>
       <CardContent className="p-4 flex items-center gap-3">
@@ -39,6 +45,22 @@ export default function EvaluatiesDashboard() {
       </CardContent>
     </Card>
   );
+
+  const TextBlock = ({ label, icon: Icon, value }: { label: string; icon: React.ElementType; value: string | null | undefined }) => {
+    if (!value) return null;
+    return (
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Icon className="h-3 w-3" />{label}</p>
+        <p className="text-sm bg-muted p-2 rounded-md">{value}</p>
+      </div>
+    );
+  };
+
+  const scoreColor = (score: number | null) => {
+    if (!score) return '';
+    if (score <= 6) return 'text-destructive font-medium';
+    return '';
+  };
 
   return (
     <div className="space-y-6">
@@ -91,18 +113,53 @@ export default function EvaluatiesDashboard() {
                   <p className="text-muted-foreground text-sm">Nog geen evaluaties ontvangen.</p>
                 ) : (
                   <div className="space-y-2">
-                    {recentSubs.map((s: any) => (
-                      <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                        <div>
-                          <p className="font-medium">{s.employee_name || 'Onbekend'}</p>
-                          <p className="text-sm text-muted-foreground">{s.team} | {s.work_date}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm">Dagscore: <strong>{s.day_score}</strong></p>
-                          <p className="text-sm">Energie: <strong>{s.energy_score}</strong></p>
-                        </div>
-                      </div>
-                    ))}
+                    {recentSubs.map((s: any) => {
+                      const isOpen = expanded[s.id] || false;
+                      const hasText = s.good_things || s.blocker_text || s.focus_tomorrow || s.coaching_text;
+
+                      return (
+                        <Collapsible key={s.id} open={isOpen} onOpenChange={() => toggleItem(s.id)}>
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/30 transition-colors">
+                              <div className="flex items-center gap-3">
+                                {hasText ? (
+                                  isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                ) : <div className="w-4" />}
+                                <div>
+                                  <p className="font-medium">{s.employee_name || 'Onbekend'}</p>
+                                  <p className="text-sm text-muted-foreground">{s.team} | {s.work_date}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm">
+                                {s.calls_attempted != null && (
+                                  <span className="hidden sm:flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" />{s.calls_attempted}</span>
+                                )}
+                                {s.real_conversations != null && (
+                                  <span className="hidden sm:flex items-center gap-1 text-muted-foreground"><MessageSquare className="h-3 w-3" />{s.real_conversations}</span>
+                                )}
+                                {s.appointments_set != null && (
+                                  <span className="hidden sm:flex items-center gap-1 text-muted-foreground"><CalendarCheck className="h-3 w-3" />{s.appointments_set}</span>
+                                )}
+                                <span className={`flex items-center gap-1 ${scoreColor(s.day_score)}`}><Star className="h-3 w-3" />{s.day_score ?? '—'}</span>
+                                <span className={`flex items-center gap-1 ${scoreColor(s.energy_score)}`}><Zap className="h-3 w-3" />{s.energy_score ?? '—'}</span>
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          {hasText && (
+                            <CollapsibleContent>
+                              <div className="ml-7 mt-1 p-3 rounded-lg border bg-muted/20 space-y-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <TextBlock icon={ThumbsUp} label="Wat ging goed" value={s.good_things} />
+                                  <TextBlock icon={AlertTriangle} label="Blokkades" value={s.blocker_text} />
+                                  <TextBlock icon={Target} label="Focus morgen" value={s.focus_tomorrow} />
+                                  <TextBlock icon={MessageCircle} label="Coaching nodig" value={s.coaching_text} />
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          )}
+                        </Collapsible>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
