@@ -231,7 +231,22 @@ export default function SELeadsList() {
         <Card>
           <CardContent className="p-0 overflow-x-auto">
             {filtered.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">Geen leads gevonden</div>
+              <div className="p-8 text-center space-y-4">
+                <p className="text-muted-foreground">Geen leads gevonden</p>
+                {leads.length === 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Neem contact op met Robin om nieuwe leads toegewezen te krijgen.
+                    </p>
+                    <a href="tel:+31617226186">
+                      <Button size="sm" className="gap-2">
+                        <Phone className="h-4 w-4" />
+                        Bel Robin (+31 6 17226186)
+                      </Button>
+                    </a>
+                  </div>
+                )}
+              </div>
             ) : (
               <Table>
                 <TableHeader>

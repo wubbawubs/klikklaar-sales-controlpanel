@@ -66,7 +66,7 @@ export default function SEPerformanceBars({ seId }: Props) {
 
   useEffect(() => {
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30_000);
+    const interval = setInterval(fetchMetrics, 120_000);
     return () => clearInterval(interval);
   }, [seId]);
 

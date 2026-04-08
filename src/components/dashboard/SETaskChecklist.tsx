@@ -182,7 +182,7 @@ export default function SETaskChecklist({ seId }: Props) {
   // Initial fetch + auto-refresh every 30 seconds
   useEffect(() => {
     fetchTasks();
-    const interval = setInterval(fetchTasks, 30_000);
+    const interval = setInterval(fetchTasks, 120_000);
     return () => clearInterval(interval);
   }, [fetchTasks]);
 
