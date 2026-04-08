@@ -261,6 +261,17 @@ function AdminLeadManagement() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={filterBranche} onValueChange={setFilterBranche}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Branche" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle branches</SelectItem>
+                {uniqueBranches.map(b => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
