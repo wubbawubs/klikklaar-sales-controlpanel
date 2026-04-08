@@ -65,6 +65,8 @@ function AdminLeadManagement() {
   const [reassigning, setReassigning] = useState(false);
   const [expandedLeads, setExpandedLeads] = useState<Set<string>>(new Set());
   const [activityCounts, setActivityCounts] = useState<Record<string, number>>({});
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const fetchData = async () => {
     setLoading(true);
