@@ -428,6 +428,7 @@ export default function SalesExecutiveDetailPage() {
           )}
         </TabsContent>
 
+        <TabsContent value="eod">
           {eods.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Nog geen EOD-inzendingen</CardContent></Card>
           ) : (
