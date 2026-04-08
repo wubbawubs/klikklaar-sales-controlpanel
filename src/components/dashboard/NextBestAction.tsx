@@ -94,7 +94,7 @@ export default function NextBestAction({ seId }: Props) {
           icon: PhoneForwarded,
           title: `${overdueCallbacks.length} achterstallige callback${overdueCallbacks.length > 1 ? 's' : ''}`,
           description: overdueCallbacks.length === 1
-            ? `Bel ${overdueCallbacks[0].contact_name || overdueCallbacks[0].org_name || 'contact'} terug — callback stond gepland vóór vandaag.`
+            ? `Bel ${overdueCallbacks[0].contact_name || overdueCallbacks[0].org_name || 'contact'} terug, callback stond gepland vóór vandaag.`
             : `Je hebt ${overdueCallbacks.length} callbacks die al voorbij de geplande datum zijn. Begin met de oudste.`,
           confidence: 'high',
           link: '/calls',
@@ -238,9 +238,9 @@ export default function NextBestAction({ seId }: Props) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                     <Zap className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Next Best Action</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Volgende stap</span>
                   </div>
                   <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', confidenceColors[action.confidence])}>
                     {action.confidence === 'high' ? 'Hoge' : action.confidence === 'medium' ? 'Gemiddelde' : 'Lage'} prioriteit
