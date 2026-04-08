@@ -22,7 +22,6 @@ import LeadManagementPage from "@/pages/LeadManagementPage";
 import NotFound from "@/pages/NotFound";
 import AccountPage from "@/pages/AccountPage";
 import NotificationsPage from "@/pages/NotificationsPage";
-import NotificationsPage from "@/pages/NotificationsPage";
 import PublicFormPage from "@/pages/public/PublicFormPage";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
