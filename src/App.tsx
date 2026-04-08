@@ -42,16 +42,21 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
   const [showSplash, setShowSplash] = useState(false);
-  const wasLoggedOut = useRef(true);
+  const prevUser = useRef<typeof user>(undefined as any);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      wasLoggedOut.current = true;
+    if (loading) return;
+    // Only show splash when transitioning from no-user to user (actual login)
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      prevUser.current = user;
+      return;
     }
-    if (!loading && user && wasLoggedOut.current) {
-      wasLoggedOut.current = false;
+    if (!prevUser.current && user) {
       setShowSplash(true);
     }
+    prevUser.current = user;
   }, [user, loading]);
 
   const handleSplashComplete = useCallback(() => {
