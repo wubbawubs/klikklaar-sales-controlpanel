@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
+import { CallScriptSection } from './CallScriptSection';
 import { ExpandableNote } from '@/components/ui/expandable-note';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
