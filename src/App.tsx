@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
+import { MotivationalSplash } from "@/components/auth/MotivationalSplash";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
