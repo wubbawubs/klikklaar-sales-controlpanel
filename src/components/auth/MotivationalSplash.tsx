@@ -8,7 +8,7 @@ const QUOTES = [
   { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
   { text: "Every morning brings new potential, but if you dwell on the misfortunes of the day before, you tend to overlook tremendous opportunities.", author: "Harvey Mackay" },
   { text: "Hustle in silence, let success make the noise.", author: null },
-  { text: "Your limitation — it's only your imagination.", author: null },
+  { text: "Your limitation, it's only your imagination.", author: null },
   { text: "The harder you work for something, the greater you'll feel when you achieve it.", author: null },
   { text: "Dream it. Wish it. Do it.", author: null },
   { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
