@@ -8,6 +8,8 @@ import { FileText, BarChart3, ClipboardList, ExternalLink, Users, TrendingUp } f
 import EodPage from '@/pages/EodPage';
 
 export default function EvaluatiesDashboard() {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'evaluaties';
   const [stats, setStats] = useState({ activeForms: 0, todaySubmissions: 0, avgDayScore: 0, coachingNeeded: 0 });
   const [recentSubs, setRecentSubs] = useState<any[]>([]);
   const [eodUrl, setEodUrl] = useState('');
