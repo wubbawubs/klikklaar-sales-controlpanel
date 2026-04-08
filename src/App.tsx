@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
+import { MotivationalSplash } from "@/components/auth/MotivationalSplash";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
@@ -39,6 +41,27 @@ const ADMIN_ROLES = ['super_admin', 'admin', 'coach'] as const;
 function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const [showSplash, setShowSplash] = useState(false);
+  const prevUser = useRef<typeof user>(undefined as any);
+  const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    if (loading) return;
+    // Only show splash when transitioning from no-user to user (actual login)
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      prevUser.current = user;
+      return;
+    }
+    if (!prevUser.current && user) {
+      setShowSplash(true);
+    }
+    prevUser.current = user;
+  }, [user, loading]);
+
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+  }, []);
 
   // Public routes - accessible without authentication
   if (location.pathname.startsWith('/form/')) {
@@ -78,6 +101,8 @@ function AppRoutes() {
   }
 
   if (!user) return <LoginPage />;
+
+  if (showSplash) return <MotivationalSplash onComplete={handleSplashComplete} />;
 
   return (
     <Routes>
