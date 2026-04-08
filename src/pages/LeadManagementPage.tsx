@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
+import { Search, ArrowRightLeft, Building2, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import BulkLeadImport from '@/components/leads/BulkLeadImport';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,6 +29,7 @@ interface LeadAssignment {
   assigned_at: string | null;
   product_line: string | null;
   notes: string | null;
+  branche: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -59,6 +60,7 @@ function AdminLeadManagement() {
   const [search, setSearch] = useState('');
   const [filterSe, setFilterSe] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterBranche, setFilterBranche] = useState<string>('all');
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [targetSeId, setTargetSeId] = useState('');
@@ -137,12 +139,14 @@ function AdminLeadManagement() {
   const filtered = leads.filter(l => {
     if (filterSe !== 'all' && l.sales_executive_id !== filterSe) return false;
     if (filterStatus !== 'all' && l.status !== filterStatus) return false;
+    if (filterBranche !== 'all' && (l.branche || '—') !== filterBranche) return false;
     if (search) {
       const q = search.toLowerCase();
       return (
         l.org_name?.toLowerCase().includes(q) ||
         l.person_name?.toLowerCase().includes(q) ||
         l.person_email?.toLowerCase().includes(q) ||
+        l.branche?.toLowerCase().includes(q) ||
         seMap[l.sales_executive_id]?.full_name?.toLowerCase().includes(q)
       );
     }
@@ -199,6 +203,7 @@ function AdminLeadManagement() {
   };
 
   const uniqueStatuses = [...new Set(leads.map(l => l.status))];
+  const uniqueBranches = [...new Set(leads.map(l => l.branche || '—'))].sort();
 
   return (
     <div className="space-y-6">
@@ -256,6 +261,17 @@ function AdminLeadManagement() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={filterBranche} onValueChange={setFilterBranche}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Branche" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle branches</SelectItem>
+                {uniqueBranches.map(b => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -304,7 +320,7 @@ function AdminLeadManagement() {
                       <TableHead className="w-8"></TableHead>
                       <TableHead className="min-w-[140px]">Organisatie</TableHead>
                       <TableHead className="min-w-[120px]">Contact</TableHead>
-                      <TableHead className="min-w-[140px]">Info</TableHead>
+                      <TableHead className="min-w-[120px]">Branche</TableHead>
                       <TableHead className="min-w-[120px]">SE</TableHead>
                       <TableHead className="w-20">Act.</TableHead>
                       <TableHead className="w-28">Status</TableHead>
@@ -317,8 +333,12 @@ function AdminLeadManagement() {
                       const count = activityCounts[lead.id] || 0;
                       return (
                         <>
-                          <TableRow key={lead.id} className={`${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''} ${count > 0 ? 'cursor-pointer' : ''}`}>
-                            <TableCell>
+                          <TableRow
+                            key={lead.id}
+                            className={`cursor-pointer select-none ${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''}`}
+                            onClick={() => toggleSelect(lead.id)}
+                          >
+                            <TableCell onClick={e => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={selectedLeads.has(lead.id)}
@@ -326,7 +346,7 @@ function AdminLeadManagement() {
                                 className="rounded border-muted-foreground"
                               />
                             </TableCell>
-                            <TableCell className="px-1">
+                            <TableCell className="px-1" onClick={e => e.stopPropagation()}>
                               {count > 0 && (
                                 <button onClick={() => toggleExpand(lead.id)} className="p-1 rounded hover:bg-accent">
                                   {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -343,14 +363,7 @@ function AdminLeadManagement() {
                               <span className="truncate max-w-[160px] block">{lead.person_name || '—'}</span>
                             </TableCell>
                             <TableCell>
-                              <div className="space-y-0.5 text-xs text-muted-foreground">
-                                {lead.person_email && (
-                                  <div className="flex items-center gap-1 truncate max-w-[180px]"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{lead.person_email}</span></div>
-                                )}
-                                {lead.person_phone && (
-                                  <div className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{lead.person_phone}</div>
-                                )}
-                              </div>
+                              <span className="text-sm truncate max-w-[140px] block text-muted-foreground">{lead.branche || '—'}</span>
                             </TableCell>
                             <TableCell>
                               <span className="text-sm truncate max-w-[120px] block">{seMap[lead.sales_executive_id]?.full_name || '—'}</span>
