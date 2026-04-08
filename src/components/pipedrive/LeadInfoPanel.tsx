@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { ExpandableNote } from '@/components/ui/expandable-note';
 
 interface LeadInfoPanelProps {
   orgId: number | null;
@@ -104,8 +105,14 @@ export function LeadInfoPanel({ orgId, orgName }: LeadInfoPanelProps) {
                       </div>
                       <div className="min-w-0 flex-1">
                         <span className="font-medium">{act.subject}</span>
-                        {act.note && (
-                          <p className="text-muted-foreground line-clamp-2 mt-0.5">{act.note.replace(/<[^>]*>/g, '')}</p>
+                      {act.note && (
+                          <ExpandableNote
+                            text={act.note}
+                            title={`Notitie — ${act.subject || 'Activiteit'}`}
+                            icon="file"
+                            lineClamp={2}
+                            stripHtml
+                          />
                         )}
                       </div>
                       <span className="text-[10px] text-muted-foreground shrink-0">
