@@ -63,7 +63,7 @@ const headers = {
 };
 const BASE = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
 
-export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, onPrev, onNext }: DealDetailSheetProps) {
+export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, branche, onPrev, onNext }: DealDetailSheetProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [org, setOrg] = useState<OrgDetail | null>(null);
