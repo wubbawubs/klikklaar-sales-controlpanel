@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, ArrowRightLeft, Building2, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import BulkLeadImport from '@/components/leads/BulkLeadImport';
 import { toast } from 'sonner';
@@ -14,6 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 import type { SalesExecutive } from '@/types/database';
 import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
 import SELeadsList from '@/components/leads/SELeadsList';
+import PipedrivePage from '@/pages/PipedrivePage';
+import CallLoggingPage from '@/pages/CallLoggingPage';
 
 interface LeadAssignment {
   id: string;
@@ -44,13 +48,34 @@ const statusColors: Record<string, string> = {
 export default function LeadManagementPage() {
   const { isAdmin, roles } = useAuth();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'leads';
 
-  // SE's see their own lead list
+  // SE's see their own lead list (no tabs)
   if (!isCoachOrAdmin) {
     return <SELeadsList />;
   }
 
-  return <AdminLeadManagement />;
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="pipedrive">Pipedrive</TabsTrigger>
+          <TabsTrigger value="calls">Call Logging</TabsTrigger>
+        </TabsList>
+        <TabsContent value="leads">
+          <AdminLeadManagement />
+        </TabsContent>
+        <TabsContent value="pipedrive">
+          <PipedrivePage />
+        </TabsContent>
+        <TabsContent value="calls">
+          <CallLoggingPage />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
 
 function AdminLeadManagement() {

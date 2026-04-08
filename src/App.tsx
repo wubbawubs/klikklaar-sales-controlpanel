@@ -18,13 +18,9 @@ import IntegrationsPage from "@/pages/IntegrationsPage";
 import TrainingPage from "@/pages/TrainingPage";
 import EodPage from "@/pages/EodPage";
 import SettingsPage from "@/pages/SettingsPage";
-import AuditLogsPage from "@/pages/AuditLogsPage";
-import EmailMonitoringPage from "@/pages/EmailMonitoringPage";
 import LeadManagementPage from "@/pages/LeadManagementPage";
-import CallLoggingPage from "@/pages/CallLoggingPage";
 import NotFound from "@/pages/NotFound";
 import AccountPage from "@/pages/AccountPage";
-import PipedrivePage from "@/pages/PipedrivePage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import PublicFormPage from "@/pages/public/PublicFormPage";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
@@ -89,12 +85,16 @@ function AppRoutes() {
         {/* Accessible by all authenticated users */}
         <Route path="/" element={<DashboardPage />} />
         <Route path="/leads" element={<LeadManagementPage />} />
-        <Route path="/calls" element={<CallLoggingPage />} />
-        <Route path="/pipedrive" element={<PipedrivePage />} />
         <Route path="/training" element={<TrainingPage />} />
-        <Route path="/eod" element={<EodPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/account" element={<AccountPage />} />
+
+        {/* Redirects for old standalone routes */}
+        <Route path="/calls" element={<LeadManagementPage />} />
+        <Route path="/pipedrive" element={<LeadManagementPage />} />
+        <Route path="/eod" element={<EodPage />} />
+        <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/email-monitoring" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
 
         {/* Admin/Coach only routes */}
         <Route path="/sales-executives" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutivesPage /></ProtectedRoute>} />
@@ -104,9 +104,8 @@ function AppRoutes() {
         <Route path="/provisioning" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ProvisioningPage /></ProtectedRoute>} />
         <Route path="/artifacts" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ArtifactsPage /></ProtectedRoute>} />
         <Route path="/integrations" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
+        <Route path="/integraties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
-        <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogsPage /></ProtectedRoute>} />
-        <Route path="/email-monitoring" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><EmailMonitoringPage /></ProtectedRoute>} />
         <Route path="/evaluaties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><EvaluatiesDashboard /></ProtectedRoute>} />
         <Route path="/evaluaties/formulieren" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierenPage /></ProtectedRoute>} />
         <Route path="/evaluaties/formulieren/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierDetailPage /></ProtectedRoute>} />

@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, BarChart3, ClipboardList, ExternalLink, Users, TrendingUp } from 'lucide-react';
+import EodPage from '@/pages/EodPage';
 
 export default function EvaluatiesDashboard() {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'evaluaties';
   const [stats, setStats] = useState({ activeForms: 0, todaySubmissions: 0, avgDayScore: 0, coachingNeeded: 0 });
   const [recentSubs, setRecentSubs] = useState<any[]>([]);
   const [eodUrl, setEodUrl] = useState('');
@@ -38,63 +42,78 @@ export default function EvaluatiesDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Evaluaties & Formulieren</h1>
-        <p className="text-muted-foreground">Overzicht van alle formulieren en evaluaties</p>
-      </div>
+      <Tabs defaultValue={defaultTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="evaluaties">Evaluaties</TabsTrigger>
+          <TabsTrigger value="eod">EOD Beheer</TabsTrigger>
+        </TabsList>
 
-      {eodUrl && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 flex flex-wrap items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="font-medium">Live formulier:</span>
-              <a href={eodUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline truncate max-w-[300px]">{eodUrl}</a>
+        <TabsContent value="evaluaties">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold">Evaluaties & Formulieren</h2>
+              <p className="text-muted-foreground">Overzicht van alle formulieren en evaluaties</p>
             </div>
-            <div>Responses vandaag: <strong>{stats.todaySubmissions}</strong></div>
-            {lastSubmission && <div>Laatste: <strong>{new Date(lastSubmission).toLocaleString('nl-NL')}</strong></div>}
-          </CardContent>
-        </Card>
-      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Actieve formulieren" value={stats.activeForms} icon={<FileText className="h-5 w-5" />} />
-        <StatCard title="Responses vandaag" value={stats.todaySubmissions} icon={<ClipboardList className="h-5 w-5" />} />
-        <StatCard title="Gem. dagscore vandaag" value={stats.avgDayScore || '—'} icon={<TrendingUp className="h-5 w-5" />} />
-        <StatCard title="Coaching nodig" value={stats.coachingNeeded} icon={<Users className="h-5 w-5" />} />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        {eodUrl && (
-          <Button asChild><a href={eodUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Open live EOD formulier</a></Button>
-        )}
-        <Button variant="outline" asChild><Link to="/evaluaties/formulieren"><FileText className="mr-2 h-4 w-4" />Beheer formulieren</Link></Button>
-        <Button variant="outline" asChild><Link to="/evaluaties/analytics"><BarChart3 className="mr-2 h-4 w-4" />Bekijk analytics</Link></Button>
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle className="text-lg">Recente evaluaties</CardTitle></CardHeader>
-        <CardContent>
-          {recentSubs.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Nog geen evaluaties ontvangen.</p>
-          ) : (
-            <div className="space-y-2">
-              {recentSubs.map((s: any) => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <div>
-                    <p className="font-medium">{s.employee_name || 'Onbekend'}</p>
-                    <p className="text-sm text-muted-foreground">{s.team} | {s.work_date}</p>
+            {eodUrl && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 flex flex-wrap items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="font-medium">Live formulier:</span>
+                    <a href={eodUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline truncate max-w-[300px]">{eodUrl}</a>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm">Dagscore: <strong>{s.day_score}</strong></p>
-                    <p className="text-sm">Energie: <strong>{s.energy_score}</strong></p>
-                  </div>
-                </div>
-              ))}
+                  <div>Responses vandaag: <strong>{stats.todaySubmissions}</strong></div>
+                  {lastSubmission && <div>Laatste: <strong>{new Date(lastSubmission).toLocaleString('nl-NL')}</strong></div>}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard title="Actieve formulieren" value={stats.activeForms} icon={<FileText className="h-5 w-5" />} />
+              <StatCard title="Responses vandaag" value={stats.todaySubmissions} icon={<ClipboardList className="h-5 w-5" />} />
+              <StatCard title="Gem. dagscore vandaag" value={stats.avgDayScore || '—'} icon={<TrendingUp className="h-5 w-5" />} />
+              <StatCard title="Coaching nodig" value={stats.coachingNeeded} icon={<Users className="h-5 w-5" />} />
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <div className="flex flex-wrap gap-3">
+              {eodUrl && (
+                <Button asChild><a href={eodUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Open live EOD formulier</a></Button>
+              )}
+              <Button variant="outline" asChild><Link to="/evaluaties/formulieren"><FileText className="mr-2 h-4 w-4" />Beheer formulieren</Link></Button>
+              <Button variant="outline" asChild><Link to="/evaluaties/analytics"><BarChart3 className="mr-2 h-4 w-4" />Bekijk analytics</Link></Button>
+            </div>
+
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Recente evaluaties</CardTitle></CardHeader>
+              <CardContent>
+                {recentSubs.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">Nog geen evaluaties ontvangen.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentSubs.map((s: any) => (
+                      <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                        <div>
+                          <p className="font-medium">{s.employee_name || 'Onbekend'}</p>
+                          <p className="text-sm text-muted-foreground">{s.team} | {s.work_date}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm">Dagscore: <strong>{s.day_score}</strong></p>
+                          <p className="text-sm">Energie: <strong>{s.energy_score}</strong></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="eod">
+          <EodPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
