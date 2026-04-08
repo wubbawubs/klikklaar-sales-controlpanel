@@ -10,7 +10,7 @@ import { ArrowLeft, Play, Download, Pencil, Loader2, FileJson, FileSpreadsheet }
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
-import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog } from '@/types/database';
+import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog, ProvisioningJob } from '@/types/database';
 import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
 
 function SelectedFormsList({ formIds }: { formIds: string[] }) {
@@ -34,6 +34,7 @@ export default function SalesExecutiveDetailPage() {
   const [eods, setEods] = useState<EodSubmission[]>([]);
   const [artifacts, setArtifacts] = useState<GeneratedArtifact[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [provJobs, setProvJobs] = useState<ProvisioningJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
 
