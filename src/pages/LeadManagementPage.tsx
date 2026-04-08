@@ -29,6 +29,7 @@ interface LeadAssignment {
   assigned_at: string | null;
   product_line: string | null;
   notes: string | null;
+  branche: string | null;
 }
 
 const statusColors: Record<string, string> = {
