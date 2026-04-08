@@ -101,7 +101,7 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-[95vw] p-0 flex flex-col max-h-[85vh] gap-0">
+      <DialogContent className="max-w-2xl w-[100vw] h-[100dvh] sm:w-[95vw] sm:h-auto sm:max-h-[85vh] sm:rounded-2xl rounded-none p-0 flex flex-col gap-0">
         <DialogHeader className="p-5 pb-3">
           <div className="flex items-center justify-between gap-2">
             <DialogTitle className="text-base leading-tight flex-1">{dealTitle || org?.name || 'Details'}</DialogTitle>
