@@ -167,7 +167,7 @@ function AdminLeadManagement() {
   };
 
   const toggleAll = () => {
-    if (selectedLeads.size === filtered.length) {
+    if (selectedLeads.size > 0) {
       setSelectedLeads(new Set());
     } else {
       setSelectedLeads(new Set(filtered.map(l => l.id)));
@@ -312,7 +312,8 @@ function AdminLeadManagement() {
                       <TableHead className="w-10">
                         <input
                           type="checkbox"
-                          checked={selectedLeads.size === filtered.length && filtered.length > 0}
+                          checked={selectedLeads.size > 0 && selectedLeads.size === filtered.length}
+                          ref={el => { if (el) el.indeterminate = selectedLeads.size > 0 && selectedLeads.size < filtered.length; }}
                           onChange={toggleAll}
                           className="rounded border-muted-foreground"
                         />
