@@ -320,7 +320,7 @@ function AdminLeadManagement() {
                       <TableHead className="w-8"></TableHead>
                       <TableHead className="min-w-[140px]">Organisatie</TableHead>
                       <TableHead className="min-w-[120px]">Contact</TableHead>
-                      <TableHead className="min-w-[140px]">Info</TableHead>
+                      <TableHead className="min-w-[120px]">Branche</TableHead>
                       <TableHead className="min-w-[120px]">SE</TableHead>
                       <TableHead className="w-20">Act.</TableHead>
                       <TableHead className="w-28">Status</TableHead>
@@ -333,7 +333,11 @@ function AdminLeadManagement() {
                       const count = activityCounts[lead.id] || 0;
                       return (
                         <>
-                          <TableRow key={lead.id} className={`${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''} ${count > 0 ? 'cursor-pointer' : ''}`}>
+                          <TableRow
+                            key={lead.id}
+                            className={`cursor-pointer select-none ${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''}`}
+                            onClick={() => toggleSelect(lead.id)}
+                          >
                             <TableCell>
                               <input
                                 type="checkbox"
