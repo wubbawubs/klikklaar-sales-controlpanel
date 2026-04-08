@@ -21,6 +21,9 @@ interface DealDetailSheetProps {
   orgName?: string | null;
   personName?: string | null;
   personPhone?: string | null;
+  branche?: string | null;
+  personName?: string | null;
+  personPhone?: string | null;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 }
