@@ -68,17 +68,54 @@ function AdminLeadManagement() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [leadsRes, sesRes, activitiesRes] = await Promise.all([
-      supabase.from('pipedrive_lead_assignments').select('*').order('assigned_at', { ascending: false }),
+
+    // Fetch all leads with pagination (Supabase caps at 1000 per query)
+    const fetchAllLeads = async () => {
+      const all: LeadAssignment[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from('pipedrive_lead_assignments')
+          .select('*')
+          .order('assigned_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    };
+
+    const fetchAllActivities = async () => {
+      const all: { lead_assignment_id: string | null }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from('pipedrive_activities')
+          .select('lead_assignment_id')
+          .range(from, from + pageSize - 1);
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    };
+
+    const [allLeads, sesRes, allActivities] = await Promise.all([
+      fetchAllLeads(),
       supabase.from('sales_executives').select('*').order('full_name'),
-      supabase.from('pipedrive_activities').select('lead_assignment_id'),
+      fetchAllActivities(),
     ]);
-    setLeads(leadsRes.data || []);
+    setLeads(allLeads);
     setSes(sesRes.data || []);
     
     // Count activities per lead
     const counts: Record<string, number> = {};
-    (activitiesRes.data || []).forEach((a: { lead_assignment_id: string | null }) => {
+    allActivities.forEach((a) => {
       if (a.lead_assignment_id) {
         counts[a.lead_assignment_id] = (counts[a.lead_assignment_id] || 0) + 1;
       }
