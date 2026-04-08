@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
+import { CallScriptSection } from './CallScriptSection';
 import { ExpandableNote } from '@/components/ui/expandable-note';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ interface DealDetailSheetProps {
   orgName?: string | null;
   personName?: string | null;
   personPhone?: string | null;
+  branche?: string | null;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 }
@@ -61,7 +63,7 @@ const headers = {
 };
 const BASE = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
 
-export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, onPrev, onNext }: DealDetailSheetProps) {
+export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, branche, onPrev, onNext }: DealDetailSheetProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [org, setOrg] = useState<OrgDetail | null>(null);
@@ -131,6 +133,11 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
             <PhoneCall className="h-4 w-4" />
             Log call
           </Button>
+        </div>
+
+        {/* Call Script */}
+        <div className="px-5 pb-2">
+          <CallScriptSection contactName={personName || persons[0]?.name} branche={branche} />
         </div>
 
         {loading ? (

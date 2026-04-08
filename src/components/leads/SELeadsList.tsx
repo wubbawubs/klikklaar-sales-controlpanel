@@ -389,6 +389,7 @@ export default function SELeadsList() {
         orgName={selectedLead?.org_name}
         personName={selectedLead?.person_name}
         personPhone={selectedLead?.person_phone}
+        branche={selectedLead?.branche}
         onPrev={selectedIdx !== null && selectedIdx > 0 ? () => setSelectedIdx(selectedIdx - 1) : null}
         onNext={selectedIdx !== null && selectedIdx < pageLeads.length - 1 ? () => setSelectedIdx(selectedIdx + 1) : null}
       />
