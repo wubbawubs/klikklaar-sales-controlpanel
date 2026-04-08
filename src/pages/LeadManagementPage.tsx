@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
+import BulkLeadImport from '@/components/leads/BulkLeadImport';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import type { SalesExecutive } from '@/types/database';
@@ -160,12 +161,15 @@ function AdminLeadManagement() {
             Beheer en herverdeel Pipedrive leads tussen sales executives
           </p>
         </div>
-        {selectedLeads.size > 0 && (
-          <Button onClick={() => setReassignDialogOpen(true)} className="w-full sm:w-auto">
-            <ArrowRightLeft className="h-4 w-4 mr-2" />
-            Herverdeel ({selectedLeads.size})
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <BulkLeadImport ses={ses} onImported={fetchData} />
+          {selectedLeads.size > 0 && (
+            <Button onClick={() => setReassignDialogOpen(true)} className="w-full sm:w-auto">
+              <ArrowRightLeft className="h-4 w-4 mr-2" />
+              Herverdeel ({selectedLeads.size})
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
