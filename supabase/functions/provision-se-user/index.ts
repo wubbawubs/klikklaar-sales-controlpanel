@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,32 +56,49 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Generate a secure temporary password
-    const tempPassword = `Welkom${crypto.randomUUID().slice(0, 8)}!`
+    // Check if an auth user already exists for this email
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const existingUser = existingUsers?.users?.find(
+      (u: any) => u.email?.toLowerCase() === email.toLowerCase()
+    )
 
-    // Create auth user with confirmed email
-    const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { full_name: `${firstName} ${lastName}` },
-    })
+    let userId: string
 
-    if (createError) {
-      console.error('Create user error:', createError)
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (existingUser) {
+      // User already exists — just link it
+      userId = existingUser.id
+      console.log('Auth user already exists:', userId, email)
+    } else {
+      // Generate a secure temporary password
+      const tempPassword = `Welkom${crypto.randomUUID().slice(0, 8)}!`
+
+      // Create auth user with confirmed email
+      const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { full_name: `${firstName} ${lastName}` },
       })
+
+      if (createError) {
+        console.error('Create user error:', createError)
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      userId = userData.user.id
+      console.log('Auth user created:', userId, email)
     }
 
-    const userId = userData.user.id
-    console.log('Auth user created:', userId, email)
-
-    // Assign sales_executive role
+    // Assign sales_executive role (ignore if already exists)
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .insert({ user_id: userId, role: 'sales_executive' })
+      .upsert(
+        { user_id: userId, role: 'sales_executive' },
+        { onConflict: 'user_id,role' }
+      )
     if (roleError) console.error('Role assignment error:', roleError)
 
     // Link the auth user to the sales_executives record
@@ -91,24 +108,50 @@ Deno.serve(async (req) => {
       .eq('id', salesExecutiveId)
     if (linkError) console.error('SE link error:', linkError)
 
+    // Ensure profile exists (handle_new_user trigger should create it,
+    // but in case auth user already existed we ensure it)
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (!existingProfile) {
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          user_id: userId,
+          full_name: `${firstName} ${lastName}`,
+          email,
+        })
+      if (profileError) console.error('Profile creation error:', profileError)
+    }
+
     // Trigger password reset so the SE can set their own password
-    const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: {
-        redirectTo: `https://sales.klikklaarseo.nl/reset-password`,
-      },
-    })
-    if (resetError) console.error('Password reset error:', resetError)
+    try {
+      const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: {
+          redirectTo: `https://sales.klikklaarseo.nl/reset-password`,
+        },
+      })
+      if (resetError) console.error('Password reset error:', resetError)
+    } catch (resetErr) {
+      console.error('Password reset generation error:', resetErr)
+    }
+
+    console.log('Provisioning complete for', email, '→ userId:', userId, 'seId:', salesExecutiveId)
 
     return new Response(
       JSON.stringify({ success: true, userId }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Provision user error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: msg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
