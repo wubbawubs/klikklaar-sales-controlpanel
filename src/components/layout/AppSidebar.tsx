@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
   { to: '/provisioning', icon: Package, label: 'Provisioning', visibility: 'admin' },
-  { to: '/artifacts', icon: FileJson, label: 'Artifacts', visibility: 'admin' },
+  { to: '/artifacts', icon: FileJson, label: 'Exports', visibility: 'admin' },
   { to: '/leads', icon: Target, label: 'Leads & CRM' },
   { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
