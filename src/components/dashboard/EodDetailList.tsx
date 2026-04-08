@@ -114,46 +114,52 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
                 <div className="px-4 pb-4 border-t pt-3 space-y-4">
                   {isLoading ? (
                     <p className="text-sm text-muted-foreground">Laden...</p>
-                  ) : data ? (
-                    <>
-                      {/* Metrics */}
-                      <div className="grid grid-cols-2 gap-x-8 text-sm">
-                        <div className="space-y-0.5">
-                          <MetricRow label="📞 Pogingen" value={data.calls_attempted} />
-                          <MetricRow label="💬 Gesprekken" value={data.real_conversations} />
-                          <MetricRow label="📅 Afspraken" value={data.appointments_set} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <MetricRow label="🔄 Follow-ups" value={data.followups_set} />
-                          <MetricRow label="✅ Deals" value={data.deals_closed} />
-                          <MetricRow label="⭐ Dagscore" value={data.day_score ? `${data.day_score}/10` : null} />
-                          <MetricRow label="⚡ Energie" value={data.energy_score ? `${data.energy_score}/10` : null} />
-                        </div>
-                      </div>
+                  ) : (() => {
+                    // Merge: prefer eod_submission_data, fall back to summary_json
+                    const d = data || null;
+                    const s = summaryJson || {};
+                    const hasDetail = !!d;
+                    const hasAnything = hasDetail || Object.keys(s).length > 0;
 
-                      {data.product_lines && data.product_lines.length > 0 && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Productlijnen: </span>
-                          <span>{data.product_lines.join(', ')}</span>
-                        </div>
-                      )}
+                    if (!hasAnything) {
+                      return <p className="text-sm text-muted-foreground italic">Geen gedetailleerde data beschikbaar voor deze inzending.</p>;
+                    }
 
-                      {/* Qualitative */}
-                      <div className="space-y-2 text-sm">
-                        <TextBlock label="Wat ging goed?" value={data.good_things} />
-                        <TextBlock label="Blokkades" value={data.blocker_text} />
-                        <TextBlock label="Coaching nodig" value={data.coaching_text} />
-                        <TextBlock label="Focus morgen" value={data.focus_tomorrow} />
-                        <TextBlock label="Extra notities" value={data.extra_notes} />
-                      </div>
-                    </>
-                  ) : summaryJson ? (
-                    <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-48 whitespace-pre-wrap font-mono">
-                      {JSON.stringify(summaryJson, null, 2)}
-                    </pre>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">Geen gedetailleerde data beschikbaar voor deze inzending.</p>
-                  )}
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-x-8 text-sm">
+                          <div className="space-y-0.5">
+                            <MetricRow label="📞 Pogingen" value={d?.calls_attempted ?? s.calls ?? s.calls_attempted} />
+                            <MetricRow label="💬 Gesprekken" value={d?.real_conversations ?? s.conversations ?? s.real_conversations} />
+                            <MetricRow label="📅 Afspraken" value={d?.appointments_set ?? s.appointments ?? s.appointments_set} />
+                          </div>
+                          <div className="space-y-0.5">
+                            <MetricRow label="🔄 Follow-ups" value={d?.followups_set ?? s.followups ?? s.followups_set} />
+                            <MetricRow label="✅ Deals" value={d?.deals_closed ?? s.deals ?? s.deals_closed} />
+                            <MetricRow label="⭐ Dagscore" value={(d?.day_score ?? s.day_score) ? `${d?.day_score ?? s.day_score}/10` : null} />
+                            <MetricRow label="⚡ Energie" value={(d?.energy_score ?? s.energy_score) ? `${d?.energy_score ?? s.energy_score}/10` : null} />
+                          </div>
+                        </div>
+
+                        {d?.product_lines && d.product_lines.length > 0 && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Productlijnen: </span>
+                            <span>{d.product_lines.join(', ')}</span>
+                          </div>
+                        )}
+
+                        {hasDetail && (
+                          <div className="space-y-2 text-sm">
+                            <TextBlock label="Wat ging goed?" value={d?.good_things} />
+                            <TextBlock label="Blokkades" value={d?.blocker_text} />
+                            <TextBlock label="Coaching nodig" value={d?.coaching_text} />
+                            <TextBlock label="Focus morgen" value={d?.focus_tomorrow} />
+                            <TextBlock label="Extra notities" value={d?.extra_notes} />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </CollapsibleContent>
             </Collapsible>
