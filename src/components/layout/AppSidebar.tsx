@@ -1,24 +1,18 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  UserPlus,
   Users,
   Package,
   FileJson,
   Plug,
   GraduationCap,
-  ClipboardCheck,
   Settings,
-  ScrollText,
   LogOut,
   ListChecks,
   Target,
-  Phone,
   X,
-  GitBranch,
   Sun,
   Moon,
-  Mail,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
