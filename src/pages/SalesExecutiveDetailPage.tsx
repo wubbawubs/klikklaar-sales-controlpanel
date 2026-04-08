@@ -415,30 +415,7 @@ export default function SalesExecutiveDetailPage() {
         </TabsContent>
 
         <TabsContent value="eod">
-          {eods.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">Nog geen EOD-inzendingen</CardContent></Card>
-          ) : (
-            <div className="bg-card rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Datum</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Opvolging</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Notities</th>
-                </tr></thead>
-                <tbody>
-                  {eods.map(eod => (
-                    <tr key={eod.id} className="border-b last:border-0">
-                      <td className="p-3">{new Date(eod.session_date).toLocaleDateString('nl-NL')}</td>
-                      <td className="p-3"><StatusBadge status={eod.status} /></td>
-                      <td className="p-3"><StatusBadge status={eod.follow_up_status} /></td>
-                      <td className="p-3 text-muted-foreground"><td className="p-3 text-muted-foreground">{eod.coach_notes || ','}</td></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <EodDetailList eods={eods} salesExecutiveId={id!} />
         </TabsContent>
 
         <TabsContent value="logs">
