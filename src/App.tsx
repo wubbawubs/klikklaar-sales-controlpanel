@@ -41,6 +41,22 @@ const ADMIN_ROLES = ['super_admin', 'admin', 'coach'] as const;
 function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const [showSplash, setShowSplash] = useState(false);
+  const wasLoggedOut = useRef(true);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      wasLoggedOut.current = true;
+    }
+    if (!loading && user && wasLoggedOut.current) {
+      wasLoggedOut.current = false;
+      setShowSplash(true);
+    }
+  }, [user, loading]);
+
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+  }, []);
 
   // Public routes - accessible without authentication
   if (location.pathname.startsWith('/form/')) {
@@ -80,6 +96,8 @@ function AppRoutes() {
   }
 
   if (!user) return <LoginPage />;
+
+  if (showSplash) return <MotivationalSplash onComplete={handleSplashComplete} />;
 
   return (
     <Routes>
