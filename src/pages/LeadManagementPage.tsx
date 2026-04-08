@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, ArrowRightLeft, Building2, User, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
+import { Search, ArrowRightLeft, Building2, Phone, Mail, Filter, ChevronDown, ChevronRight, PhoneCall } from 'lucide-react';
 import BulkLeadImport from '@/components/leads/BulkLeadImport';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
