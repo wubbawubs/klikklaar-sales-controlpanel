@@ -69,38 +69,55 @@ function AdminLeadManagement() {
   const fetchData = async () => {
     setLoading(true);
 
-    // Helper: fetch all rows from a table, paginating past the 1000-row cap
-    async function fetchAll<T>(
-      query: () => ReturnType<ReturnType<typeof supabase.from>['select']>,
-    ): Promise<T[]> {
-      const all: T[] = [];
+    // Paginated fetch to bypass the 1000-row default limit
+    const fetchAllLeads = async (): Promise<LeadAssignment[]> => {
+      const all: LeadAssignment[] = [];
       let from = 0;
-      const pageSize = 1000;
+      const ps = 1000;
+      // eslint-disable-next-line no-constant-condition
       while (true) {
-        const { data, error } = await query().range(from, from + pageSize - 1) as { data: T[] | null; error: any };
-        if (error) { console.error('Fetch error:', error); break; }
+        const { data, error } = await supabase
+          .from('pipedrive_lead_assignments')
+          .select('*')
+          .order('assigned_at', { ascending: false })
+          .range(from, from + ps - 1);
+        if (error) { console.error('Lead fetch error:', error.message); break; }
         if (!data || data.length === 0) break;
-        all.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
+        all.push(...(data as LeadAssignment[]));
+        if (data.length < ps) break;
+        from += ps;
       }
       return all;
-    }
+    };
+
+    const fetchAllActivities = async () => {
+      const all: { lead_assignment_id: string | null }[] = [];
+      let from = 0;
+      const ps = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from('pipedrive_activities')
+          .select('lead_assignment_id')
+          .range(from, from + ps - 1);
+        if (error) { console.error('Activity fetch error:', error.message); break; }
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < ps) break;
+        from += ps;
+      }
+      return all;
+    };
 
     const [allLeads, sesRes, allActivities] = await Promise.all([
-      fetchAll<LeadAssignment>(() =>
-        supabase.from('pipedrive_lead_assignments').select('*').order('assigned_at', { ascending: false })
-      ),
+      fetchAllLeads(),
       supabase.from('sales_executives').select('*').order('full_name'),
-      fetchAll<{ lead_assignment_id: string | null }>(() =>
-        supabase.from('pipedrive_activities').select('lead_assignment_id')
-      ),
+      fetchAllActivities(),
     ]);
 
     setLeads(allLeads);
     setSes(sesRes.data || []);
     
-    // Count activities per lead
     const counts: Record<string, number> = {};
     allActivities.forEach((a) => {
       if (a.lead_assignment_id) {
