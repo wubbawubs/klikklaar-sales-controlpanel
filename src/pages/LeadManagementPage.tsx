@@ -48,13 +48,34 @@ const statusColors: Record<string, string> = {
 export default function LeadManagementPage() {
   const { isAdmin, roles } = useAuth();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'leads';
 
-  // SE's see their own lead list
+  // SE's see their own lead list (no tabs)
   if (!isCoachOrAdmin) {
     return <SELeadsList />;
   }
 
-  return <AdminLeadManagement />;
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="pipedrive">Pipedrive</TabsTrigger>
+          <TabsTrigger value="calls">Call Logging</TabsTrigger>
+        </TabsList>
+        <TabsContent value="leads">
+          <AdminLeadManagement />
+        </TabsContent>
+        <TabsContent value="pipedrive">
+          <PipedrivePage />
+        </TabsContent>
+        <TabsContent value="calls">
+          <CallLoggingPage />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
 
 function AdminLeadManagement() {
