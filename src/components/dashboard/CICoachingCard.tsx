@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,9 +19,10 @@ interface Insight {
 
 interface Props {
   seId: string;
+  hasLeads?: boolean;
 }
 
-const categoryConfig: Record<string, { icon: typeof Phone; color: string; label: string; action: { label: string; link?: string; href?: string } }> = {
+const categoryConfig: Record<string, { icon: typeof Phone; color: string; label: string; action: { label: string; link?: string } }> = {
   calls: { icon: Phone, color: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30', label: 'Bellen', action: { label: 'Ga bellen', link: '/leads' } },
   pipeline: { icon: GitBranch, color: 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-900/30', label: 'Pipeline', action: { label: 'Bekijk leads', link: '/leads' } },
   energie: { icon: Zap, color: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30', label: 'Energie', action: { label: 'Bekijk training', link: '/training' } },
@@ -29,41 +30,55 @@ const categoryConfig: Record<string, { icon: typeof Phone; color: string; label:
   planning: { icon: CalendarClock, color: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30', label: 'Planning', action: { label: 'Bekijk taken', link: '/' } },
 };
 
-export default function CICoachingCard({ seId }: Props) {
+const CACHE_KEY = 'ci-coaching-cache';
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function getCached(seId: string): { insights: Insight[]; generated_at: string } | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.seId !== seId) return null;
+    if (Date.now() - parsed.ts > CACHE_TTL) return null;
+    return { insights: parsed.insights, generated_at: parsed.generated_at };
+  } catch { return null; }
+}
+
+function setCache(seId: string, insights: Insight[], generated_at: string) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ seId, insights, generated_at, ts: Date.now() }));
+  } catch { /* ignore */ }
+}
+
+export default function CICoachingCard({ seId, hasLeads = true }: Props) {
   const navigate = useNavigate();
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = useRef(getCached(seId));
+  const [insights, setInsights] = useState<Insight[]>(cached.current?.insights || []);
+  const [loading, setLoading] = useState(!cached.current);
   const [refreshing, setRefreshing] = useState(false);
-  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(cached.current?.generated_at || null);
   const [error, setError] = useState<string | null>(null);
-  const [hasLeads, setHasLeads] = useState(true);
 
   const fetchCoaching = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    else if (!cached.current) setLoading(true);
     setError(null);
 
     try {
-      const [coachingRes, leadsRes] = await Promise.all([
-        supabase.functions.invoke('ci-coaching', {
-          body: { sales_executive_id: seId },
-        }),
-        supabase
-          .from('pipedrive_lead_assignments')
-          .select('id', { count: 'exact', head: true })
-          .eq('sales_executive_id', seId)
-          .in('status', ['assigned', 'in_progress']),
-      ]);
+      const { data, error: fnError } = await supabase.functions.invoke('ci-coaching', {
+        body: { sales_executive_id: seId },
+      });
 
-      if (coachingRes.error) throw coachingRes.error;
-      if (coachingRes.data?.error) throw new Error(coachingRes.data.error);
+      if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
 
-      setInsights(coachingRes.data.insights || []);
-      setGeneratedAt(coachingRes.data.generated_at);
-      setHasLeads((leadsRes.count ?? 0) > 0);
+      const newInsights = data.insights || [];
+      setInsights(newInsights);
+      setGeneratedAt(data.generated_at);
+      setCache(seId, newInsights, data.generated_at);
     } catch (e: any) {
       console.error('Coaching error:', e);
-      setError(e.message || 'Kon tips niet laden');
+      if (!cached.current) setError(e.message || 'Kon tips niet laden');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -85,7 +100,7 @@ export default function CICoachingCard({ seId }: Props) {
     );
   }
 
-  if (error) {
+  if (error && insights.length === 0) {
     return (
       <Card className="border-destructive/20">
         <CardContent className="p-4 flex items-center justify-between">
@@ -109,6 +124,7 @@ export default function CICoachingCard({ seId }: Props) {
               <Sparkles className="h-4.5 w-4.5 text-primary" />
             </div>
             Persoonlijke tips
+            {refreshing && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />}
           </CardTitle>
           <Button
             variant="ghost"
