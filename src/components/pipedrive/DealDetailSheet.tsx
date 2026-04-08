@@ -135,6 +135,11 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
           </Button>
         </div>
 
+        {/* Call Script */}
+        <div className="px-5 pb-2">
+          <CallScriptSection contactName={personName || persons[0]?.name} branche={branche} />
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center flex-1">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
