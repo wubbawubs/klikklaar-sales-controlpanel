@@ -38,19 +38,13 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
-  { to: '/sales-executives/new', icon: UserPlus, label: 'Nieuwe SE', visibility: 'admin' },
   { to: '/provisioning', icon: Package, label: 'Provisioning', visibility: 'admin' },
   { to: '/artifacts', icon: FileJson, label: 'Artifacts', visibility: 'admin' },
-  { to: '/leads', icon: Target, label: 'Mijn Leads' },
-  { to: '/pipedrive', icon: GitBranch, label: 'Pipedrive' },
-  { to: '/calls', icon: Phone, label: 'Call Logging' },
-  { to: '/integrations', icon: Plug, label: 'Integraties', visibility: 'admin' },
+  { to: '/leads', icon: Target, label: 'Leads & CRM' },
+  { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
-  { to: '/eod', icon: ClipboardCheck, label: 'EOD Beheer' },
   { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'coach+admin' },
   { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
-  { to: '/audit-logs', icon: ScrollText, label: 'Audit Logs', visibility: 'admin' },
-  { to: '/email-monitoring', icon: Mail, label: 'E-mail Monitor', visibility: 'admin' },
 ];
 
 interface AppSidebarProps {
