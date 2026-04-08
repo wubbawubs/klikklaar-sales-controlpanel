@@ -373,15 +373,15 @@ export default function SalesExecutiveDetailPage() {
             <div className="space-y-3">
               {provJobs.map(j => {
                 const typeLabel: Record<string, string> = {
-                  'design_only': '📄 Alleen ontwerp — Bestanden klaarzetten zonder deployment',
-                  'export_package': '📦 Exportpakket — ZIP met alle configuratiebestanden',
-                  'controlled_execution': '🚀 Volledige uitvoering — Automatisch aanmaken van SharePoint-site',
+                  'design_only': 'Alleen ontwerp — Bestanden klaarzetten zonder deployment',
+                  'export_package': 'Exportpakket — ZIP met alle configuratiebestanden',
+                  'controlled_execution': 'Volledige uitvoering — Automatisch aanmaken van SharePoint-site',
                 };
                 const statusLabel: Record<string, string> = {
-                  'pending': '⏳ In afwachting — Job staat in de wachtrij',
-                  'running': '🔄 Bezig — Job wordt nu uitgevoerd',
-                  'completed': '✅ Afgerond — Alles succesvol aangemaakt',
-                  'failed': '❌ Mislukt — Er is een fout opgetreden',
+                  'pending': 'In afwachting — Job staat in de wachtrij',
+                  'running': 'Bezig — Job wordt nu uitgevoerd',
+                  'completed': 'Afgerond — Alles succesvol aangemaakt',
+                  'failed': 'Mislukt — Er is een fout opgetreden',
                 };
                 return (
                   <Card key={j.id}>
@@ -400,7 +400,7 @@ export default function SalesExecutiveDetailPage() {
                       </div>
                       {j.manual_actions_required && j.manual_actions_required.length > 0 && (
                         <div className="mt-2 p-3 bg-muted rounded-md">
-                          <p className="text-xs font-medium mb-1">⚠️ Handmatige acties vereist:</p>
+                          <p className="text-xs font-medium mb-1">Handmatige acties vereist:</p>
                           <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
                             {j.manual_actions_required.map((a, i) => <li key={i}>{a}</li>)}
                           </ul>

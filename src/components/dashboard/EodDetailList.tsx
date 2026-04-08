@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Phone, MessageSquare, CalendarCheck, RefreshCw, CheckCircle, Star, Zap, MessageCircle } from 'lucide-react';
 import type { EodSubmission } from '@/types/database';
 
 interface EodData {
@@ -38,17 +38,22 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
 
     if (isOpen && !eodData[eodId]) {
       setLoadingData(prev => ({ ...prev, [eodId]: true }));
-      const { data } = await supabase
-        .from('eod_submission_data')
-        .select('*')
-        .eq('sales_executive_id', salesExecutiveId)
-        .gte('created_at', new Date(eods.find(e => e.id === eodId)?.session_date || '').toISOString())
-        .lte('created_at', new Date(new Date(eods.find(e => e.id === eodId)?.session_date || '').getTime() + 86400000).toISOString())
-        .limit(1)
-        .maybeSingle();
+      const eod = eods.find(e => e.id === eodId);
+      if (eod) {
+        const dateStart = new Date(eod.session_date);
+        const dateEnd = new Date(dateStart.getTime() + 86400000);
+        const { data } = await supabase
+          .from('eod_submission_data')
+          .select('*')
+          .eq('sales_executive_id', salesExecutiveId)
+          .gte('work_date', dateStart.toISOString().split('T')[0])
+          .lte('work_date', dateStart.toISOString().split('T')[0])
+          .limit(1)
+          .maybeSingle();
 
-      if (data) {
-        setEodData(prev => ({ ...prev, [eodId]: data }));
+        if (data) {
+          setEodData(prev => ({ ...prev, [eodId]: data }));
+        }
       }
       setLoadingData(prev => ({ ...prev, [eodId]: false }));
     }
@@ -62,12 +67,13 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
     );
   }
 
-  const MetricRow = ({ label, value }: { label: string; value: string | number | null | undefined }) => {
+  const MetricRow = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number | null | undefined }) => {
     if (value === null || value === undefined || value === '') return null;
     return (
-      <div className="flex justify-between py-1">
+      <div className="flex items-center gap-2 py-1">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{value}</span>
+        <span className="font-medium ml-auto">{value}</span>
       </div>
     );
   };
@@ -106,7 +112,9 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
                     </div>
                   </div>
                   {eod.coach_notes && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-7">💬 {eod.coach_notes}</p>
+                    <p className="text-xs text-muted-foreground mt-1 ml-7 flex items-center gap-1">
+                      <MessageCircle className="h-3 w-3 shrink-0" /> {eod.coach_notes}
+                    </p>
                   )}
                 </CardContent>
               </CollapsibleTrigger>
@@ -115,7 +123,6 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
                   {isLoading ? (
                     <p className="text-sm text-muted-foreground">Laden...</p>
                   ) : (() => {
-                    // Merge: prefer eod_submission_data, fall back to summary_json
                     const d = data || null;
                     const s = summaryJson || {};
                     const hasDetail = !!d;
@@ -129,15 +136,15 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
                       <>
                         <div className="grid grid-cols-2 gap-x-8 text-sm">
                           <div className="space-y-0.5">
-                            <MetricRow label="📞 Pogingen" value={d?.calls_attempted ?? s.calls ?? s.calls_attempted} />
-                            <MetricRow label="💬 Gesprekken" value={d?.real_conversations ?? s.conversations ?? s.real_conversations} />
-                            <MetricRow label="📅 Afspraken" value={d?.appointments_set ?? s.appointments ?? s.appointments_set} />
+                            <MetricRow icon={Phone} label="Pogingen" value={d?.calls_attempted ?? s.calls ?? s.calls_attempted} />
+                            <MetricRow icon={MessageSquare} label="Gesprekken" value={d?.real_conversations ?? s.conversations ?? s.real_conversations} />
+                            <MetricRow icon={CalendarCheck} label="Afspraken" value={d?.appointments_set ?? s.appointments ?? s.appointments_set} />
                           </div>
                           <div className="space-y-0.5">
-                            <MetricRow label="🔄 Follow-ups" value={d?.followups_set ?? s.followups ?? s.followups_set} />
-                            <MetricRow label="✅ Deals" value={d?.deals_closed ?? s.deals ?? s.deals_closed} />
-                            <MetricRow label="⭐ Dagscore" value={(d?.day_score ?? s.day_score) ? `${d?.day_score ?? s.day_score}/10` : null} />
-                            <MetricRow label="⚡ Energie" value={(d?.energy_score ?? s.energy_score) ? `${d?.energy_score ?? s.energy_score}/10` : null} />
+                            <MetricRow icon={RefreshCw} label="Follow-ups" value={d?.followups_set ?? s.followups ?? s.followups_set} />
+                            <MetricRow icon={CheckCircle} label="Deals" value={d?.deals_closed ?? s.deals ?? s.deals_closed} />
+                            <MetricRow icon={Star} label="Dagscore" value={(d?.day_score ?? s.day_score) ? `${d?.day_score ?? s.day_score}/10` : null} />
+                            <MetricRow icon={Zap} label="Energie" value={(d?.energy_score ?? s.energy_score) ? `${d?.energy_score ?? s.energy_score}/10` : null} />
                           </div>
                         </div>
 
@@ -156,6 +163,10 @@ export function EodDetailList({ eods, salesExecutiveId }: Props) {
                             <TextBlock label="Focus morgen" value={d?.focus_tomorrow} />
                             <TextBlock label="Extra notities" value={d?.extra_notes} />
                           </div>
+                        )}
+
+                        {!hasDetail && (
+                          <p className="text-xs text-muted-foreground italic">Alleen samenvattingsdata beschikbaar. Open velden zijn niet ingevuld voor deze inzending.</p>
                         )}
                       </>
                     );
