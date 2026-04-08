@@ -187,7 +187,7 @@ export default function CallLoggingPage() {
   const reached = funnel.total - funnel.not_reached;
 
   if (!seData) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Laden...</div>;
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Geen SE-profiel gekoppeld aan je account. Call logging is beschikbaar voor Sales Executives.</div>;
   }
 
   return (

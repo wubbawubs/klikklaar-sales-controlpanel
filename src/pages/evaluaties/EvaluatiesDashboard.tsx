@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, BarChart3, ClipboardList, ExternalLink, Users, TrendingUp } from 'lucide-react';
+import EodPage from '@/pages/EodPage';
 
 export default function EvaluatiesDashboard() {
   const [stats, setStats] = useState({ activeForms: 0, todaySubmissions: 0, avgDayScore: 0, coachingNeeded: 0 });
