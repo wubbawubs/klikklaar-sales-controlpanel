@@ -338,7 +338,7 @@ function AdminLeadManagement() {
                             className={`cursor-pointer select-none ${selectedLeads.has(lead.id) ? 'bg-accent/50' : ''}`}
                             onClick={() => toggleSelect(lead.id)}
                           >
-                            <TableCell>
+                            <TableCell onClick={e => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={selectedLeads.has(lead.id)}
@@ -346,7 +346,7 @@ function AdminLeadManagement() {
                                 className="rounded border-muted-foreground"
                               />
                             </TableCell>
-                            <TableCell className="px-1">
+                            <TableCell className="px-1" onClick={e => e.stopPropagation()}>
                               {count > 0 && (
                                 <button onClick={() => toggleExpand(lead.id)} className="p-1 rounded hover:bg-accent">
                                   {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -363,14 +363,7 @@ function AdminLeadManagement() {
                               <span className="truncate max-w-[160px] block">{lead.person_name || '—'}</span>
                             </TableCell>
                             <TableCell>
-                              <div className="space-y-0.5 text-xs text-muted-foreground">
-                                {lead.person_email && (
-                                  <div className="flex items-center gap-1 truncate max-w-[180px]"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{lead.person_email}</span></div>
-                                )}
-                                {lead.person_phone && (
-                                  <div className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{lead.person_phone}</div>
-                                )}
-                              </div>
+                              <span className="text-sm truncate max-w-[140px] block text-muted-foreground">{lead.branche || '—'}</span>
                             </TableCell>
                             <TableCell>
                               <span className="text-sm truncate max-w-[120px] block">{seMap[lead.sales_executive_id]?.full_name || '—'}</span>
