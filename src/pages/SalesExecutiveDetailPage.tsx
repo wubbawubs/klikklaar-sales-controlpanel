@@ -93,14 +93,16 @@ export default function SalesExecutiveDetailPage() {
         const { data: wsData } = await supabase.from('workspaces').select('*').eq('sales_executive_id', id).maybeSingle();
         setWorkspace(wsData);
         if (wsData) {
-          const [icRes, eodRes, artRes] = await Promise.all([
+          const [icRes, eodRes, artRes, provRes] = await Promise.all([
             supabase.from('integration_configs').select('*').eq('workspace_id', wsData.id),
             supabase.from('eod_submissions').select('*').eq('sales_executive_id', id).order('session_date', { ascending: false }),
             supabase.from('generated_artifacts').select('*').eq('workspace_id', wsData.id).order('created_at', { ascending: false }),
+            supabase.from('provisioning_jobs').select('*').eq('workspace_id', wsData.id).order('created_at', { ascending: false }),
           ]);
           setIntegrations(icRes.data || []);
           setEods(eodRes.data || []);
           setArtifacts(artRes.data || []);
+          setProvJobs(provRes.data || []);
         }
         const { data: logData } = await supabase.from('audit_logs').select('*').eq('entity_id', id).order('created_at', { ascending: false }).limit(50);
         setLogs(logData || []);
@@ -214,6 +216,7 @@ export default function SalesExecutiveDetailPage() {
           <TabsTrigger value="sharepoint">SharePoint</TabsTrigger>
           <TabsTrigger value="integrations">Integraties</TabsTrigger>
           <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
+          <TabsTrigger value="provisioning">Provisioning</TabsTrigger>
           <TabsTrigger value="eod">EOD</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
