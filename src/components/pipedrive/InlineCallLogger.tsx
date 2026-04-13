@@ -42,7 +42,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
 
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [notes, setNotes] = useState('');
-  const [callbackDate, setCallbackDate] = useState('');
+  const [callbackDate, setCallbackDate] = useState<Date | undefined>(undefined);
   const [callbackTime, setCallbackTime] = useState('');
   const [success, setSuccess] = useState(false);
 
