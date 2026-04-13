@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { AppSidebar } from './AppSidebar';
 import { UserAccountMenu } from './UserAccountMenu';
+import { Breadcrumbs } from './Breadcrumbs';
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -45,6 +46,7 @@ export function AppLayout() {
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
+          <Breadcrumbs />
           <Outlet />
         </div>
       </main>
