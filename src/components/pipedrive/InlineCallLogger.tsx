@@ -71,7 +71,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
         contact_phone: personPhone || null,
         org_name: orgName || null,
         outcome,
-        callback_date: outcome === 'callback' && callbackDate ? callbackDate : null,
+        callback_date: outcome === 'callback' && callbackDate ? format(callbackDate, 'yyyy-MM-dd') : null,
         callback_time: outcome === 'callback' && callbackTime ? callbackTime : null,
         notes: notes || null,
       });
@@ -117,7 +117,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
             setSuccess(false);
             setOutcome(null);
             setNotes('');
-            setCallbackDate('');
+            setCallbackDate(undefined);
             setCallbackTime('');
           }}
         >
