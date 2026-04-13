@@ -158,7 +158,17 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Datum</Label>
-            <Input type="date" value={callbackDate} onChange={e => setCallbackDate(e.target.value)} className="h-8 text-xs" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('h-8 w-full justify-start text-xs font-normal', !callbackDate && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                  {callbackDate ? format(callbackDate, 'd MMM yyyy', { locale: nl }) : 'Kies datum'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[60]" align="start">
+                <Calendar mode="single" selected={callbackDate} onSelect={setCallbackDate} locale={nl} initialFocus className="rounded-md border" />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Tijd</Label>
