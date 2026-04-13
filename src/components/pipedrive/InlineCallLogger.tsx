@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
 import {
-  Phone, PhoneOff, PhoneForwarded, Calendar, Handshake, XCircle, Loader2, CheckCircle,
+  Phone, PhoneOff, PhoneForwarded, Calendar as CalendarIcon, Handshake, XCircle, Loader2, CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
