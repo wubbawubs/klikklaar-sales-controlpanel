@@ -21,7 +21,7 @@ const OUTCOMES = [
   { value: 'callback', label: 'Callback', icon: PhoneForwarded },
   { value: 'no_interest', label: 'Geen interesse', icon: XCircle },
   { value: 'interest', label: 'Interesse', icon: Phone },
-  { value: 'appointment', label: 'Afspraak', icon: Calendar },
+  { value: 'appointment', label: 'Afspraak', icon: CalendarIcon },
   { value: 'deal', label: 'Deal', icon: Handshake },
 ] as const;
 
