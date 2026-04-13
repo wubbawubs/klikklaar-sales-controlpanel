@@ -33,6 +33,7 @@ import FormulierenPage from "@/pages/evaluaties/FormulierenPage";
 import FormulierDetailPage from "@/pages/evaluaties/FormulierDetailPage";
 import ResponsesPage from "@/pages/evaluaties/ResponsesPage";
 import AnalyticsPage from "@/pages/evaluaties/AnalyticsPage";
+import UserManagementPage from "@/pages/UserManagementPage";
 
 const queryClient = new QueryClient();
 
@@ -131,6 +132,7 @@ function AppRoutes() {
         <Route path="/integrations" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/integraties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />
         <Route path="/evaluaties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><EvaluatiesDashboard /></ProtectedRoute>} />
         <Route path="/evaluaties/formulieren" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierenPage /></ProtectedRoute>} />
         <Route path="/evaluaties/formulieren/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierDetailPage /></ProtectedRoute>} />

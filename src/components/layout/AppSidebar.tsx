@@ -13,6 +13,7 @@ import {
   X,
   Sun,
   Moon,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'coach+admin' },
+  { to: '/users', icon: UserCog, label: 'Gebruikers', visibility: 'admin' },
   { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
 ];
 
