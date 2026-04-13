@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
 import {
-  Phone, PhoneOff, PhoneForwarded, Calendar, Handshake, XCircle, Loader2, CheckCircle,
+  Phone, PhoneOff, PhoneForwarded, Calendar as CalendarIcon, Handshake, XCircle, Loader2, CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +42,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
 
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [notes, setNotes] = useState('');
-  const [callbackDate, setCallbackDate] = useState('');
+  const [callbackDate, setCallbackDate] = useState<Date | undefined>(undefined);
   const [callbackTime, setCallbackTime] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -67,7 +71,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
         contact_phone: personPhone || null,
         org_name: orgName || null,
         outcome,
-        callback_date: outcome === 'callback' && callbackDate ? callbackDate : null,
+        callback_date: outcome === 'callback' && callbackDate ? format(callbackDate, 'yyyy-MM-dd') : null,
         callback_time: outcome === 'callback' && callbackTime ? callbackTime : null,
         notes: notes || null,
       });
@@ -113,7 +117,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
             setSuccess(false);
             setOutcome(null);
             setNotes('');
-            setCallbackDate('');
+            setCallbackDate(undefined);
             setCallbackTime('');
           }}
         >
@@ -154,7 +158,17 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Datum</Label>
-            <Input type="date" value={callbackDate} onChange={e => setCallbackDate(e.target.value)} className="h-8 text-xs" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('h-8 w-full justify-start text-xs font-normal', !callbackDate && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                  {callbackDate ? format(callbackDate, 'd MMM yyyy', { locale: nl }) : 'Kies datum'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[60]" align="start">
+                <Calendar mode="single" selected={callbackDate} onSelect={setCallbackDate} locale={nl} initialFocus className="rounded-md border" />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Tijd</Label>
