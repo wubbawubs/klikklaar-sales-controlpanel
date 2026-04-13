@@ -118,12 +118,27 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
           )}
         </DialogHeader>
 
-        {/* Log Call CTA */}
+        {/* Inline Call Logger */}
         <div className="px-5 pb-2">
-          <Button onClick={handleLogCall} className="w-full gap-2" size="sm">
-            <PhoneCall className="h-4 w-4" />
-            Log call
-          </Button>
+          <Collapsible open={showCallLogger} onOpenChange={setShowCallLogger}>
+            <CollapsibleTrigger asChild>
+              <Button className="w-full gap-2" size="sm" variant={showCallLogger ? 'outline' : 'default'}>
+                <PhoneCall className="h-4 w-4" />
+                {showCallLogger ? 'Verberg call logger' : 'Log call'}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <InlineCallLogger
+                leadAssignmentId={leadAssignmentId}
+                orgName={orgName || org?.name}
+                personName={personName || persons[0]?.name}
+                personPhone={personPhone || persons[0]?.phone?.[0]}
+                onLogged={() => {
+                  // Optionally close after logging
+                }}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* Call Script */}
