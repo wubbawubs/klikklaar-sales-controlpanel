@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, User, Phone, Mail, Clock, FileText, Loader2, MapPin, TrendingUp, Calendar, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
 import { CallScriptSection } from './CallScriptSection';
+import { InlineCallLogger } from './InlineCallLogger';
 import { ExpandableNote } from '@/components/ui/expandable-note';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface DealDetailSheetProps {
   open: boolean;
@@ -64,21 +65,11 @@ const headers = {
 const BASE = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
 
 export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, dealExpectedClose, orgId, personId, leadAssignmentId, orgName, personName, personPhone, branche, onPrev, onNext }: DealDetailSheetProps) {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [persons, setPersons] = useState<Person[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-
-  const handleLogCall = () => {
-    const params = new URLSearchParams();
-    if (orgName || org?.name) params.set('org', orgName || org?.name || '');
-    if (personName || persons[0]?.name) params.set('contact', personName || persons[0]?.name || '');
-    if (personPhone || persons[0]?.phone?.[0]) params.set('phone', personPhone || persons[0]?.phone?.[0] || '');
-    if (leadAssignmentId) params.set('lead', leadAssignmentId);
-    onOpenChange(false);
-    navigate(`/calls?${params.toString()}`);
-  };
+  const [showCallLogger, setShowCallLogger] = useState(false);
 
   useEffect(() => {
     if (!open || !orgId) return;
@@ -127,12 +118,27 @@ export function DealDetailSheet({ open, onOpenChange, dealTitle, dealValue, deal
           )}
         </DialogHeader>
 
-        {/* Log Call CTA */}
+        {/* Inline Call Logger */}
         <div className="px-5 pb-2">
-          <Button onClick={handleLogCall} className="w-full gap-2" size="sm">
-            <PhoneCall className="h-4 w-4" />
-            Log call
-          </Button>
+          <Collapsible open={showCallLogger} onOpenChange={setShowCallLogger}>
+            <CollapsibleTrigger asChild>
+              <Button className="w-full gap-2" size="sm" variant={showCallLogger ? 'outline' : 'default'}>
+                <PhoneCall className="h-4 w-4" />
+                {showCallLogger ? 'Verberg call logger' : 'Log call'}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <InlineCallLogger
+                leadAssignmentId={leadAssignmentId}
+                orgName={orgName || org?.name}
+                personName={personName || persons[0]?.name}
+                personPhone={personPhone || persons[0]?.phone?.[0]}
+                onLogged={() => {
+                  // Optionally close after logging
+                }}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* Call Script */}
