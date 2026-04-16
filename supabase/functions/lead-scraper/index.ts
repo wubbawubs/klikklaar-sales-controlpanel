@@ -39,12 +39,13 @@ serve(async (req) => {
 
     // Step 1: Tavily Search
     console.log(`Searching Tavily for: "${query}" (max ${max_results})`);
+    const searchQuery = `${query} telefoon contact`;
     const tavilyRes = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         api_key: TAVILY_API_KEY,
-        query: query,
+        query: searchQuery,
         search_depth: "advanced",
         include_raw_content: true,
         max_results: Math.min(max_results, 10),
