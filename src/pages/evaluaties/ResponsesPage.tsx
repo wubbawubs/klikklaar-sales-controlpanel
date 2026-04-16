@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,14 +27,16 @@ export default function ResponsesPage() {
   useEffect(() => { loadResponses(); }, [filters]);
 
   const loadResponses = async () => {
-    let query = (supabase as any).from('eod_submission_data').select('*').order('created_at', { ascending: false });
-    if (filters.form_id !== 'all') query = query.eq('form_id', filters.form_id);
-    if (filters.team !== 'all') query = query.eq('team', filters.team);
-    if (filters.employee) query = query.ilike('employee_name', `%${filters.employee}%`);
-    if (filters.dateFrom) query = query.gte('work_date', filters.dateFrom);
-    if (filters.dateTo) query = query.lte('work_date', filters.dateTo);
-    const { data } = await query.limit(200);
-    setResponses(data || []);
+    const data = await fetchAll('eod_submission_data', q => {
+      let query = q.select('*').order('created_at', { ascending: false });
+      if (filters.form_id !== 'all') query = query.eq('form_id', filters.form_id);
+      if (filters.team !== 'all') query = query.eq('team', filters.team);
+      if (filters.employee) query = query.ilike('employee_name', `%${filters.employee}%`);
+      if (filters.dateFrom) query = query.gte('work_date', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('work_date', filters.dateTo);
+      return query;
+    });
+    setResponses(data);
     setLoading(false);
   };
 

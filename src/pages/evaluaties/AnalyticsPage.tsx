@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -17,13 +18,14 @@ export default function AnalyticsPage() {
   useEffect(() => { loadData(); }, [filters]);
 
   const loadData = async () => {
-    let query = (supabase as any).from('eod_submission_data').select('*').order('work_date', { ascending: true });
-    if (filters.team !== 'all') query = query.eq('team', filters.team);
-    if (filters.employee) query = query.ilike('employee_name', `%${filters.employee}%`);
-    if (filters.dateFrom) query = query.gte('work_date', filters.dateFrom);
-    if (filters.dateTo) query = query.lte('work_date', filters.dateTo);
-    const { data: rows } = await query;
-    const d = rows || [];
+    const d = await fetchAll('eod_submission_data', q => {
+      let query = q.select('*').order('work_date', { ascending: true });
+      if (filters.team !== 'all') query = query.eq('team', filters.team);
+      if (filters.employee) query = query.ilike('employee_name', `%${filters.employee}%`);
+      if (filters.dateFrom) query = query.gte('work_date', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('work_date', filters.dateTo);
+      return query;
+    });
     setData(d);
 
     const today = new Date().toISOString().split('T')[0];

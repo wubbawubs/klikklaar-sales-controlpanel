@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -29,19 +30,11 @@ export default function PerRepAnalytics() {
   }, []);
 
   const fetchStats = async () => {
-    const [
-      { data: sesData },
-      { data: leadsData },
-      { data: callsData },
-    ] = await Promise.all([
-      supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active'),
-      supabase.from('pipedrive_lead_assignments').select('sales_executive_id, status'),
-      supabase.from('calls').select('sales_executive_id, outcome'),
+    const [seList, leads, calls] = await Promise.all([
+      supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active').then(r => r.data || []),
+      fetchAll('pipedrive_lead_assignments', q => q.select('sales_executive_id, status')),
+      fetchAll('calls', q => q.select('sales_executive_id, outcome')),
     ]);
-
-    const seList = sesData || [];
-    const leads = leadsData || [];
-    const calls = callsData || [];
 
     const repStats: RepStats[] = seList.map(se => {
       const seLeads = leads.filter(l => l.sales_executive_id === se.id);

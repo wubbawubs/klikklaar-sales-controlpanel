@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -38,12 +39,11 @@ export default function EodPage() {
   useEffect(() => { loadEods(); }, []);
 
   const loadEods = async () => {
-    const [eodRes, seRes] = await Promise.all([
-      supabase.from('eod_submissions').select('*').order('session_date', { ascending: false }),
-      supabase.from('sales_executives').select('id, first_name, last_name, full_name'),
+    const [eodData, ses] = await Promise.all([
+      fetchAll('eod_submissions', q => q.select('*').order('session_date', { ascending: false })),
+      supabase.from('sales_executives').select('id, first_name, last_name, full_name').then(r => (r.data || []) as SalesExecutive[]),
     ]);
-    const ses = (seRes.data || []) as SalesExecutive[];
-    const mapped = (eodRes.data || []).map(e => ({
+    const mapped = eodData.map(e => ({
       ...e,
       se_name: ses.find(s => s.id === e.sales_executive_id)?.full_name || 'Onbekend',
     }));
