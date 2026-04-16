@@ -75,15 +75,26 @@ export default function SELeadsList() {
     })();
   }, [user]);
 
-  // Fetch leads
+  // Fetch leads — paginate to bypass 1000-row default limit
   const fetchLeads = useCallback(async () => {
     if (!seId) return;
-    const { data } = await supabase
-      .from('pipedrive_lead_assignments')
-      .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, pipedrive_org_id, pipedrive_person_id, product_line, assigned_at')
-      .eq('sales_executive_id', seId)
-      .order('assigned_at', { ascending: false });
-    setLeads((data as Lead[]) || []);
+    const all: Lead[] = [];
+    const batchSize = 1000;
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data } = await supabase
+        .from('pipedrive_lead_assignments')
+        .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, pipedrive_org_id, pipedrive_person_id, product_line, assigned_at')
+        .eq('sales_executive_id', seId)
+        .order('assigned_at', { ascending: false })
+        .range(from, from + batchSize - 1);
+      const batch = (data as Lead[]) || [];
+      all.push(...batch);
+      hasMore = batch.length === batchSize;
+      from += batchSize;
+    }
+    setLeads(all);
     setLastSync(new Date());
     setLoading(false);
   }, [seId]);
