@@ -18,6 +18,7 @@ import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
 import SELeadsList from '@/components/leads/SELeadsList';
 import PipedrivePage from '@/pages/PipedrivePage';
 import CallLoggingPage from '@/pages/CallLoggingPage';
+import LeadScraper from '@/components/leads/LeadScraper';
 
 interface LeadAssignment {
   id: string;
@@ -50,22 +51,41 @@ export default function LeadManagementPage() {
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'leads';
+  const [ses, setSes] = useState<SalesExecutive[]>([]);
+
+  useEffect(() => {
+    if (!isCoachOrAdmin) return;
+    supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
+      setSes(data || []);
+    });
+  }, [isCoachOrAdmin]);
+
+  const refreshData = () => {
+    supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
+      setSes(data || []);
+    });
+  };
 
   // SE's see their own lead list (no tabs)
   if (!isCoachOrAdmin) {
     return <SELeadsList />;
   }
 
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="scraper">Scraper</TabsTrigger>
           <TabsTrigger value="pipedrive">Pipedrive</TabsTrigger>
           <TabsTrigger value="calls">Call Logging</TabsTrigger>
         </TabsList>
         <TabsContent value="leads">
           <AdminLeadManagement />
+        </TabsContent>
+        <TabsContent value="scraper">
+          <LeadScraper ses={ses} onImported={refreshData} />
         </TabsContent>
         <TabsContent value="pipedrive">
           <PipedrivePage />
