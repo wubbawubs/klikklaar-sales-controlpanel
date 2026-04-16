@@ -71,17 +71,6 @@ export default function LeadManagementPage() {
     return <SELeadsList />;
   }
 
-  useEffect(() => {
-    supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
-      setSes(data || []);
-    });
-  }, []);
-
-  const refreshData = () => {
-    supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
-      setSes(data || []);
-    });
-  };
 
   return (
     <div className="space-y-6">
