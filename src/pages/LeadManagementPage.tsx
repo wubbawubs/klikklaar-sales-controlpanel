@@ -51,13 +51,25 @@ export default function LeadManagementPage() {
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'leads';
+  const [ses, setSes] = useState<SalesExecutive[]>([]);
+
+  useEffect(() => {
+    if (!isCoachOrAdmin) return;
+    supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
+      setSes(data || []);
+    });
+  }, [isCoachOrAdmin]);
+
+  const refreshData = () => {
+    supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
+      setSes(data || []);
+    });
+  };
 
   // SE's see their own lead list (no tabs)
   if (!isCoachOrAdmin) {
     return <SELeadsList />;
   }
-
-  const [ses, setSes] = useState<SalesExecutive[]>([]);
 
   useEffect(() => {
     supabase.from('sales_executives').select('*').order('full_name').then(({ data }) => {
