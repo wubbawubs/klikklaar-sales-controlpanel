@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -36,13 +37,10 @@ export default function DealValueChart({ from, to, seId }: Props) {
     const fetchDealData = async () => {
       setLoading(true);
       try {
-        const [assignmentsRes, sesRes] = await Promise.all([
-          supabase.from('pipedrive_lead_assignments').select('sales_executive_id, org_name'),
-          supabase.from('sales_executives').select('id, full_name'),
+        const [assignments, ses] = await Promise.all([
+          fetchAll('pipedrive_lead_assignments', q => q.select('sales_executive_id, org_name')),
+          supabase.from('sales_executives').select('id, full_name').then(r => r.data || []),
         ]);
-
-        const assignments = assignmentsRes.data || [];
-        const ses = sesRes.data || [];
         const seMap = Object.fromEntries(ses.map(se => [se.id, se.full_name || 'Onbekend']));
 
         const orgNameToSeName: Record<string, string> = {};

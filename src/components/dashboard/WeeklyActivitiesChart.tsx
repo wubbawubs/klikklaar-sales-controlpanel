@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -33,15 +34,14 @@ export default function WeeklyActivitiesChart({ from, to, seId }: Props) {
     const fetch_ = async () => {
       setLoading(true);
       try {
-        let activitiesQuery = supabase.from('pipedrive_activities').select('sales_executive_id, created_at');
-        if (seId) activitiesQuery = activitiesQuery.eq('sales_executive_id', seId);
-        const [activitiesRes, sesRes] = await Promise.all([
-          activitiesQuery,
-          supabase.from('sales_executives').select('id, full_name'),
+        const [activities, ses] = await Promise.all([
+          fetchAll('pipedrive_activities', q => {
+            let query = q.select('sales_executive_id, created_at');
+            if (seId) query = query.eq('sales_executive_id', seId);
+            return query;
+          }),
+          supabase.from('sales_executives').select('id, full_name').then(r => r.data || []),
         ]);
-
-        const activities = activitiesRes.data || [];
-        const ses = sesRes.data || [];
         const seMap = Object.fromEntries(ses.map(s => [s.id, s.full_name || 'Onbekend']));
 
         // Build weeks within the range
