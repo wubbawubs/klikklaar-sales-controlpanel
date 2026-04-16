@@ -26,14 +26,16 @@ export default function ResponsesPage() {
   useEffect(() => { loadResponses(); }, [filters]);
 
   const loadResponses = async () => {
-    let query = (supabase as any).from('eod_submission_data').select('*').order('created_at', { ascending: false });
-    if (filters.form_id !== 'all') query = query.eq('form_id', filters.form_id);
-    if (filters.team !== 'all') query = query.eq('team', filters.team);
-    if (filters.employee) query = query.ilike('employee_name', `%${filters.employee}%`);
-    if (filters.dateFrom) query = query.gte('work_date', filters.dateFrom);
-    if (filters.dateTo) query = query.lte('work_date', filters.dateTo);
-    const { data } = await query.limit(200);
-    setResponses(data || []);
+    const data = await fetchAll('eod_submission_data', q => {
+      let query = q.select('*').order('created_at', { ascending: false });
+      if (filters.form_id !== 'all') query = query.eq('form_id', filters.form_id);
+      if (filters.team !== 'all') query = query.eq('team', filters.team);
+      if (filters.employee) query = query.ilike('employee_name', `%${filters.employee}%`);
+      if (filters.dateFrom) query = query.gte('work_date', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('work_date', filters.dateTo);
+      return query;
+    });
+    setResponses(data);
     setLoading(false);
   };
 
