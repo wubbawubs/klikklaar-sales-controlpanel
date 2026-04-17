@@ -122,6 +122,11 @@ serve(async (req) => {
       });
     }
 
+    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+    if (!FIRECRAWL_API_KEY) {
+      console.warn("FIRECRAWL_API_KEY missing — skipping deep scrape");
+    }
+
     const target = Math.min(Math.max(max_results, 5), 50);
 
     // Step 1: Multi-query Tavily search for broader coverage
@@ -135,12 +140,13 @@ serve(async (req) => {
 
     console.log(`Running ${queries.length} Tavily queries for: "${baseQuery}" (target ${target})`);
 
-    const perQuery = Math.ceil(target / 2); // overshoot to allow dedup
+    const perQuery = Math.ceil(target / 2);
     const searchResults = await Promise.all(
       queries.map(q => tavilySearch(TAVILY_API_KEY, q, perQuery))
     );
 
-    // Deduplicate by URL hostname
+    // Deduplicate by URL hostname, skip aggregator/directory sites for deep-scrape phase
+    const SKIP_HOSTS = /(linkedin\.com|kvk\.nl|facebook\.com|instagram\.com|google\.com|youtube\.com|telefoonboek\.nl|oozo\.nl|infoisinfo\.nl|bedrijvenregister\.nl|detelefoongids\.nl)$/i;
     const seen = new Set<string>();
     const allResults: TavilyResult[] = [];
     for (const batch of searchResults) {
@@ -164,16 +170,40 @@ serve(async (req) => {
       });
     }
 
-    // Cap content sites for AI extraction (token limits)
-    const sitesForAi = allResults.slice(0, Math.min(target * 2, 40));
+    const sitesForAi = allResults.slice(0, Math.min(target * 2, 30));
 
-    // Step 2: Build content blocks
+    // Step 2: Firecrawl deep-scrape contact pages in parallel (skip aggregators)
+    let firecrawlEnriched = 0;
+    if (FIRECRAWL_API_KEY) {
+      const scrapeTargets = sitesForAi.filter(r => {
+        try { return !SKIP_HOSTS.test(new URL(r.url).hostname); } catch { return false; }
+      });
+      console.log(`Firecrawl deep-scraping ${scrapeTargets.length} sites for contact info...`);
+      // Run in batches of 5 to avoid overload
+      const BATCH = 5;
+      for (let i = 0; i < scrapeTargets.length; i += BATCH) {
+        const slice = scrapeTargets.slice(i, i + BATCH);
+        const scraped = await Promise.all(
+          slice.map(r => deepScrapeForContact(FIRECRAWL_API_KEY, r.url))
+        );
+        slice.forEach((r, idx) => {
+          if (scraped[idx]) {
+            // Append Firecrawl content to the raw_content for richer extraction
+            r.raw_content = (r.raw_content || "") + "\n\n[CONTACT PAGE]\n" + scraped[idx];
+            firecrawlEnriched++;
+          }
+        });
+      }
+      console.log(`Firecrawl enriched ${firecrawlEnriched} sites with contact-page content`);
+    }
+
+    // Step 3: Build content blocks
     const contentBlocks = sitesForAi.map((r, i) => {
-      const content = (r.raw_content || r.content || "").slice(0, 2500);
+      const content = (r.raw_content || r.content || "").slice(0, 4000);
       return `--- Website ${i + 1} ---\nURL: ${r.url}\nTitle: ${r.title || ""}\nContent:\n${content}`;
     }).join("\n\n");
 
-    // Step 3: Gemini AI extraction via Lovable AI Gateway
+    // Step 4: Gemini AI extraction via Lovable AI Gateway
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -193,6 +223,7 @@ serve(async (req) => {
 
 KRITIEK BELANGRIJK:
 - Zoek AGRESSIEF naar telefoonnummers in de content (kijk naar patronen zoals 06-, 0XX-, +31, "T:", "Tel:", "Bel:")
+- Let extra goed op het [CONTACT PAGE] gedeelte, daar staat vaak het echte nummer
 - Een bedrijf zonder telefoon EN zonder email is waardeloos, sla die over
 - Geef voorrang aan bedrijven MET telefoonnummer
 - Dedupliceer strikt op bedrijfsnaam (negeer hoofdletters/spaties)
