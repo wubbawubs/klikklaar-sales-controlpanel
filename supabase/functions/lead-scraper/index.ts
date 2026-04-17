@@ -71,6 +71,10 @@ function contactCandidates(rootUrl: string): string[] {
       origin + "/contact",
       origin + "/contact/",
       origin + "/contactgegevens",
+      origin + "/contact-us",
+      origin + "/over-ons",
+      origin + "/about",
+      origin + "/kontakt",
       origin,
     ];
   } catch {
@@ -78,17 +82,63 @@ function contactCandidates(rootUrl: string): string[] {
   }
 }
 
+// Robust NL phone regex (covers 06-, 0XX-, +31, with/without spaces/dashes/parens)
+const PHONE_REGEX = /(\+31[\s\-]?\(?0?\)?[\s\-]?[1-9]\d[\s\-]?\d{6,7}|0[1-9]\d{1,2}[\s\-]?\d{6,7}|06[\s\-]?\d{8})/g;
+
+function extractPhonesFromText(text: string): string[] {
+  if (!text) return [];
+  const matches = text.match(PHONE_REGEX) || [];
+  // Normalize: strip spaces/dashes for dedup, keep first formatted version
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of matches) {
+    const norm = m.replace(/[\s\-\(\)]/g, "");
+    if (norm.length < 9) continue;
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    out.push(m.trim());
+  }
+  return out;
+}
+
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+function extractEmailsFromText(text: string): string[] {
+  if (!text) return [];
+  const matches = text.match(EMAIL_REGEX) || [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of matches) {
+    const lower = m.toLowerCase();
+    if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".webp")) continue;
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    out.push(m);
+  }
+  return out;
+}
+
 async function deepScrapeForContact(apiKey: string, rootUrl: string): Promise<string> {
   const candidates = contactCandidates(rootUrl);
-  for (const u of candidates) {
-    const md = await firecrawlScrape(apiKey, u);
-    // If we find any phone-like pattern, return immediately
-    if (/(\+31|0[1-9][\s\-]?\d{1,3}[\s\-]?\d{6,7}|06[\s\-]?\d{8})/.test(md)) {
-      return md;
+  let combined = "";
+  let foundPhone = false;
+  // Scrape up to 3 candidates in parallel for speed, stop early if phone found
+  const firstBatch = candidates.slice(0, 3);
+  const results = await Promise.all(firstBatch.map(u => firecrawlScrape(apiKey, u)));
+  for (let i = 0; i < results.length; i++) {
+    const md = results[i];
+    if (!md) continue;
+    combined += `\n\n[PAGE: ${firstBatch[i]}]\n` + md;
+    if (PHONE_REGEX.test(md)) {
+      foundPhone = true;
+      PHONE_REGEX.lastIndex = 0; // reset global regex state
     }
   }
-  // Fallback: return last attempt content (root)
-  return await firecrawlScrape(apiKey, rootUrl);
+  // If still no phone, try root as last resort
+  if (!foundPhone && !firstBatch.includes(rootUrl)) {
+    const rootMd = await firecrawlScrape(apiKey, rootUrl);
+    if (rootMd) combined += `\n\n[PAGE: ${rootUrl}]\n` + rootMd;
+  }
+  return combined;
 }
 
 serve(async (req) => {
@@ -197,11 +247,20 @@ serve(async (req) => {
       console.log(`Firecrawl enriched ${firecrawlEnriched} sites with contact-page content`);
     }
 
-    // Step 3: Build content blocks
+    // Step 3: Build content blocks (larger slice to capture footer/contact pages)
     const contentBlocks = sitesForAi.map((r, i) => {
-      const content = (r.raw_content || r.content || "").slice(0, 4000);
+      const content = (r.raw_content || r.content || "").slice(0, 8000);
       return `--- Website ${i + 1} ---\nURL: ${r.url}\nTitle: ${r.title || ""}\nContent:\n${content}`;
     }).join("\n\n");
+
+    // Build URL -> raw content map for regex fallback after AI extraction
+    const contentByHost = new Map<string, string>();
+    for (const r of sitesForAi) {
+      try {
+        const host = new URL(r.url).hostname.replace(/^www\./, "");
+        contentByHost.set(host, r.raw_content || r.content || "");
+      } catch { /* skip */ }
+    }
 
     // Step 4: Gemini AI extraction via Lovable AI Gateway
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -316,7 +375,40 @@ KRITIEK BELANGRIJK:
     }
     const finalLeads = Array.from(dedupedMap.values()).slice(0, target);
 
-    console.log(`Extracted ${finalLeads.length} unique leads (${finalLeads.filter(l => l.phone).length} with phone)`);
+    // Regex fallback: voor leads zonder telefoon/email, scan de raw scraped content
+    let phoneRecovered = 0;
+    let emailRecovered = 0;
+    for (const lead of finalLeads) {
+      if (!lead.website) continue;
+      let host = "";
+      try {
+        host = new URL(lead.website.startsWith("http") ? lead.website : `https://${lead.website}`)
+          .hostname.replace(/^www\./, "");
+      } catch { continue; }
+      const content = contentByHost.get(host);
+      if (!content) continue;
+      if (!lead.phone) {
+        const phones = extractPhonesFromText(content);
+        if (phones.length > 0) {
+          lead.phone = phones[0];
+          phoneRecovered++;
+        }
+      }
+      if (!lead.email) {
+        const emails = extractEmailsFromText(content);
+        // Prefer info@/contact@ addresses on same domain
+        const onDomain = emails.find(e => e.toLowerCase().endsWith(`@${host}`));
+        const generic = emails.find(e => /^(info|contact|hallo|hello)@/i.test(e));
+        const chosen = onDomain || generic || emails[0];
+        if (chosen) {
+          lead.email = chosen;
+          emailRecovered++;
+        }
+      }
+    }
+
+    const withPhone = finalLeads.filter(l => l.phone).length;
+    console.log(`Extracted ${finalLeads.length} leads | ${withPhone} with phone (regex recovered: ${phoneRecovered} phones, ${emailRecovered} emails)`);
 
     return new Response(JSON.stringify({ leads: finalLeads }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
