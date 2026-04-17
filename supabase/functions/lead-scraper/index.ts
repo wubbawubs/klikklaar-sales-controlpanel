@@ -247,11 +247,20 @@ serve(async (req) => {
       console.log(`Firecrawl enriched ${firecrawlEnriched} sites with contact-page content`);
     }
 
-    // Step 3: Build content blocks
+    // Step 3: Build content blocks (larger slice to capture footer/contact pages)
     const contentBlocks = sitesForAi.map((r, i) => {
-      const content = (r.raw_content || r.content || "").slice(0, 4000);
+      const content = (r.raw_content || r.content || "").slice(0, 8000);
       return `--- Website ${i + 1} ---\nURL: ${r.url}\nTitle: ${r.title || ""}\nContent:\n${content}`;
     }).join("\n\n");
+
+    // Build URL -> raw content map for regex fallback after AI extraction
+    const contentByHost = new Map<string, string>();
+    for (const r of sitesForAi) {
+      try {
+        const host = new URL(r.url).hostname.replace(/^www\./, "");
+        contentByHost.set(host, r.raw_content || r.content || "");
+      } catch { /* skip */ }
+    }
 
     // Step 4: Gemini AI extraction via Lovable AI Gateway
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
