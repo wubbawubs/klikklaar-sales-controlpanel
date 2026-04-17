@@ -33,6 +33,64 @@ async function tavilySearch(apiKey: string, query: string, maxResults: number): 
   return data.results || [];
 }
 
+// Firecrawl: deep-scrape a URL (renders JS, follows contact links)
+async function firecrawlScrape(apiKey: string, url: string): Promise<string> {
+  try {
+    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url,
+        formats: ["markdown"],
+        onlyMainContent: false, // we want footers (telefoon staat vaak in footer)
+        waitFor: 1500,
+      }),
+    });
+    if (!res.ok) {
+      console.warn(`Firecrawl ${url} failed: ${res.status}`);
+      return "";
+    }
+    const data = await res.json();
+    const md = data?.data?.markdown || data?.markdown || "";
+    return typeof md === "string" ? md.slice(0, 4000) : "";
+  } catch (e) {
+    console.warn(`Firecrawl ${url} error:`, e);
+    return "";
+  }
+}
+
+// Try common contact page paths in addition to root
+function contactCandidates(rootUrl: string): string[] {
+  try {
+    const u = new URL(rootUrl);
+    const origin = u.origin;
+    return [
+      origin + "/contact",
+      origin + "/contact/",
+      origin + "/contactgegevens",
+      origin,
+    ];
+  } catch {
+    return [rootUrl];
+  }
+}
+
+async function deepScrapeForContact(apiKey: string, rootUrl: string): Promise<string> {
+  const candidates = contactCandidates(rootUrl);
+  for (const u of candidates) {
+    const md = await firecrawlScrape(apiKey, u);
+    // If we find any phone-like pattern, return immediately
+    if (/(\+31|0[1-9][\s\-]?\d{1,3}[\s\-]?\d{6,7}|06[\s\-]?\d{8})/.test(md)) {
+      return md;
+    }
+  }
+  // Fallback: return last attempt content (root)
+  return await firecrawlScrape(apiKey, rootUrl);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
