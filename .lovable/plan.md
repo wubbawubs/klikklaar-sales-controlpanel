@@ -1,43 +1,52 @@
 
 
-# Lead Scraper - Implementatieplan
+## Wat ik zie
 
-## Samenvatting
-Lead scraper bouwen met Tavily Search API (op basis van de key die je hebt gedeeld) en Lovable AI (Gemini) voor het extraheren van contactgegevens. Admins kunnen zoeken op branche + regio en resultaten direct als leads importeren.
+Google's lokale resultaten ("Sites voor plaatsen" + de Maps cards) bevatten precies wat we willen: bedrijfsnaam + nummer + adres direct zichtbaar (Wooncentrum Veerman 0299 366 788, Sanne 06 16019485, Marloes 06 11203904, Made in Holland 06 10108152, etc).
 
-## Stappen
+Tavily geeft ons die Google Maps/Places data NIET — Tavily indexeert losse websites en mist juist de Maps-sidebar. Daarom zien we 35% hit-rate.
 
-### 1. Tavily API Key opslaan
-- Opslaan als secret `TAVILY_API_KEY` in de backend
+## Echte root cause
 
-### 2. Edge Function `lead-scraper`
-- Ontvangt zoekopdracht (bijv. "interieur designer Enkhuizen")
-- Tavily Search API (`api.tavily.com/search`) met `search_depth: "advanced"` en `include_raw_content: true`
-- Stuurt gescrapete content naar Gemini AI voor extractie van bedrijfsnaam, telefoonnummer, email, website
-- Retourneert array van gestructureerde leads
-- Max 10 resultaten per zoekopdracht
+We gebruiken de verkeerde bron. Telefoonnummers vinden we niet door 13 random websites te scrapen, maar door **Google Maps / Places** als primaire bron te gebruiken. Daar staat per bedrijf gegarandeerd: naam, telefoon, adres, website.
 
-### 3. Frontend: Scraper tab op Lead Management pagina
-- Nieuwe tab "Scraper" in `LeadManagementPage.tsx`
-- Invoervelden: zoekopdracht + regio/stad
-- "Zoeken" knop start de scrape
-- Preview-tabel met resultaten (bedrijf, telefoon, email, website)
-- Checkbox selectie + SE-kiezer voor directe toewijzing
-- Deduplicatie-check tegen bestaande leads op org_name
-- Import als `pipedrive_lead_assignments` met status `assigned`
+## Voorgestelde oplossing — Google Places als primaire bron
 
-### 4. Database
-- Geen nieuwe tabellen nodig, resultaten gaan direct in bestaande `pipedrive_lead_assignments`
+### Nieuwe pipeline
 
-## Technische details
+```text
+1. Firecrawl Search   → Google-style results met snippets (vaak incl. nummers)
+2. Firecrawl Scrape   → Google Maps zoek-URL voor de query
+                         → extract alle business cards (naam/tel/adres/website)
+3. Merge + dedup      → op bedrijfsnaam
+4. Firecrawl Scrape   → website van bedrijven zonder telefoon (recovery)
+5. Regex fallback     → laatste vangnet voor nummers/emails
+```
 
-**Bestanden aangemaakt:**
-- `supabase/functions/lead-scraper/index.ts`
+### Concrete wijzigingen `lead-scraper/index.ts`
 
-**Bestanden gewijzigd:**
-- `src/pages/LeadManagementPage.tsx` (scraper tab toevoegen)
-- `supabase/config.toml` (function config)
+1. **Vervang Tavily search door Firecrawl Search** (`/v2/search` met `scrapeOptions: { formats: ['markdown'] }`). Firecrawl Search levert Google-resultaten inclusief de lokale pack en business snippets — dat is precies wat we missen.
+2. **Voeg Google Maps scrape toe**: scrape `https://www.google.com/maps/search/{query}` met Firecrawl (`onlyMainContent: false`, `waitFor: 2500`). Maps rendert business cards met telefoon zichtbaar in de DOM.
+3. **Parse business cards** uit de Maps-markdown met een gestructureerde Gemini-call die nummer + adres direct uit Maps-blocks haalt (hoge hit-rate omdat Maps gestandaardiseerd is).
+4. **Behoud regex fallback** voor websites waar nog geen nummer gevonden is.
+5. **Behoud SKIP_HOSTS hard block** uit vorige iteratie.
 
-**API Flow:**
-Tavily Search (10 URLs + content) → Gemini Flash (JSON extractie) → Preview UI → Database insert
+### Kosten / snelheid
+- Firecrawl Search: 1 call per query (4 queries → 4 credits).
+- Maps scrape: 1 extra call per zoekopdracht.
+- Website deep-scrape: alleen voor leads zónder nummer (i.p.v. allemaal) → minder credits dan nu.
+- Netto: vergelijkbaar of goedkoper, veel hogere hit-rate.
+
+### Verwacht resultaat
+Met Google Maps als primaire bron verwachten we 85-95% telefoonnummer-vangst, omdat Maps het nummer gegarandeerd toont voor verified businesses. Voor jouw zoekopdracht "interieur design Enkhuizen" zien we in jouw screenshot zelf al 4/4 nummers in de Maps-sectie.
+
+## Bestanden
+
+| Bestand | Wijziging |
+|---|---|
+| `supabase/functions/lead-scraper/index.ts` | Tavily → Firecrawl Search + Maps scrape + selectieve website-recovery |
+| `.lovable/plan.md` | Plan-update naar nieuwe architectuur |
+
+## Verificatie
+Na deploy zoeken op `interieur design enkhuizen` en in de logs checken: `Maps cards: X | Web hits: Y | Final with phone: Z (≥75%)`.
 
