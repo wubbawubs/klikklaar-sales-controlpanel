@@ -6,13 +6,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+interface TavilyResult {
+  url: string;
+  title?: string;
+  content?: string;
+  raw_content?: string;
+}
+
+async function tavilySearch(apiKey: string, query: string, maxResults: number): Promise<TavilyResult[]> {
+  const res = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query,
+      search_depth: "advanced",
+      include_raw_content: true,
+      max_results: Math.min(maxResults, 20),
+    }),
+  });
+  if (!res.ok) {
+    console.error(`Tavily search failed for "${query}":`, res.status, await res.text());
+    return [];
+  }
+  const data = await res.json();
+  return data.results || [];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { query, max_results = 10 } = await req.json();
+    const { query, max_results = 20 } = await req.json();
 
     if (!query || typeof query !== "string" || query.trim().length < 3) {
       return new Response(JSON.stringify({ error: "Zoekopdracht is te kort" }), {
@@ -37,43 +64,54 @@ serve(async (req) => {
       });
     }
 
-    // Step 1: Tavily Search
-    console.log(`Searching Tavily for: "${query}" (max ${max_results})`);
-    const searchQuery = `${query} telefoon contact`;
-    const tavilyRes = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: TAVILY_API_KEY,
-        query: searchQuery,
-        search_depth: "advanced",
-        include_raw_content: true,
-        max_results: Math.min(max_results, 10),
-      }),
-    });
+    const target = Math.min(Math.max(max_results, 5), 50);
 
-    if (!tavilyRes.ok) {
-      const errText = await tavilyRes.text();
-      console.error("Tavily error:", tavilyRes.status, errText);
-      return new Response(JSON.stringify({ error: "Zoeken mislukt: " + tavilyRes.status }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Step 1: Multi-query Tavily search for broader coverage
+    const baseQuery = query.trim();
+    const queries = [
+      `${baseQuery} telefoon contact`,
+      `${baseQuery} bellen offerte`,
+      `${baseQuery} bedrijf contactgegevens`,
+      `${baseQuery} site:linkedin.com OR site:kvk.nl`,
+    ];
+
+    console.log(`Running ${queries.length} Tavily queries for: "${baseQuery}" (target ${target})`);
+
+    const perQuery = Math.ceil(target / 2); // overshoot to allow dedup
+    const searchResults = await Promise.all(
+      queries.map(q => tavilySearch(TAVILY_API_KEY, q, perQuery))
+    );
+
+    // Deduplicate by URL hostname
+    const seen = new Set<string>();
+    const allResults: TavilyResult[] = [];
+    for (const batch of searchResults) {
+      for (const r of batch) {
+        try {
+          const host = new URL(r.url).hostname.replace(/^www\./, "");
+          if (seen.has(host)) continue;
+          seen.add(host);
+          allResults.push(r);
+        } catch {
+          // skip invalid URLs
+        }
+      }
     }
 
-    const tavilyData = await tavilyRes.json();
-    const results = tavilyData.results || [];
-    console.log(`Tavily returned ${results.length} results`);
+    console.log(`Pooled ${allResults.length} unique sites from ${searchResults.flat().length} raw results`);
 
-    if (results.length === 0) {
+    if (allResults.length === 0) {
       return new Response(JSON.stringify({ leads: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Step 2: Build content blocks for AI extraction
-    const contentBlocks = results.map((r: any, i: number) => {
-      const content = (r.raw_content || r.content || "").slice(0, 3000);
+    // Cap content sites for AI extraction (token limits)
+    const sitesForAi = allResults.slice(0, Math.min(target * 2, 40));
+
+    // Step 2: Build content blocks
+    const contentBlocks = sitesForAi.map((r, i) => {
+      const content = (r.raw_content || r.content || "").slice(0, 2500);
       return `--- Website ${i + 1} ---\nURL: ${r.url}\nTitle: ${r.title || ""}\nContent:\n${content}`;
     }).join("\n\n");
 
@@ -85,25 +123,27 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `Je bent een data-extractie assistent. Extraheer uit de gegeven websiteinhoud de volgende gegevens per bedrijf:
-- org_name: bedrijfsnaam
-- phone: telefoonnummer (Nederlands formaat als mogelijk)
+            content: `Je bent een data-extractie assistent voor B2B lead generation. Extraheer per uniek bedrijf:
+- org_name: bedrijfsnaam (verplicht)
+- phone: telefoonnummer (Nederlands formaat, bijv. 06-12345678 of 020-1234567)
 - email: e-mailadres
-- website: website URL
+- website: website URL (root domein)
 
-Regels:
-- Retourneer ALLEEN bedrijven die relevant zijn voor de zoekopdracht
-- Als een veld niet gevonden is, gebruik null
-- Dedupliceer op bedrijfsnaam
-- Maximaal ${max_results} resultaten`,
+KRITIEK BELANGRIJK:
+- Zoek AGRESSIEF naar telefoonnummers in de content (kijk naar patronen zoals 06-, 0XX-, +31, "T:", "Tel:", "Bel:")
+- Een bedrijf zonder telefoon EN zonder email is waardeloos, sla die over
+- Geef voorrang aan bedrijven MET telefoonnummer
+- Dedupliceer strikt op bedrijfsnaam (negeer hoofdletters/spaties)
+- Retourneer minimaal ${Math.min(target, 15)} en maximaal ${target} bedrijven indien beschikbaar
+- Alleen bedrijven echt relevant voor: "${baseQuery}"`,
           },
           {
             role: "user",
-            content: `Zoekopdracht: "${query}"\n\n${contentBlocks}`,
+            content: `Zoekopdracht: "${baseQuery}"\n\n${contentBlocks}`,
           },
         ],
         tools: [
@@ -120,10 +160,10 @@ Regels:
                     items: {
                       type: "object",
                       properties: {
-                        org_name: { type: "string", description: "Company name" },
-                        phone: { type: ["string", "null"], description: "Phone number" },
-                        email: { type: ["string", "null"], description: "Email address" },
-                        website: { type: ["string", "null"], description: "Website URL" },
+                        org_name: { type: "string" },
+                        phone: { type: ["string", "null"] },
+                        email: { type: ["string", "null"] },
+                        website: { type: ["string", "null"] },
                       },
                       required: ["org_name"],
                       additionalProperties: false,
@@ -174,9 +214,22 @@ Regels:
       console.error("Failed to parse AI response:", e);
     }
 
-    console.log(`Extracted ${leads.length} leads`);
+    // Final dedup by org_name (case-insensitive)
+    const dedupedMap = new Map<string, any>();
+    for (const lead of leads) {
+      if (!lead?.org_name) continue;
+      const key = lead.org_name.toLowerCase().trim();
+      const existing = dedupedMap.get(key);
+      // Prefer entries with phone numbers
+      if (!existing || (!existing.phone && lead.phone)) {
+        dedupedMap.set(key, lead);
+      }
+    }
+    const finalLeads = Array.from(dedupedMap.values()).slice(0, target);
 
-    return new Response(JSON.stringify({ leads }), {
+    console.log(`Extracted ${finalLeads.length} unique leads (${finalLeads.filter(l => l.phone).length} with phone)`);
+
+    return new Response(JSON.stringify({ leads: finalLeads }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

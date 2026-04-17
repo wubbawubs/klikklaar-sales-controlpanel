@@ -24,6 +24,7 @@ interface LeadScraperProps {
 
 export default function LeadScraper({ ses, onImported }: LeadScraperProps) {
   const [query, setQuery] = useState('');
+  const [maxResults, setMaxResults] = useState('20');
   const [results, setResults] = useState<ScrapedLead[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -44,7 +45,7 @@ export default function LeadScraper({ ses, onImported }: LeadScraperProps) {
 
     try {
       const { data, error } = await supabase.functions.invoke('lead-scraper', {
-        body: { query: query.trim(), max_results: 10 },
+        body: { query: query.trim(), max_results: parseInt(maxResults, 10) },
       });
 
       if (error) throw error;
@@ -157,6 +158,17 @@ export default function LeadScraper({ ses, onImported }: LeadScraperProps) {
                 className="pl-9"
               />
             </div>
+            <Select value={maxResults} onValueChange={setMaxResults}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 leads</SelectItem>
+                <SelectItem value="20">20 leads</SelectItem>
+                <SelectItem value="30">30 leads</SelectItem>
+                <SelectItem value="50">50 leads</SelectItem>
+              </SelectContent>
+            </Select>
             <Button onClick={handleSearch} disabled={searching} className="min-w-[120px]">
               {searching ? (
                 <>
