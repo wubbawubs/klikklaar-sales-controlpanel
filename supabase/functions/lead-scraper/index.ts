@@ -375,7 +375,40 @@ KRITIEK BELANGRIJK:
     }
     const finalLeads = Array.from(dedupedMap.values()).slice(0, target);
 
-    console.log(`Extracted ${finalLeads.length} unique leads (${finalLeads.filter(l => l.phone).length} with phone)`);
+    // Regex fallback: voor leads zonder telefoon/email, scan de raw scraped content
+    let phoneRecovered = 0;
+    let emailRecovered = 0;
+    for (const lead of finalLeads) {
+      if (!lead.website) continue;
+      let host = "";
+      try {
+        host = new URL(lead.website.startsWith("http") ? lead.website : `https://${lead.website}`)
+          .hostname.replace(/^www\./, "");
+      } catch { continue; }
+      const content = contentByHost.get(host);
+      if (!content) continue;
+      if (!lead.phone) {
+        const phones = extractPhonesFromText(content);
+        if (phones.length > 0) {
+          lead.phone = phones[0];
+          phoneRecovered++;
+        }
+      }
+      if (!lead.email) {
+        const emails = extractEmailsFromText(content);
+        // Prefer info@/contact@ addresses on same domain
+        const onDomain = emails.find(e => e.toLowerCase().endsWith(`@${host}`));
+        const generic = emails.find(e => /^(info|contact|hallo|hello)@/i.test(e));
+        const chosen = onDomain || generic || emails[0];
+        if (chosen) {
+          lead.email = chosen;
+          emailRecovered++;
+        }
+      }
+    }
+
+    const withPhone = finalLeads.filter(l => l.phone).length;
+    console.log(`Extracted ${finalLeads.length} leads | ${withPhone} with phone (regex recovered: ${phoneRecovered} phones, ${emailRecovered} emails)`);
 
     return new Response(JSON.stringify({ leads: finalLeads }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
