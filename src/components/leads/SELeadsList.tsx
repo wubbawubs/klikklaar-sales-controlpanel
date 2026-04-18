@@ -1,20 +1,24 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, Building2, User, Phone, Mail, Globe, Tag, StickyNote,
-  PhoneCall, ExternalLink, Filter, RefreshCw, ChevronLeft, ChevronRight,
+  Search, Building2, Phone, Mail, Globe, Tag,
+  PhoneCall, Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
 import { ExpandableNote } from '@/components/ui/expandable-note';
+import { DailyActivityBar } from './DailyActivityBar';
+import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
+import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
+import { toast } from 'sonner';
 
 interface Lead {
   id: string;
@@ -33,32 +37,46 @@ interface Lead {
   assigned_at: string | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  assigned: { label: 'Nieuw', className: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
-  contacted: { label: 'Gebeld', className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-  callback: { label: 'Terugbellen', className: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
-  no_answer: { label: 'Geen gehoor', className: 'bg-slate-500/15 text-slate-400 border-slate-500/30' },
-  interest: { label: 'Interesse', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-  qualified: { label: 'Meeting', className: 'bg-green-500/15 text-green-400 border-green-500/30' },
-  won: { label: 'Klant', className: 'bg-primary/15 text-primary border-primary/30' },
-  lost: { label: 'Geen interesse', className: 'bg-red-500/15 text-red-400 border-red-500/30' },
-  disqualified: { label: 'Gediskwalificeerd', className: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
-};
+interface CallStat {
+  attempts: number; // count of not_reached
+  lastOutcome: AttemptOutcome;
+  lastCallAt: string | null;
+  nextCallback: string | null;
+}
 
 const PAGE_SIZE = 50;
+
+type QuickFilter = 'all' | 'untouched' | 'callbacks_today' | 'tried_2x' | 'cold' | 'reached';
+
+const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
+  { id: 'all', label: 'Alle' },
+  { id: 'untouched', label: 'Niet gebeld' },
+  { id: 'callbacks_today', label: 'Callbacks vandaag' },
+  { id: 'tried_2x', label: '2× geprobeerd' },
+  { id: 'cold', label: 'Cold (3×)' },
+  { id: 'reached', label: 'Bereikt' },
+];
 
 export default function SELeadsList() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [callStats, setCallStats] = useState<Record<string, CallStat>>({});
   const [loading, setLoading] = useState(true);
   const [seId, setSeId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [filterBranche, setFilterBranche] = useState('all');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [page, setPage] = useState(0);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [selectedRowIdx, setSelectedRowIdx] = useState<number>(0);
+  const [detailIdx, setDetailIdx] = useState<number | null>(null);
   const [lastSync, setLastSync] = useState<Date>(new Date());
+  const [activityRefresh, setActivityRefresh] = useState(0);
+  const [callbackOpen, setCallbackOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [pendingLead, setPendingLead] = useState<QuickLead | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   // Resolve SE id
   useEffect(() => {
@@ -75,7 +93,7 @@ export default function SELeadsList() {
     })();
   }, [user]);
 
-  // Fetch leads — paginate to bypass 1000-row default limit
+  // Fetch leads
   const fetchLeads = useCallback(async () => {
     if (!seId) return;
     const all: Lead[] = [];
@@ -99,23 +117,70 @@ export default function SELeadsList() {
     setLoading(false);
   }, [seId]);
 
-  // Initial + 2-min polling + visibility
+  // Fetch call stats per lead
+  const fetchCallStats = useCallback(async () => {
+    if (!seId) return;
+    const all: any[] = [];
+    let from = 0;
+    const ps = 1000;
+    while (true) {
+      const { data } = await supabase
+        .from('calls')
+        .select('lead_assignment_id, outcome, created_at, callback_date, callback_time')
+        .eq('sales_executive_id', seId)
+        .order('created_at', { ascending: true })
+        .range(from, from + ps - 1);
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < ps) break;
+      from += ps;
+    }
+    const map: Record<string, CallStat> = {};
+    for (const c of all) {
+      if (!c.lead_assignment_id) continue;
+      const cur = map[c.lead_assignment_id] ?? { attempts: 0, lastOutcome: null, lastCallAt: null, nextCallback: null };
+      if (c.outcome === 'not_reached') cur.attempts += 1;
+      cur.lastOutcome = c.outcome as AttemptOutcome;
+      cur.lastCallAt = c.created_at;
+      if (c.callback_date) {
+        cur.nextCallback = c.callback_time
+          ? `${c.callback_date}T${c.callback_time}`
+          : c.callback_date;
+      }
+      map[c.lead_assignment_id] = cur;
+    }
+    setCallStats(map);
+  }, [seId]);
+
   useEffect(() => {
     if (!seId) return;
     fetchLeads();
-    const interval = setInterval(fetchLeads, 2 * 60 * 1000);
-    const handleVis = () => { if (document.visibilityState === 'visible') fetchLeads(); };
+    fetchCallStats();
+    const interval = setInterval(() => { fetchLeads(); fetchCallStats(); }, 2 * 60 * 1000);
+    const handleVis = () => { if (document.visibilityState === 'visible') { fetchLeads(); fetchCallStats(); } };
     document.addEventListener('visibilitychange', handleVis);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', handleVis); };
-  }, [fetchLeads, seId]);
+  }, [fetchLeads, fetchCallStats, seId]);
 
-  // Derived data
+  // Derived
   const branches = useMemo(() => [...new Set(leads.map(l => l.branche).filter(Boolean))].sort() as string[], [leads]);
-  const statuses = useMemo(() => [...new Set(leads.map(l => l.status))].sort(), [leads]);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   const filtered = useMemo(() => {
     return leads.filter(l => {
-      if (filterStatus !== 'all' && l.status !== filterStatus) return false;
+      const stat = callStats[l.id];
+      const attempts = stat?.attempts ?? 0;
+      const reached = stat?.lastOutcome && stat.lastOutcome !== 'not_reached';
+
+      if (quickFilter === 'untouched' && (stat?.lastCallAt)) return false;
+      if (quickFilter === 'callbacks_today') {
+        if (!stat?.nextCallback || !stat.nextCallback.startsWith(todayStr)) return false;
+      }
+      if (quickFilter === 'tried_2x' && attempts !== 2) return false;
+      if (quickFilter === 'cold' && attempts < 3) return false;
+      if (quickFilter === 'reached' && !reached) return false;
+
       if (filterBranche !== 'all' && l.branche !== filterBranche) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -129,18 +194,28 @@ export default function SELeadsList() {
       }
       return true;
     });
-  }, [leads, filterStatus, filterBranche, search]);
+  }, [leads, callStats, filterBranche, search, quickFilter, todayStr]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageLeads = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const selectedLead = selectedIdx !== null ? pageLeads[selectedIdx] ?? null : null;
+  const detailLead = detailIdx !== null ? pageLeads[detailIdx] ?? null : null;
 
-  // Stats
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    leads.forEach(l => { counts[l.status] = (counts[l.status] || 0) + 1; });
+  // Quick filter counts
+  const filterCounts = useMemo(() => {
+    const counts: Record<QuickFilter, number> = {
+      all: leads.length, untouched: 0, callbacks_today: 0, tried_2x: 0, cold: 0, reached: 0,
+    };
+    for (const l of leads) {
+      const s = callStats[l.id];
+      const a = s?.attempts ?? 0;
+      if (!s?.lastCallAt) counts.untouched++;
+      if (s?.nextCallback?.startsWith(todayStr)) counts.callbacks_today++;
+      if (a === 2) counts.tried_2x++;
+      if (a >= 3) counts.cold++;
+      if (s?.lastOutcome && s.lastOutcome !== 'not_reached') counts.reached++;
+    }
     return counts;
-  }, [leads]);
+  }, [leads, callStats, todayStr]);
 
   const handleCallLead = (lead: Lead) => {
     const params = new URLSearchParams();
@@ -151,6 +226,73 @@ export default function SELeadsList() {
     navigate(`/calls?${params.toString()}`);
   };
 
+  // Quick action runner
+  const runQuickAction = useCallback(async (lead: Lead, outcome: QuickOutcome, opts?: { date?: string; time?: string; note?: string }) => {
+    if (!seId) return;
+    const attemptsBefore = callStats[lead.id]?.attempts ?? 0;
+    const res = await logQuickCall({
+      seId,
+      lead: { id: lead.id, org_name: lead.org_name, person_name: lead.person_name, person_phone: lead.person_phone, status: lead.status },
+      outcome,
+      callbackDate: opts?.date ?? null,
+      callbackTime: opts?.time ?? null,
+      notes: opts?.note ?? null,
+      attemptsBefore,
+    });
+    if (res.ok) {
+      const labels: Record<QuickOutcome, string> = {
+        not_reached: 'Geen gehoor',
+        callback: 'Callback',
+        interest: 'Interesse',
+        appointment: 'Afspraak',
+        deal: 'Deal',
+        no_interest: 'Geen interesse',
+      };
+      toast.success(`${labels[outcome]} • ${lead.org_name ?? 'Lead'}${res.planned ? ` · terugbellen ${res.planned}` : ''}`);
+      fetchCallStats();
+      fetchLeads();
+      setActivityRefresh(k => k + 1);
+    }
+  }, [seId, callStats, fetchCallStats, fetchLeads]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore when typing in inputs/dialogs
+      const tgt = e.target as HTMLElement;
+      if (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable) return;
+      if (callbackOpen || noteOpen || detailIdx !== null) return;
+
+      const lead = pageLeads[selectedRowIdx];
+      if (e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedRowIdx(i => Math.min(pageLeads.length - 1, i + 1)); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setSelectedRowIdx(i => Math.max(0, i - 1)); return; }
+      if (!lead) return;
+      if (e.key === 'Enter') { e.preventDefault(); setDetailIdx(selectedRowIdx); return; }
+
+      const asQuick: QuickLead = { id: lead.id, org_name: lead.org_name, person_name: lead.person_name, person_phone: lead.person_phone, status: lead.status };
+
+      switch (e.key) {
+        case '1': e.preventDefault(); runQuickAction(lead, 'not_reached'); break;
+        case '2': e.preventDefault(); setPendingLead(asQuick); setCallbackOpen(true); break;
+        case '3': e.preventDefault(); runQuickAction(lead, 'interest'); break;
+        case '4': e.preventDefault(); runQuickAction(lead, 'appointment'); break;
+        case '5': e.preventDefault(); runQuickAction(lead, 'deal'); break;
+        case '6': e.preventDefault(); runQuickAction(lead, 'no_interest'); break;
+        case 'm': case 'M':
+          if (lead.person_email) { e.preventDefault(); window.location.href = `mailto:${lead.person_email}`; }
+          break;
+        case 'n': case 'N':
+          e.preventDefault(); setPendingLead(asQuick); setNoteOpen(true); break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pageLeads, selectedRowIdx, runQuickAction, callbackOpen, noteOpen, detailIdx]);
+
+  // Reset selection when page changes
+  useEffect(() => { setSelectedRowIdx(0); }, [page, quickFilter, filterBranche, search]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Leadlijst laden...</div>;
   }
@@ -159,44 +301,95 @@ export default function SELeadsList() {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Geen SE-profiel gevonden.</div>;
   }
 
+  const formatLastAction = (stat?: CallStat) => {
+    if (!stat?.lastCallAt) return null;
+    const d = new Date(stat.lastCallAt);
+    const isToday = d.toISOString().slice(0, 10) === todayStr;
+    return isToday
+      ? d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' });
+  };
+
+  const formatCallback = (stat?: CallStat) => {
+    if (!stat?.nextCallback) return null;
+    const d = new Date(stat.nextCallback.length > 10 ? stat.nextCallback : stat.nextCallback + 'T09:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+    const diff = (dayStart.getTime() - today.getTime()) / 86400000;
+    const time = stat.nextCallback.length > 10 ? d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '';
+    if (diff === 0) return `Vandaag ${time}`.trim();
+    if (diff === 1) return `Morgen ${time}`.trim();
+    if (diff < 0) return `Achterstallig (${d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' })})`;
+    return d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' }) + (time ? ' ' + time : '');
+  };
+
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Mijn Leads</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {leads.length} leads · Laatst gesynchroniseerd: {lastSync.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+              {leads.length} leads · Sync: {lastSync.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchLeads} className="gap-2">
-            <RefreshCw className="h-3.5 w-3.5" /> Ververs
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowShortcuts(s => !s)} className="gap-2">
+              <Keyboard className="h-3.5 w-3.5" /> Sneltoetsen
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { fetchLeads(); fetchCallStats(); }} className="gap-2">
+              <RefreshCw className="h-3.5 w-3.5" /> Ververs
+            </Button>
+          </div>
         </div>
 
-        {/* Quick stats */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
-          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-            const count = statusCounts[key] || 0;
-            if (count === 0) return null;
-            return (
-              <button
-                key={key}
-                onClick={() => setFilterStatus(filterStatus === key ? 'all' : key)}
-                className={cn(
-                  'rounded-lg border px-3 py-2 text-center transition-all',
-                  filterStatus === key ? cfg.className + ' ring-1 ring-current' : 'border-border/40 hover:border-border'
-                )}
-              >
-                <div className="text-lg font-bold">{count}</div>
-                <div className="text-[10px] leading-tight truncate">{cfg.label}</div>
-              </button>
-            );
-          })}
+        {/* Daily activity */}
+        <DailyActivityBar seId={seId} refreshKey={activityRefresh} />
+
+        {/* Shortcut cheatsheet */}
+        {showShortcuts && (
+          <Card className="bg-muted/30">
+            <CardContent className="p-3 text-xs text-muted-foreground">
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">↑↓</kbd> Navigeer</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">Enter</kbd> Open</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">1</kbd> Geen gehoor (auto +2 wd)</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">2</kbd> Callback</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">3</kbd> Interesse</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">4</kbd> Afspraak</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">5</kbd> Deal</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">6</kbd> Geen interesse</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">M</kbd> Mail</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">N</kbd> Notitie</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">⌘B</kbd> Sidebar</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick filters */}
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK_FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => { setQuickFilter(f.id); setPage(0); }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] border transition-colors',
+                quickFilter === f.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
+              )}
+            >
+              {f.id === 'cold' && <Snowflake className="h-3 w-3" />}
+              {f.label}
+              <span className="font-mono opacity-70">{filterCounts[f.id]}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Filters */}
+        {/* Search/branche filter */}
         <Card>
           <CardContent className="pt-4">
             <div className="flex flex-col sm:flex-row flex-wrap gap-3">
@@ -209,20 +402,6 @@ export default function SELeadsList() {
                   className="pl-9"
                 />
               </div>
-              <Select value={filterStatus} onValueChange={v => { setFilterStatus(v); setPage(0); }}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle statussen</SelectItem>
-                  {statuses.map(s => (
-                    <SelectItem key={s} value={s}>
-                      {STATUS_CONFIG[s]?.label || s} ({statusCounts[s] || 0})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={filterBranche} onValueChange={v => { setFilterBranche(v); setPage(0); }}>
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <Tag className="h-4 w-4 mr-2" />
@@ -241,7 +420,7 @@ export default function SELeadsList() {
 
         {/* Lead table */}
         <Card>
-          <CardContent className="p-0 overflow-x-auto">
+          <CardContent className="p-0 overflow-x-auto" ref={tableRef}>
             {filtered.length === 0 ? (
               <div className="p-8 text-center space-y-4">
                 <p className="text-muted-foreground">Geen leads gevonden</p>
@@ -263,26 +442,38 @@ export default function SELeadsList() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[120px]">Status</TableHead>
                     <TableHead>Bedrijf</TableHead>
-                    <TableHead>Branche</TableHead>
                     <TableHead>Persoon</TableHead>
-                    <TableHead>Email</TableHead>
                     <TableHead>Telefoon</TableHead>
-                    <TableHead>Website</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="w-[140px]">Laatste actie</TableHead>
+                    <TableHead className="w-[140px]">Volgende callback</TableHead>
+                    <TableHead>Branche</TableHead>
                     <TableHead>Notities</TableHead>
                     <TableHead className="w-[80px]">Actie</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pageLeads.map((lead, idx) => {
-                    const cfg = STATUS_CONFIG[lead.status] || { label: lead.status, className: '' };
+                    const stat = callStats[lead.id];
+                    const isSelected = idx === selectedRowIdx;
                     return (
                       <TableRow
                         key={lead.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setSelectedIdx(idx)}
+                        className={cn(
+                          'cursor-pointer transition-colors',
+                          isSelected ? 'bg-primary/5 ring-1 ring-inset ring-primary/30' : 'hover:bg-muted/50'
+                        )}
+                        onClick={() => { setSelectedRowIdx(idx); }}
+                        onDoubleClick={() => setDetailIdx(idx)}
                       >
+                        <TableCell>
+                          <AttemptIndicator
+                            attempts={stat?.attempts ?? 0}
+                            lastOutcome={stat?.lastOutcome ?? null}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -290,26 +481,7 @@ export default function SELeadsList() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {lead.branche && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal truncate max-w-[120px]">
-                              {lead.branche}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
                           <span className="text-sm truncate block max-w-[140px]">{lead.person_name || '—'}</span>
-                        </TableCell>
-                        <TableCell>
-                          {lead.person_email && (
-                            <a
-                              href={`mailto:${lead.person_email}`}
-                              onClick={e => e.stopPropagation()}
-                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 truncate max-w-[180px]"
-                            >
-                              <Mail className="h-3 w-3 shrink-0" />
-                              {lead.person_email}
-                            </a>
-                          )}
                         </TableCell>
                         <TableCell>
                           {lead.person_phone && (
@@ -324,29 +496,40 @@ export default function SELeadsList() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {lead.website && (
+                          {lead.person_email && (
                             <a
-                              href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              href={`mailto:${lead.person_email}`}
                               onClick={e => e.stopPropagation()}
-                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 truncate max-w-[160px]"
                             >
-                              <Globe className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[120px]">
-                                {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                              </span>
+                              <Mail className="h-3 w-3 shrink-0" />
+                              {lead.person_email}
                             </a>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', cfg.className)}>
-                            {cfg.label}
-                          </Badge>
+                          <span className="text-xs text-muted-foreground">{formatLastAction(stat) ?? '—'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            'text-xs',
+                            formatCallback(stat)?.startsWith('Achterstallig') ? 'text-red-400 font-medium'
+                              : formatCallback(stat)?.startsWith('Vandaag') ? 'text-orange-400 font-medium'
+                                : 'text-muted-foreground'
+                          )}>
+                            {formatCallback(stat) ?? '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {lead.branche && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal truncate max-w-[120px]">
+                              {lead.branche}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           {lead.notes && (
-                            <div className="max-w-[200px]">
+                            <div className="max-w-[180px]">
                               <ExpandableNote text={lead.notes} title={`Notitie — ${lead.org_name || 'Lead'}`} />
                             </div>
                           )}
@@ -387,22 +570,54 @@ export default function SELeadsList() {
             </div>
           )}
         </Card>
+
+        <p className="text-[11px] text-muted-foreground text-center">
+          Tip: druk op <kbd className="px-1 py-0.5 rounded border border-border/60 bg-muted">?</kbd> voor sneltoetsen ·
+          <kbd className="px-1 py-0.5 rounded border border-border/60 bg-muted ml-1">⌘B</kbd> verbergt de zijbalk
+        </p>
       </div>
+
+      {/* Callback dialog */}
+      <CallbackDialog
+        open={callbackOpen}
+        onOpenChange={setCallbackOpen}
+        lead={pendingLead}
+        onConfirm={(date, time, note) => {
+          const lead = leads.find(l => l.id === pendingLead?.id);
+          if (lead) runQuickAction(lead, 'callback', { date, time, note });
+        }}
+      />
+
+      {/* Note dialog (logs as not_reached + notes — keeps history light) */}
+      <NoteDialog
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        lead={pendingLead}
+        onConfirm={async (note) => {
+          if (!pendingLead || !seId) return;
+          await supabase
+            .from('pipedrive_lead_assignments')
+            .update({ notes: note, updated_at: new Date().toISOString() })
+            .eq('id', pendingLead.id);
+          toast.success('Notitie opgeslagen');
+          fetchLeads();
+        }}
+      />
 
       {/* Lead detail sheet */}
       <DealDetailSheet
-        open={!!selectedLead}
-        onOpenChange={(open) => { if (!open) { setSelectedIdx(null); fetchLeads(); } }}
-        dealTitle={selectedLead?.deal_title ?? selectedLead?.org_name ?? undefined}
-        orgId={selectedLead?.pipedrive_org_id}
-        personId={selectedLead?.pipedrive_person_id}
-        leadAssignmentId={selectedLead?.id}
-        orgName={selectedLead?.org_name}
-        personName={selectedLead?.person_name}
-        personPhone={selectedLead?.person_phone}
-        branche={selectedLead?.branche}
-        onPrev={selectedIdx !== null && selectedIdx > 0 ? () => setSelectedIdx(selectedIdx - 1) : null}
-        onNext={selectedIdx !== null && selectedIdx < pageLeads.length - 1 ? () => setSelectedIdx(selectedIdx + 1) : null}
+        open={!!detailLead}
+        onOpenChange={(open) => { if (!open) { setDetailIdx(null); fetchLeads(); fetchCallStats(); } }}
+        dealTitle={detailLead?.deal_title ?? detailLead?.org_name ?? undefined}
+        orgId={detailLead?.pipedrive_org_id}
+        personId={detailLead?.pipedrive_person_id}
+        leadAssignmentId={detailLead?.id}
+        orgName={detailLead?.org_name}
+        personName={detailLead?.person_name}
+        personPhone={detailLead?.person_phone}
+        branche={detailLead?.branche}
+        onPrev={detailIdx !== null && detailIdx > 0 ? () => setDetailIdx(detailIdx - 1) : null}
+        onNext={detailIdx !== null && detailIdx < pageLeads.length - 1 ? () => setDetailIdx(detailIdx + 1) : null}
       />
     </>
   );
