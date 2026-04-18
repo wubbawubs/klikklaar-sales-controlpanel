@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  Package,
   FileJson,
   Plug,
   GraduationCap,
@@ -18,8 +17,9 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { NotificationBell } from '@/components/pwa/NotificationBell';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import klikklaarIcon from '@/assets/klikklaar-icon.jpeg'; // brand icon
+import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
 
 type NavVisibility = 'all' | 'admin' | 'coach+admin';
 
@@ -27,13 +27,12 @@ interface NavItem {
   to: string;
   icon: any;
   label: string;
-  visibility?: NavVisibility; // default: 'all' (everyone sees it)
+  visibility?: NavVisibility;
 }
 
 const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
-  
   { to: '/artifacts', icon: FileJson, label: 'Exports', visibility: 'admin' },
   { to: '/leads', icon: Target, label: 'Leads & CRM' },
   { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
@@ -45,15 +44,14 @@ const navItems: NavItem[] = [
 
 interface AppSidebarProps {
   onCloseMobile?: () => void;
+  collapsed?: boolean;
 }
 
-export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
+export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps) {
   const { signOut, user, isAdmin, roles } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
-
-  const isCoach = roles.includes('coach') && !isAdmin;
 
   const visibleItems = navItems.filter(item => {
     if (!item.visibility) return true;
@@ -63,92 +61,139 @@ export function AppSidebar({ onCloseMobile }: AppSidebarProps) {
   });
 
   const handleNavClick = () => {
-    // Close mobile sidebar on navigation
     onCloseMobile?.();
   };
 
   return (
-    <aside className="flex flex-col h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-      {/* Brand header */}
-      <div className="px-6 py-5 border-b border-sidebar-border">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2.5">
-              <img src={klikklaarIcon} alt="KlikKlaar" className="h-9 w-9 rounded-lg" />
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-white tracking-tight">KlikKlaar<span className="text-purple-400">SEO</span></span>
-                <span className="text-sm font-bold text-white tracking-tight">KlikKlaar<span className="text-emerald-400">WEB</span></span>
+    <TooltipProvider delayDuration={0}>
+      <aside
+        className={cn(
+          'flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-[width] duration-200 ease-in-out',
+          collapsed ? 'w-14' : 'w-64'
+        )}
+      >
+        {/* Brand header */}
+        <div className={cn('border-b border-sidebar-border', collapsed ? 'px-2 py-3' : 'px-6 py-5')}>
+          <div className="flex items-center justify-between">
+            {collapsed ? (
+              <img src={klikklaarIcon} alt="KlikKlaar" className="h-9 w-9 rounded-lg mx-auto" />
+            ) : (
+              <>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <img src={klikklaarIcon} alt="KlikKlaar" className="h-9 w-9 rounded-lg" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white tracking-tight">KlikKlaar<span className="text-purple-400">SEO</span></span>
+                      <span className="text-sm font-bold text-white tracking-tight">KlikKlaar<span className="text-emerald-400">WEB</span></span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold text-sidebar-accent-foreground tracking-widest uppercase">Control Center</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <NotificationBell />
+                  <button
+                    onClick={onCloseMobile}
+                    className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
+                    aria-label="Sluit menu"
+                  >
+                    <X className="h-5 w-5 text-sidebar-foreground/70" />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className={cn('flex-1 overflow-y-auto py-3', collapsed ? 'px-1.5' : 'px-3')}>
+          <div className="space-y-0.5">
+            {visibleItems.map(({ to, icon: Icon, label }) => {
+              const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+              const link = (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={handleNavClick}
+                  className={cn(
+                    'flex items-center gap-3 text-sm rounded-lg transition-all duration-150',
+                    collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
+                    isActive
+                      ? 'bg-sidebar-primary/15 text-sidebar-primary font-medium shadow-sm'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} />
+                  {!collapsed && label}
+                </NavLink>
+              );
+              return collapsed ? (
+                <Tooltip key={to}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{label}</TooltipContent>
+                </Tooltip>
+              ) : link;
+            })}
+          </div>
+        </nav>
+
+        {/* User footer */}
+        <div className={cn('border-t border-sidebar-border', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={toggleTheme}
+                    className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-sidebar-primary transition-colors"
+                    aria-label="Wissel thema"
+                  >
+                    {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{theme === 'light' ? 'Dark' : 'Light'}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={signOut}
+                    className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-sidebar-primary transition-colors"
+                    aria-label="Uitloggen"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Uitloggen</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase shrink-0">
+                {user?.email?.charAt(0) || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
+                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                  <button
+                    onClick={signOut}
+                    className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
+                  >
+                    <LogOut className="h-3 w-3" />
+                    Uitloggen
+                  </button>
+                  <button
+                    onClick={toggleTheme}
+                    className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
+                    aria-label="Wissel thema"
+                  >
+                    {theme === 'light' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
+                    {theme === 'light' ? 'Dark' : 'Light'}
+                  </button>
+                </div>
               </div>
             </div>
-            <span className="text-[10px] font-semibold text-sidebar-accent-foreground tracking-widest uppercase">Control Center</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            {/* Close button — mobile only */}
-            <button
-              onClick={onCloseMobile}
-              className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
-              aria-label="Sluit menu"
-            >
-              <X className="h-5 w-5 text-sidebar-foreground/70" />
-            </button>
-          </div>
+          )}
         </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-3">
-        <div className="space-y-0.5">
-          {visibleItems.map(({ to, icon: Icon, label }) => {
-            const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={handleNavClick}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-150',
-                  isActive
-                    ? 'bg-sidebar-primary/15 text-sidebar-primary font-medium shadow-sm'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                )}
-              >
-                <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} />
-                {label}
-              </NavLink>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* User footer */}
-      <div className="border-t border-sidebar-border px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase shrink-0">
-            {user?.email?.charAt(0) || '?'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
-            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-              <button
-                onClick={signOut}
-                className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
-              >
-                <LogOut className="h-3 w-3" />
-                Uitloggen
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
-                aria-label="Wissel thema"
-              >
-                {theme === 'light' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
-                {theme === 'light' ? 'Dark' : 'Light'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </TooltipProvider>
   );
 }
