@@ -86,6 +86,22 @@ const OUTCOME_LABELS: Record<string, string> = {
   voicemail: 'Voicemail',
 };
 
+/** Normaliseer NL telefoonnummers naar +31. Buitenlandse nummers blijven ongewijzigd. */
+function normalizeNlPhone(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  // "+0228 ..." → "0228 ..." → +31 228 ...
+  const fixed = s.replace(/^\+0/, '0');
+  const compact = fixed.replace(/[^\d+]/g, '');
+  if (compact.startsWith('+')) return fixed;
+  if (compact.startsWith('00')) return '+' + compact.slice(2);
+  if (compact.startsWith('0')) {
+    const rest = compact.slice(1);
+    return ('+31 ' + rest.replace(/(\d{1,3})(\d{3})(\d+)/, '$1 $2 $3')).trim();
+  }
+  return fixed;
+}
+
 declare global {
   interface Window {
     Calendly?: {
