@@ -86,6 +86,22 @@ const OUTCOME_LABELS: Record<string, string> = {
   voicemail: 'Voicemail',
 };
 
+/** Normaliseer NL telefoonnummers naar +31. Buitenlandse nummers blijven ongewijzigd. */
+function normalizeNlPhone(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  // "+0228 ..." → "0228 ..." → +31 228 ...
+  const fixed = s.replace(/^\+0/, '0');
+  const compact = fixed.replace(/[^\d+]/g, '');
+  if (compact.startsWith('+')) return fixed;
+  if (compact.startsWith('00')) return '+' + compact.slice(2);
+  if (compact.startsWith('0')) {
+    const rest = compact.slice(1);
+    return ('+31 ' + rest.replace(/(\d{1,3})(\d{3})(\d+)/, '$1 $2 $3')).trim();
+  }
+  return fixed;
+}
+
 declare global {
   interface Window {
     Calendly?: {
@@ -145,20 +161,19 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); }
   };
   return (
-    <div className="flex items-center gap-1.5 group">
-      <span className="text-muted-foreground shrink-0">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
+    <div className="flex items-start gap-1.5 group min-w-0">
+      <span className="text-muted-foreground shrink-0 mt-0.5">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0 mt-0.5">{label}</span>
       <button
         type="button"
         onClick={copy}
         onKeyDown={onKey}
         tabIndex={0}
-        className="text-xs text-foreground hover:text-primary truncate text-left flex-1 focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1"
+        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1"
         title="Klik om te kopiëren"
       >
         {value}
       </button>
-      <Copy className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
       {action && (
         <a
           href={action.href}
@@ -166,7 +181,7 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           title={action.title}
-          className="text-muted-foreground hover:text-primary p-0.5 rounded"
+          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 mt-0.5"
         >
           {action.icon}
         </a>
@@ -259,7 +274,7 @@ export function DealDetailSheet({
       .then(() => {
         if (cancelled || !window.Calendly || !calendlyRef.current) return;
         calendlyRef.current.innerHTML = '';
-        const phone = personPhone ?? persons[0]?.phone?.[0] ?? '';
+        const phone = normalizeNlPhone(personPhone ?? persons[0]?.phone?.[0] ?? '');
         const customAnswers: Record<string, string> = {};
         if (phone) customAnswers.a1 = phone;
         if (website) customAnswers.a2 = website;
@@ -278,15 +293,15 @@ export function DealDetailSheet({
     return () => { cancelled = true; };
   }, [showCalendly, open, personName, personEmail, personPhone, website, orgName, persons]);
 
-  // Aggregate alle telefoon/email entries (hoofdcontact + Pipedrive)
-  const allPhones = Array.from(new Set([
+  // Aggregate alle telefoon/email entries (hoofdcontact + Pipedrive), normaliseer NL nummers naar +31
+  const allPhones: string[] = Array.from(new Set([
     ...(personPhone ? [personPhone] : []),
     ...((persons[0]?.phone) ?? []),
-  ].filter(Boolean)));
-  const allEmails = Array.from(new Set([
+  ].filter((v): v is string => Boolean(v)).map(normalizeNlPhone)));
+  const allEmails: string[] = Array.from(new Set([
     ...(personEmail ? [personEmail] : []),
     ...((persons[0]?.email) ?? []),
-  ].filter(Boolean)));
+  ].filter((v): v is string => Boolean(v))));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -438,7 +453,7 @@ export function DealDetailSheet({
               </div>
               {showCalendly ? (
                 <div className="rounded-lg border overflow-hidden bg-background">
-                  <div ref={calendlyRef} style={{ minWidth: 320, height: 480 }} />
+                  <div ref={calendlyRef} style={{ minWidth: 320, height: 360 }} />
                   <div className="p-2 text-[11px] text-muted-foreground border-t bg-muted/20 flex items-center justify-between">
                     <span>Prefilled met {personName || 'klant'}{personEmail ? ` · ${personEmail}` : ''}</span>
                     <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
