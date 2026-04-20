@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,12 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, Building2, Phone, Mail, Globe, Tag,
-  PhoneCall, Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
+  Search, Building2, Phone, Tag,
+  Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
-import { ExpandableNote } from '@/components/ui/expandable-note';
 import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
@@ -60,7 +59,6 @@ const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
 
 export default function SELeadsList() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [callStats, setCallStats] = useState<Record<string, CallStat>>({});
   const [loading, setLoading] = useState(true);
@@ -221,14 +219,8 @@ export default function SELeadsList() {
     return counts;
   }, [leads, callStats, todayStr]);
 
-  const handleCallLead = (lead: Lead) => {
-    const params = new URLSearchParams();
-    if (lead.org_name) params.set('org', lead.org_name);
-    if (lead.person_name) params.set('contact', lead.person_name);
-    if (lead.person_phone) params.set('phone', lead.person_phone);
-    params.set('lead', lead.id);
-    navigate(`/calls?${params.toString()}`);
-  };
+
+
 
   // Quick action runner
   const runQuickAction = useCallback(async (lead: Lead, outcome: QuickOutcome, opts?: { date?: string; time?: string; note?: string }) => {
@@ -463,15 +455,10 @@ export default function SELeadsList() {
                   <TableRow>
                     <TableHead className="w-[120px]">Status</TableHead>
                     <TableHead>Bedrijf</TableHead>
-                    <TableHead>Persoon</TableHead>
-                    <TableHead className="w-[150px]">Telefoon</TableHead>
-                    <TableHead className="w-[170px]">Website</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="w-[160px]">Telefoon</TableHead>
+                    <TableHead className="w-[180px]">Website</TableHead>
                     <TableHead className="w-[140px]">Laatste actie</TableHead>
-                    <TableHead className="w-[140px]">Volgende callback</TableHead>
                     <TableHead>Branche</TableHead>
-                    <TableHead>Notities</TableHead>
-                    <TableHead className="w-[80px]">Actie</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -497,11 +484,8 @@ export default function SELeadsList() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="font-medium text-sm truncate max-w-[180px]">{lead.org_name || '—'}</span>
+                            <span className="font-medium text-sm truncate max-w-[220px]">{lead.org_name || ','}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm truncate block max-w-[140px]">{lead.person_name || '—'}</span>
                         </TableCell>
                         <TableCell>
                           <PhoneCell phone={lead.person_phone} />
@@ -510,54 +494,14 @@ export default function SELeadsList() {
                           <WebsiteCell website={lead.website} />
                         </TableCell>
                         <TableCell>
-                          {lead.person_email && (
-                            <a
-                              href={`mailto:${lead.person_email}`}
-                              onClick={e => e.stopPropagation()}
-                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 truncate max-w-[160px]"
-                            >
-                              <Mail className="h-3 w-3 shrink-0" />
-                              {lead.person_email}
-                            </a>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs text-muted-foreground">{formatLastAction(stat) ?? '—'}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={cn(
-                            'text-xs',
-                            formatCallback(stat)?.startsWith('Achterstallig') ? 'text-red-400 font-medium'
-                              : formatCallback(stat)?.startsWith('Vandaag') ? 'text-orange-400 font-medium'
-                                : 'text-muted-foreground'
-                          )}>
-                            {formatCallback(stat) ?? '—'}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{formatLastAction(stat) ?? ','}</span>
                         </TableCell>
                         <TableCell>
                           {lead.branche && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal truncate max-w-[120px]">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal truncate max-w-[140px]">
                               {lead.branche}
                             </Badge>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          {lead.notes && (
-                            <div className="max-w-[180px]">
-                              <ExpandableNote text={lead.notes} title={`Notitie — ${lead.org_name || 'Lead'}`} />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={(e) => { e.stopPropagation(); handleCallLead(lead); }}
-                          >
-                            <PhoneCall className="h-3.5 w-3.5 mr-1" />
-                            Bel
-                          </Button>
                         </TableCell>
                       </TableRow>
                     );
