@@ -220,14 +220,8 @@ export default function SELeadsList() {
     return counts;
   }, [leads, callStats, todayStr]);
 
-  const handleCallLead = (lead: Lead) => {
-    const params = new URLSearchParams();
-    if (lead.org_name) params.set('org', lead.org_name);
-    if (lead.person_name) params.set('contact', lead.person_name);
-    if (lead.person_phone) params.set('phone', lead.person_phone);
-    params.set('lead', lead.id);
-    navigate(`/calls?${params.toString()}`);
-  };
+
+
 
   // Quick action runner
   const runQuickAction = useCallback(async (lead: Lead, outcome: QuickOutcome, opts?: { date?: string; time?: string; note?: string }) => {
