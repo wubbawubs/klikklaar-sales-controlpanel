@@ -295,7 +295,7 @@ export function DealDetailSheet({
                     src={calendlyUrl}
                     title="Calendly planner"
                     className="w-full"
-                    style={{ height: 720, border: 0 }}
+                    style={{ height: 520, border: 0 }}
                     loading="lazy"
                   />
                 </div>
