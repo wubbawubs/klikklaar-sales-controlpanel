@@ -164,15 +164,15 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); }
   };
   return (
-    <div className="flex items-baseline gap-2 group min-w-0 py-0.5">
-      <span className="text-muted-foreground shrink-0 self-center">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-[68px] shrink-0 self-center">{label}</span>
+    <div className="flex items-start gap-2 group min-w-0 py-1 border-b border-border/30 last:border-b-0">
+      <span className="text-muted-foreground shrink-0 mt-[3px] w-3 flex justify-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-[72px] shrink-0 mt-[2px]">{label}</span>
       <button
         type="button"
         onClick={copy}
         onKeyDown={onKey}
         tabIndex={0}
-        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all whitespace-normal focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1 leading-snug"
+        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all whitespace-normal focus:outline-none focus:ring-1 focus:ring-ring rounded leading-snug"
         title="Klik om te kopiëren"
       >
         {value}
@@ -184,7 +184,7 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           title={action.title}
-          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 self-center"
+          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 mt-[1px]"
         >
           {action.icon}
         </a>
@@ -201,9 +201,9 @@ interface PlainFieldProps {
 function PlainField({ label, value, icon }: PlainFieldProps) {
   if (!value) return null;
   return (
-    <div className="flex items-baseline gap-2 py-0.5 min-w-0">
-      <span className="text-muted-foreground shrink-0 self-center">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-[68px] shrink-0 self-center">{label}</span>
+    <div className="flex items-start gap-2 py-1 min-w-0 border-b border-border/30 last:border-b-0">
+      <span className="text-muted-foreground shrink-0 mt-[3px] w-3 flex justify-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-[72px] shrink-0 mt-[2px]">{label}</span>
       <span className="text-xs text-foreground flex-1 min-w-0 break-words leading-snug">{value}</span>
     </div>
   );
@@ -373,13 +373,13 @@ export function DealDetailSheet({
               <h4 className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
                 <Building2 className="h-3 w-3" /> Klant details
               </h4>
-              <div className="rounded-lg border bg-muted/30 p-2.5">
-                <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-border/50">
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border/50">
+                  <Building2 className="h-4 w-4 text-primary shrink-0" />
                   <span className="font-semibold text-sm flex-1 min-w-0 break-words">{orgName || org?.name || '—'}</span>
                   {status && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">{status}</Badge>}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-0.5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
 
                   <CopyField label="Contact" value={personName} icon={<User className="h-3 w-3" />} />
                   <PlainField label="Branche" value={branche} icon={<Tag className="h-3 w-3" />} />
@@ -430,9 +430,9 @@ export function DealDetailSheet({
                 </div>
 
                 {notes && (
-                  <div className="flex items-start gap-1.5 text-xs pt-2 mt-2 border-t border-border/50">
+                  <div className="flex items-start gap-2 text-xs pt-2 mt-2 border-t border-border/50">
                     <StickyNote className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
-                    <span className="whitespace-pre-wrap text-foreground/90">{notes}</span>
+                    <span className="whitespace-pre-wrap text-foreground/90 leading-snug">{notes}</span>
                   </div>
                 )}
               </div>
