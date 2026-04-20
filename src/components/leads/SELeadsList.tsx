@@ -450,15 +450,15 @@ export default function SELeadsList() {
                 )}
               </div>
             ) : (
-              <Table>
+              <Table className="min-w-[1100px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">Status</TableHead>
-                    <TableHead>Bedrijf</TableHead>
-                    <TableHead className="w-[160px]">Telefoon</TableHead>
-                    <TableHead className="w-[180px]">Website</TableHead>
-                    <TableHead className="w-[140px]">Laatste actie</TableHead>
-                    <TableHead>Branche</TableHead>
+                    <TableHead className="w-[110px] pr-8">Status</TableHead>
+                    <TableHead className="min-w-[220px] pr-8">Bedrijf</TableHead>
+                    <TableHead className="w-[180px] pr-8">Telefoon</TableHead>
+                    <TableHead className="w-[200px] pr-8">Website</TableHead>
+                    <TableHead className="w-[130px] pr-8">Laatste actie</TableHead>
+                    <TableHead className="min-w-[140px]">Branche</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
