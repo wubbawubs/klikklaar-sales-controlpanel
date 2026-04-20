@@ -161,15 +161,15 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); }
   };
   return (
-    <div className="flex items-start gap-1.5 group min-w-0">
-      <span className="text-muted-foreground shrink-0 mt-0.5">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0 mt-0.5">{label}</span>
+    <div className="flex items-baseline gap-2 group min-w-0 py-0.5">
+      <span className="text-muted-foreground shrink-0 self-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-[68px] shrink-0 self-center">{label}</span>
       <button
         type="button"
         onClick={copy}
         onKeyDown={onKey}
         tabIndex={0}
-        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1"
+        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all whitespace-normal focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1 leading-snug"
         title="Klik om te kopiëren"
       >
         {value}
@@ -181,7 +181,7 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           title={action.title}
-          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 mt-0.5"
+          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 self-center"
         >
           {action.icon}
         </a>
@@ -198,10 +198,10 @@ interface PlainFieldProps {
 function PlainField({ label, value, icon }: PlainFieldProps) {
   if (!value) return null;
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-muted-foreground shrink-0">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
-      <span className="text-xs text-foreground truncate flex-1">{value}</span>
+    <div className="flex items-baseline gap-2 py-0.5 min-w-0">
+      <span className="text-muted-foreground shrink-0 self-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-[68px] shrink-0 self-center">{label}</span>
+      <span className="text-xs text-foreground flex-1 min-w-0 break-words leading-snug">{value}</span>
     </div>
   );
 }
@@ -371,13 +371,12 @@ export function DealDetailSheet({
                 <Building2 className="h-3 w-3" /> Klant details
               </h4>
               <div className="rounded-lg border bg-muted/30 p-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                  {/* Bedrijf + status */}
-                  <div className="flex items-center gap-1.5 sm:col-span-2">
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-sm truncate">{orgName || org?.name || '—'}</span>
-                    {status && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{status}</Badge>}
-                  </div>
+                <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-border/50">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="font-semibold text-sm flex-1 min-w-0 break-words">{orgName || org?.name || '—'}</span>
+                  {status && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">{status}</Badge>}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-0.5">
 
                   <CopyField label="Contact" value={personName} icon={<User className="h-3 w-3" />} />
                   <PlainField label="Branche" value={branche} icon={<Tag className="h-3 w-3" />} />
@@ -453,7 +452,7 @@ export function DealDetailSheet({
               </div>
               {showCalendly ? (
                 <div className="rounded-lg border overflow-hidden bg-background">
-                  <div ref={calendlyRef} style={{ minWidth: 320, height: 360 }} />
+                  <div ref={calendlyRef} style={{ minWidth: 320, height: 680 }} />
                   <div className="p-2 text-[11px] text-muted-foreground border-t bg-muted/20 flex items-center justify-between">
                     <span>Prefilled met {personName || 'klant'}{personEmail ? ` · ${personEmail}` : ''}</span>
                     <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
