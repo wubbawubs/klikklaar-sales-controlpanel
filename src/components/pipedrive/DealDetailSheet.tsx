@@ -373,13 +373,13 @@ export function DealDetailSheet({
               <h4 className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
                 <Building2 className="h-3 w-3" /> Klant details
               </h4>
-              <div className="rounded-lg border bg-muted/30 p-2.5">
-                <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-border/50">
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border/50">
+                  <Building2 className="h-4 w-4 text-primary shrink-0" />
                   <span className="font-semibold text-sm flex-1 min-w-0 break-words">{orgName || org?.name || '—'}</span>
                   {status && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">{status}</Badge>}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-0.5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6">
 
                   <CopyField label="Contact" value={personName} icon={<User className="h-3 w-3" />} />
                   <PlainField label="Branche" value={branche} icon={<Tag className="h-3 w-3" />} />
@@ -430,9 +430,9 @@ export function DealDetailSheet({
                 </div>
 
                 {notes && (
-                  <div className="flex items-start gap-1.5 text-xs pt-2 mt-2 border-t border-border/50">
+                  <div className="flex items-start gap-2 text-xs pt-2 mt-2 border-t border-border/50">
                     <StickyNote className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
-                    <span className="whitespace-pre-wrap text-foreground/90">{notes}</span>
+                    <span className="whitespace-pre-wrap text-foreground/90 leading-snug">{notes}</span>
                   </div>
                 )}
               </div>
