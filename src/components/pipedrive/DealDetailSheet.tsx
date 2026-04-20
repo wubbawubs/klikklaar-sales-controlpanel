@@ -116,6 +116,9 @@ declare global {
 
 const CALENDLY_SCRIPT_SRC = 'https://assets.calendly.com/assets/external/widget.js';
 const CALENDLY_CSS_HREF = 'https://assets.calendly.com/assets/external/widget.css';
+const CALENDLY_SCALE = 0.7;
+const CALENDLY_EMBED_HEIGHT = 940;
+const CALENDLY_VISIBLE_HEIGHT = Math.round(CALENDLY_EMBED_HEIGHT * CALENDLY_SCALE);
 
 function ensureCalendlyAssets(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -452,7 +455,21 @@ export function DealDetailSheet({
               </div>
               {showCalendly ? (
                 <div className="rounded-lg border overflow-hidden bg-background">
-                  <div ref={calendlyRef} style={{ minWidth: 320, height: 680 }} />
+                  <div
+                    className="overflow-hidden"
+                    style={{ height: CALENDLY_VISIBLE_HEIGHT }}
+                  >
+                    <div
+                      className="origin-top-left"
+                      style={{
+                        transform: `scale(${CALENDLY_SCALE})`,
+                        width: `${100 / CALENDLY_SCALE}%`,
+                        height: CALENDLY_EMBED_HEIGHT,
+                      }}
+                    >
+                      <div ref={calendlyRef} style={{ minWidth: 320, height: CALENDLY_EMBED_HEIGHT }} />
+                    </div>
+                  </div>
                   <div className="p-2 text-[11px] text-muted-foreground border-t bg-muted/20 flex items-center justify-between">
                     <span>Prefilled met {personName || 'klant'}{personEmail ? ` · ${personEmail}` : ''}</span>
                     <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
