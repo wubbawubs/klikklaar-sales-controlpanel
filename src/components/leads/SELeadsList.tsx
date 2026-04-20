@@ -59,7 +59,6 @@ const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
 
 export default function SELeadsList() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [callStats, setCallStats] = useState<Record<string, CallStat>>({});
   const [loading, setLoading] = useState(true);
