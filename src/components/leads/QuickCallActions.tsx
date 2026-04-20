@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-export type QuickOutcome = 'not_reached' | 'callback' | 'interest' | 'appointment' | 'deal' | 'no_interest';
+export type QuickOutcome = 'not_reached' | 'callback' | 'interest' | 'appointment' | 'deal' | 'no_interest' | 'invalid_number';
 
 export interface QuickLead {
   id: string;
@@ -119,7 +119,7 @@ export async function logQuickCall({
   let plannedDate: string | null = callbackDate ?? null;
   let plannedTime: string | null = callbackTime ?? null;
   if (outcome === 'not_reached' && attemptsBefore < 2 && !plannedDate) {
-    plannedDate = addBusinessDays(new Date(), 2);
+    plannedDate = addBusinessDays(new Date(), 1);
     plannedTime = '10:00';
   }
 
@@ -147,6 +147,7 @@ export async function logQuickCall({
   else if (outcome === 'interest') newStatus = 'interest';
   else if (outcome === 'no_interest') newStatus = 'lost';
   else if (outcome === 'callback') newStatus = 'callback';
+  else if (outcome === 'invalid_number') newStatus = 'invalid';
   else if (outcome === 'not_reached') newStatus = newAttempts >= 3 ? 'no_answer' : 'contacted';
 
   if (newStatus && newStatus !== lead.status) {

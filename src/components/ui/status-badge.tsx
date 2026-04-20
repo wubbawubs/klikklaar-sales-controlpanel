@@ -27,6 +27,14 @@ const statusColors: Record<string, string> = {
   in_progress: 'bg-info/10 text-info',
   scheduled: 'bg-info/10 text-info',
   cancelled: 'bg-muted text-muted-foreground',
+  invalid: 'bg-destructive/10 text-destructive',
+  lost: 'bg-destructive/10 text-destructive',
+  no_answer: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  callback: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
+  interest: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  won: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  qualified: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
+  assigned: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
 };
 
 const statusLabels: Record<string, string> = {
@@ -59,6 +67,14 @@ const statusLabels: Record<string, string> = {
   in_progress: 'Bezig',
   scheduled: 'Gepland',
   cancelled: 'Geannuleerd',
+  invalid: 'Ongeldig nummer',
+  lost: 'Geen interesse',
+  no_answer: 'Cold (3x geen gehoor)',
+  callback: 'Callback gepland',
+  interest: 'Interesse',
+  won: 'Deal',
+  qualified: 'Afspraak',
+  assigned: 'Toegewezen',
 };
 
 interface StatusBadgeProps {
