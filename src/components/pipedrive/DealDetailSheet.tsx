@@ -164,15 +164,15 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); }
   };
   return (
-    <div className="flex items-baseline gap-2 group min-w-0 py-0.5">
-      <span className="text-muted-foreground shrink-0 self-center">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-[68px] shrink-0 self-center">{label}</span>
+    <div className="flex items-start gap-2 group min-w-0 py-1 border-b border-border/30 last:border-b-0">
+      <span className="text-muted-foreground shrink-0 mt-[3px] w-3 flex justify-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-[72px] shrink-0 mt-[2px]">{label}</span>
       <button
         type="button"
         onClick={copy}
         onKeyDown={onKey}
         tabIndex={0}
-        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all whitespace-normal focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1 leading-snug"
+        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all whitespace-normal focus:outline-none focus:ring-1 focus:ring-ring rounded leading-snug"
         title="Klik om te kopiëren"
       >
         {value}
@@ -184,7 +184,7 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           title={action.title}
-          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 self-center"
+          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 mt-[1px]"
         >
           {action.icon}
         </a>
@@ -201,9 +201,9 @@ interface PlainFieldProps {
 function PlainField({ label, value, icon }: PlainFieldProps) {
   if (!value) return null;
   return (
-    <div className="flex items-baseline gap-2 py-0.5 min-w-0">
-      <span className="text-muted-foreground shrink-0 self-center">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-[68px] shrink-0 self-center">{label}</span>
+    <div className="flex items-start gap-2 py-1 min-w-0 border-b border-border/30 last:border-b-0">
+      <span className="text-muted-foreground shrink-0 mt-[3px] w-3 flex justify-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-[72px] shrink-0 mt-[2px]">{label}</span>
       <span className="text-xs text-foreground flex-1 min-w-0 break-words leading-snug">{value}</span>
     </div>
   );
