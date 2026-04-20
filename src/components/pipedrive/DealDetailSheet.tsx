@@ -294,14 +294,14 @@ export function DealDetailSheet({
   }, [showCalendly, open, personName, personEmail, personPhone, website, orgName, persons]);
 
   // Aggregate alle telefoon/email entries (hoofdcontact + Pipedrive), normaliseer NL nummers naar +31
-  const allPhones = Array.from(new Set([
+  const allPhones: string[] = Array.from(new Set([
     ...(personPhone ? [personPhone] : []),
     ...((persons[0]?.phone) ?? []),
-  ].filter(Boolean).map(normalizeNlPhone)));
-  const allEmails = Array.from(new Set([
+  ].filter((v): v is string => Boolean(v)).map(normalizeNlPhone)));
+  const allEmails: string[] = Array.from(new Set([
     ...(personEmail ? [personEmail] : []),
     ...((persons[0]?.email) ?? []),
-  ].filter(Boolean)));
+  ].filter((v): v is string => Boolean(v))));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
