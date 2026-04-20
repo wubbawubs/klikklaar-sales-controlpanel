@@ -450,15 +450,15 @@ export default function SELeadsList() {
                 )}
               </div>
             ) : (
-              <Table className="min-w-[1100px]">
+              <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[110px] pr-8">Status</TableHead>
-                    <TableHead className="min-w-[220px] pr-8">Bedrijf</TableHead>
-                    <TableHead className="w-[180px] pr-8">Telefoon</TableHead>
-                    <TableHead className="w-[200px] pr-8">Website</TableHead>
-                    <TableHead className="w-[130px] pr-8">Laatste actie</TableHead>
-                    <TableHead className="min-w-[140px]">Branche</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Status</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Bedrijf</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Telefoon</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Website</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Laatste actie</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Branche</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -469,34 +469,34 @@ export default function SELeadsList() {
                       <TableRow
                         key={lead.id}
                         className={cn(
-                          'cursor-pointer transition-colors',
-                          isSelected ? 'bg-primary/5 ring-1 ring-inset ring-primary/30' : 'hover:bg-muted/50'
+                          'cursor-pointer',
+                          isSelected && 'bg-muted/40',
                         )}
-                        onClick={() => { setSelectedRowIdx(idx); }}
+                        onClick={() => setSelectedRowIdx(idx)}
                         onDoubleClick={() => setDetailIdx(idx)}
                       >
-                        <TableCell>
+                        <TableCell className="px-4">
                           <AttemptIndicator
                             attempts={stat?.attempts ?? 0}
                             lastOutcome={stat?.lastOutcome ?? null}
                           />
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell className="px-4">
+                          <div className="flex items-center gap-2 min-w-0">
                             <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="font-medium text-sm truncate max-w-[220px]">{lead.org_name || ','}</span>
+                            <span className="font-medium text-sm truncate">{lead.org_name || ','}</span>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4 whitespace-nowrap">
                           <PhoneCell phone={lead.person_phone} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4 whitespace-nowrap">
                           <WebsiteCell website={lead.website} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4 whitespace-nowrap">
                           <span className="text-xs text-muted-foreground">{formatLastAction(stat) ?? ','}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           {lead.branche && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal truncate max-w-[140px]">
                               {lead.branche}
