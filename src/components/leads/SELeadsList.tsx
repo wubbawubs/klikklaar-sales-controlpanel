@@ -573,7 +573,12 @@ export default function SELeadsList() {
         orgName={detailLead?.org_name}
         personName={detailLead?.person_name}
         personPhone={detailLead?.person_phone}
+        personEmail={detailLead?.person_email}
+        website={detailLead?.website}
         branche={detailLead?.branche}
+        productLine={detailLead?.product_line}
+        notes={detailLead?.notes}
+        status={detailLead?.status}
         onPrev={detailIdx !== null && detailIdx > 0 ? () => setDetailIdx(detailIdx - 1) : null}
         onNext={detailIdx !== null && detailIdx < pageLeads.length - 1 ? () => setDetailIdx(detailIdx + 1) : null}
       />
