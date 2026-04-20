@@ -258,7 +258,7 @@ export function DealDetailSheet({
       .then(() => {
         if (cancelled || !window.Calendly || !calendlyRef.current) return;
         calendlyRef.current.innerHTML = '';
-        const phone = personPhone ?? persons[0]?.phone?.[0] ?? '';
+        const phone = normalizeNlPhone(personPhone ?? persons[0]?.phone?.[0] ?? '');
         const customAnswers: Record<string, string> = {};
         if (phone) customAnswers.a1 = phone;
         if (website) customAnswers.a2 = website;
@@ -277,11 +277,11 @@ export function DealDetailSheet({
     return () => { cancelled = true; };
   }, [showCalendly, open, personName, personEmail, personPhone, website, orgName, persons]);
 
-  // Aggregate alle telefoon/email entries (hoofdcontact + Pipedrive)
+  // Aggregate alle telefoon/email entries (hoofdcontact + Pipedrive), normaliseer NL nummers naar +31
   const allPhones = Array.from(new Set([
     ...(personPhone ? [personPhone] : []),
     ...((persons[0]?.phone) ?? []),
-  ].filter(Boolean)));
+  ].filter(Boolean).map(normalizeNlPhone)));
   const allEmails = Array.from(new Set([
     ...(personEmail ? [personEmail] : []),
     ...((persons[0]?.email) ?? []),
@@ -437,7 +437,7 @@ export function DealDetailSheet({
               </div>
               {showCalendly ? (
                 <div className="rounded-lg border overflow-hidden bg-background">
-                  <div ref={calendlyRef} style={{ minWidth: 320, height: 480 }} />
+                  <div ref={calendlyRef} style={{ minWidth: 320, height: 360 }} />
                   <div className="p-2 text-[11px] text-muted-foreground border-t bg-muted/20 flex items-center justify-between">
                     <span>Prefilled met {personName || 'klant'}{personEmail ? ` · ${personEmail}` : ''}</span>
                     <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
