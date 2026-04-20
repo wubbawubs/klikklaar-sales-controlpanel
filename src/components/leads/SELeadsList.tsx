@@ -372,14 +372,16 @@ export default function SELeadsList() {
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">↑↓</kbd> Navigeer</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">Enter</kbd> Open</span>
-                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">1</kbd> Geen gehoor (auto +2 wd)</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">1</kbd> Geen gehoor (auto +1 wd)</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">2</kbd> Callback</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">3</kbd> Interesse</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">4</kbd> Afspraak</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">5</kbd> Deal</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">6</kbd> Geen interesse</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">7</kbd> Ongeldig nummer</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">M</kbd> Mail</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">N</kbd> Notitie</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">Tab</kbd> Telefoon → Website → volgende rij</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">⌘B</kbd> Sidebar</span>
               </div>
             </CardContent>
