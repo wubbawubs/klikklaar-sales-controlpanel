@@ -145,20 +145,19 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); }
   };
   return (
-    <div className="flex items-center gap-1.5 group">
-      <span className="text-muted-foreground shrink-0">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">{label}</span>
+    <div className="flex items-start gap-1.5 group min-w-0">
+      <span className="text-muted-foreground shrink-0 mt-0.5">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0 mt-0.5">{label}</span>
       <button
         type="button"
         onClick={copy}
         onKeyDown={onKey}
         tabIndex={0}
-        className="text-xs text-foreground hover:text-primary truncate text-left flex-1 focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1"
+        className="text-xs text-foreground hover:text-primary text-left flex-1 min-w-0 break-all focus:outline-none focus:ring-1 focus:ring-ring rounded px-1 -mx-1"
         title="Klik om te kopiëren"
       >
         {value}
       </button>
-      <Copy className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
       {action && (
         <a
           href={action.href}
@@ -166,7 +165,7 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           title={action.title}
-          className="text-muted-foreground hover:text-primary p-0.5 rounded"
+          className="text-muted-foreground hover:text-primary p-0.5 rounded shrink-0 mt-0.5"
         >
           {action.icon}
         </a>
