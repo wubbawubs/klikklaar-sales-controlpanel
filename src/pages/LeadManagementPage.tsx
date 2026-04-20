@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { SalesExecutive } from '@/types/database';
 import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
 import SELeadsList from '@/components/leads/SELeadsList';
+import MailExportList from '@/components/leads/MailExportList';
 import PipedrivePage from '@/pages/PipedrivePage';
 import CallLoggingPage from '@/pages/CallLoggingPage';
 import LeadScraper from '@/components/leads/LeadScraper';
@@ -66,9 +67,22 @@ export default function LeadManagementPage() {
     });
   };
 
-  // SE's see their own lead list (no tabs)
+  // SE's see their own lead list with Mail Export tab
   if (!isCoachOrAdmin) {
-    return <SELeadsList />;
+    return (
+      <Tabs defaultValue="leads" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="leads">Mijn leads</TabsTrigger>
+          <TabsTrigger value="mail-export">Mail export</TabsTrigger>
+        </TabsList>
+        <TabsContent value="leads">
+          <SELeadsList />
+        </TabsContent>
+        <TabsContent value="mail-export">
+          <MailExportList />
+        </TabsContent>
+      </Tabs>
+    );
   }
 
 
