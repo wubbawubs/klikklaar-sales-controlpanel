@@ -18,6 +18,7 @@ import { ExpandableNote } from '@/components/ui/expandable-note';
 import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
+import { PhoneCell, WebsiteCell } from './ContactCells';
 import { toast } from 'sonner';
 
 interface Lead {
@@ -461,7 +462,8 @@ export default function SELeadsList() {
                     <TableHead className="w-[120px]">Status</TableHead>
                     <TableHead>Bedrijf</TableHead>
                     <TableHead>Persoon</TableHead>
-                    <TableHead>Telefoon</TableHead>
+                    <TableHead className="w-[150px]">Telefoon</TableHead>
+                    <TableHead className="w-[170px]">Website</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead className="w-[140px]">Laatste actie</TableHead>
                     <TableHead className="w-[140px]">Volgende callback</TableHead>
@@ -501,6 +503,9 @@ export default function SELeadsList() {
                         </TableCell>
                         <TableCell>
                           <PhoneCell phone={lead.person_phone} />
+                        </TableCell>
+                        <TableCell>
+                          <WebsiteCell website={lead.website} />
                         </TableCell>
                         <TableCell>
                           {lead.person_email && (
