@@ -8,6 +8,7 @@ export type AttemptOutcome =
   | 'appointment'
   | 'deal'
   | 'no_interest'
+  | 'invalid_number'
   | null;
 
 interface AttemptIndicatorProps {
@@ -22,6 +23,7 @@ const REACHED_OUTCOMES: Record<string, { icon: any; color: string; label: string
   appointment: { icon: CheckCircle2, color: 'text-green-400', label: 'Afspraak' },
   deal: { icon: Trophy, color: 'text-primary', label: 'Deal' },
   no_interest: { icon: XCircle, color: 'text-red-400', label: 'Geen interesse' },
+  invalid_number: { icon: XCircle, color: 'text-red-500', label: 'Ongeldig nummer' },
 };
 
 export function AttemptIndicator({ attempts, lastOutcome, className }: AttemptIndicatorProps) {

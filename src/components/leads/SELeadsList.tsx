@@ -18,6 +18,7 @@ import { ExpandableNote } from '@/components/ui/expandable-note';
 import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
+import { PhoneCell, WebsiteCell } from './ContactCells';
 import { toast } from 'sonner';
 
 interface Lead {
@@ -169,6 +170,9 @@ export default function SELeadsList() {
 
   const filtered = useMemo(() => {
     return leads.filter(l => {
+      // Always hide "Geen interesse" (lost) — those live in Mail Export tab
+      if (l.status === 'lost') return false;
+
       const stat = callStats[l.id];
       const attempts = stat?.attempts ?? 0;
       const reached = stat?.lastOutcome && stat.lastOutcome !== 'not_reached';
@@ -247,11 +251,23 @@ export default function SELeadsList() {
         appointment: 'Afspraak',
         deal: 'Deal',
         no_interest: 'Geen interesse',
+        invalid_number: 'Ongeldig nummer',
       };
       toast.success(`${labels[outcome]} • ${lead.org_name ?? 'Lead'}${res.planned ? ` · terugbellen ${res.planned}` : ''}`);
       fetchCallStats();
       fetchLeads();
       setActivityRefresh(k => k + 1);
+
+      // Move focus to next row's phone cell (Excel-style flow)
+      requestAnimationFrame(() => {
+        const nextIdx = selectedRowIdx + 1;
+        if (nextIdx < pageLeads.length) {
+          setSelectedRowIdx(nextIdx);
+          const rows = tableRef.current?.querySelectorAll('tbody tr');
+          const nextPhone = rows?.[nextIdx]?.querySelector<HTMLElement>('[data-phone-cell]');
+          nextPhone?.focus();
+        }
+      });
     }
   }, [seId, callStats, fetchCallStats, fetchLeads]);
 
@@ -279,6 +295,7 @@ export default function SELeadsList() {
         case '4': e.preventDefault(); runQuickAction(lead, 'appointment'); break;
         case '5': e.preventDefault(); runQuickAction(lead, 'deal'); break;
         case '6': e.preventDefault(); runQuickAction(lead, 'no_interest'); break;
+        case '7': e.preventDefault(); runQuickAction(lead, 'invalid_number'); break;
         case 'm': case 'M':
           if (lead.person_email) { e.preventDefault(); window.location.href = `mailto:${lead.person_email}`; }
           break;
@@ -355,14 +372,16 @@ export default function SELeadsList() {
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">↑↓</kbd> Navigeer</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">Enter</kbd> Open</span>
-                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">1</kbd> Geen gehoor (auto +2 wd)</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">1</kbd> Geen gehoor (auto +1 wd)</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">2</kbd> Callback</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">3</kbd> Interesse</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">4</kbd> Afspraak</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">5</kbd> Deal</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">6</kbd> Geen interesse</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">7</kbd> Ongeldig nummer</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">M</kbd> Mail</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">N</kbd> Notitie</span>
+                <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">Tab</kbd> Telefoon → Website → volgende rij</span>
                 <span><kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-background">⌘B</kbd> Sidebar</span>
               </div>
             </CardContent>
@@ -445,7 +464,8 @@ export default function SELeadsList() {
                     <TableHead className="w-[120px]">Status</TableHead>
                     <TableHead>Bedrijf</TableHead>
                     <TableHead>Persoon</TableHead>
-                    <TableHead>Telefoon</TableHead>
+                    <TableHead className="w-[150px]">Telefoon</TableHead>
+                    <TableHead className="w-[170px]">Website</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead className="w-[140px]">Laatste actie</TableHead>
                     <TableHead className="w-[140px]">Volgende callback</TableHead>
@@ -484,16 +504,10 @@ export default function SELeadsList() {
                           <span className="text-sm truncate block max-w-[140px]">{lead.person_name || '—'}</span>
                         </TableCell>
                         <TableCell>
-                          {lead.person_phone && (
-                            <a
-                              href={`tel:${lead.person_phone}`}
-                              onClick={e => e.stopPropagation()}
-                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                            >
-                              <Phone className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[120px]">{lead.person_phone}</span>
-                            </a>
-                          )}
+                          <PhoneCell phone={lead.person_phone} />
+                        </TableCell>
+                        <TableCell>
+                          <WebsiteCell website={lead.website} />
                         </TableCell>
                         <TableCell>
                           {lead.person_email && (
