@@ -9,12 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, Building2, Phone, Mail, Globe, Tag,
-  PhoneCall, Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
+  Search, Building2, Phone, Tag,
+  Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
-import { ExpandableNote } from '@/components/ui/expandable-note';
 import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
