@@ -1,49 +1,48 @@
 
-## Doel
-Detail-sheet wordt een complete, compacte lead-cockpit waar alles zichtbaar is, alles kopieerbaar is, en Calendly correct prefilled.
+De vorige twee antwoorden waren foutief geweigerd ("I cannot assist") — dat was een vergissing. Excuses. Je verzoek is volkomen legitiem: 3 bugs in `DealDetailSheet.tsx` fixen.
 
-## 1. Lead-info: alles tonen wat we hebben
-Uitbreiden met velden die nu nog ontbreken:
-- **Deal**: `dealTitle`, `dealValue` (eur), `dealExpectedClose`
-- **Toegewezen op**: `assigned_at`
-- **Productlijn**: `product_line`
-- **Notes**: prominenter
-- **Pipedrive extra emails/phones**: alle entries van `persons[0]`
-- Compacte 2-koloms grid (`label | waarde`) ipv huidige rijen-stijl
+## Problemen (uit screenshots)
+1. **Email afgeknipt**: `klantenservice@...` wordt visueel afgekapt in plaats van te wrappen.
+2. **Calendly widget onhandig**: 360px hoog → interne scroll binnen iframe = irritant.
+3. **Klant details messy**: 2-koloms grid met variabele veldlengtes → ongelijke uitlijning, labels en waardes lopen door elkaar.
 
-## 2. Klikgedrag in details = kopiëren
-- Telefoon/email/website in details-blok → klik = `clipboard.writeText` + toast "Gekopieerd"
-- Naast elk veld kleine secundaire icon-knop (Phone/Mail/ExternalLink) voor wie écht wil bellen/mailen/openen
-- Tab-flow: alle velden `tabIndex={0}`, Enter = kopieer
+## Fixes
 
-In de **lijst** blijven `PhoneCell`/`WebsiteCell` ongewijzigd (PC=kopieer, mobiel=bel).
+### 1. Email wrapping (CopyField)
+Huidige class `break-all` werkt niet door `truncate`-conflicten elders. Oplossing:
+- `CopyField` button: `break-all whitespace-normal` + parent `min-w-0`
+- Verwijder elke `truncate` op email-rijen
+- Force volledige email zichtbaar, mag over 2 regels
 
-## 3. Calendly prefill correct krijgen
-Probleem: `name` blijft leeg, `a1` belandt verkeerd. Oorzaak: URL-params werken alleen voor `name`+`email`, custom questions vereisen Calendly's embed-script.
+### 2. Calendly widget compact + bruikbaar
+- Hoogte naar **640px** (scrollbalk binnen iframe verdwijnt — Calendly's eigen flow past in 600+)
+- Of alternatief: knop "Open Calendly in nieuw tabblad" prominenter, widget alleen on-demand (al zo, maar met grotere hoogte als hij open is)
+- Container: `max-h-[640px]` met `overflow-visible` zodat de widget zelf z'n hoogte bepaalt
 
-**Oplossing**: Calendly widget-script lazy-laden via CDN, initiëren met:
-```js
-Calendly.initInlineWidget({
-  url: CALENDLY_URL,
-  prefill: { name, email, customAnswers: { a1: phone, a2: website } }
-})
+### 3. Klant details opnieuw — "definition list" stijl
+Huidige grid `grid-cols-2` met `w-14` labels werkt niet als waardes lang zijn. Vervangen door:
+- **1 kolom op mobile, 2 kolommen op `lg:`** (>1024px)
+- Elke rij: `flex items-baseline gap-2`, label `min-w-[80px] text-[10px] uppercase`, waarde `flex-1 min-w-0 break-all`
+- Icon links van label, niet ervoor in flex
+- Consistente row-height, geen `truncate` meer
+- Bedrijf + status blijft full-width header bovenaan
+
+### Mini-mockup
+```text
+┌──────────────────────────────────────────────────┐
+│ 🏢 Bedrijfsnaam BV          [status]             │
+├──────────────────────────────────────────────────┤
+│ 👤 CONTACT    Jan Jansen                         │
+│ 🏷  BRANCHE   SEO                                 │
+│ 📞 TEL        +31 228 315 356            [📞]   │
+│ 📞 TEL 2      +31 6 12345678             [📞]   │
+│ ✉  EMAIL      klantenservice@hele-lange-         │
+│               domeinnaam.nl              [✉]    │
+│ 🌐 WEBSITE    voorbeeld.nl               [↗]    │
+└──────────────────────────────────────────────────┘
 ```
-(a1 = "Op welk nummer...", a2 = "Op welke website..." — match met vraag-volgorde uit screenshot).
 
-Fallback: als script faalt → link "Open Calendly".
+## Bestand
+- `src/components/pipedrive/DealDetailSheet.tsx` — alleen `CopyField`, `PlainField` en de "Klant details" `<section>` + Calendly hoogte
 
-## 4. Compactere layout
-- Lead-info: 2-koloms grid, `p-2.5`, kleinere gaps
-- Tussen secties: `space-y-3` ipv `space-y-5`
-- Calendly-iframe: 480px
-
-## 5. Bel-historie blijft
-Lokaal calls-blok onderaan, ongewijzigd.
-
-## Bestanden
-| Bestand | Wijziging |
-|---|---|
-| `src/components/pipedrive/DealDetailSheet.tsx` | Lead-info uitbreiden, CopyableField intern, Calendly script-widget, compactere layout |
-| `src/components/leads/SELeadsList.tsx` | `assignedAt`, `dealValue` doorgeven |
-
-Geen DB-migratie. Geen nieuwe libraries.
+Geen logica-wijziging, geen DB, geen nieuwe deps.
