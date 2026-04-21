@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Search, Building2, Phone, Tag,
   Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
+  ArrowUp, ArrowDown, ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
@@ -47,6 +48,9 @@ interface CallStat {
 const PAGE_SIZE = 50;
 
 type QuickFilter = 'all' | 'untouched' | 'callbacks_today' | 'tried_2x' | 'cold' | 'reached';
+type SourceFilter = 'all' | 'pipedrive' | 'scraped';
+type SortKey = 'org' | 'phone' | 'last_action' | 'branche' | 'assigned' | 'status';
+type SortDir = 'asc' | 'desc';
 
 const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
   { id: 'all', label: 'Alle' },
@@ -55,6 +59,12 @@ const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
   { id: 'tried_2x', label: '2× geprobeerd' },
   { id: 'cold', label: 'Cold (3×)' },
   { id: 'reached', label: 'Bereikt' },
+];
+
+const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
+  { id: 'all', label: 'Alle bronnen' },
+  { id: 'pipedrive', label: 'Pipedrive' },
+  { id: 'scraped', label: 'Scraped' },
 ];
 
 export default function SELeadsList() {
@@ -66,6 +76,9 @@ export default function SELeadsList() {
   const [search, setSearch] = useState('');
   const [filterBranche, setFilterBranche] = useState('all');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('assigned');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
   const [selectedRowIdx, setSelectedRowIdx] = useState<number>(0);
   const [detailIdx, setDetailIdx] = useState<number | null>(null);
@@ -76,6 +89,18 @@ export default function SELeadsList() {
   const [pendingLead, setPendingLead] = useState<QuickLead | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  const toggleSort = useCallback((key: SortKey) => {
+    setSortKey(prev => {
+      if (prev === key) {
+        setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        return prev;
+      }
+      setSortDir('asc');
+      return key;
+    });
+    setPage(0);
+  }, []);
 
   // Resolve SE id
   useEffect(() => {
@@ -167,7 +192,7 @@ export default function SELeadsList() {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const filtered = useMemo(() => {
-    return leads.filter(l => {
+    const list = leads.filter(l => {
       // Always hide "Geen interesse" (lost) — those live in Mail Export tab
       if (l.status === 'lost') return false;
 
@@ -183,6 +208,10 @@ export default function SELeadsList() {
       if (quickFilter === 'cold' && attempts < 3) return false;
       if (quickFilter === 'reached' && !reached) return false;
 
+      // Source filter: scraped = no Pipedrive org id, pipedrive = has org id
+      if (sourceFilter === 'pipedrive' && !l.pipedrive_org_id) return false;
+      if (sourceFilter === 'scraped' && l.pipedrive_org_id) return false;
+
       if (filterBranche !== 'all' && l.branche !== filterBranche) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -196,11 +225,47 @@ export default function SELeadsList() {
       }
       return true;
     });
-  }, [leads, callStats, filterBranche, search, quickFilter, todayStr]);
+
+    // Sorting
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const cmp = (a: string | number | null | undefined, b: string | number | null | undefined) => {
+      const av = a ?? '';
+      const bv = b ?? '';
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    };
+    const sorted = [...list].sort((a, b) => {
+      switch (sortKey) {
+        case 'org': return cmp(a.org_name?.toLowerCase(), b.org_name?.toLowerCase());
+        case 'phone': return cmp(a.person_phone ?? '', b.person_phone ?? '');
+        case 'branche': return cmp(a.branche?.toLowerCase() ?? '', b.branche?.toLowerCase() ?? '');
+        case 'status': return cmp(a.status, b.status);
+        case 'last_action': {
+          const al = callStats[a.id]?.lastCallAt ?? '';
+          const bl = callStats[b.id]?.lastCallAt ?? '';
+          return cmp(al, bl);
+        }
+        case 'assigned':
+        default:
+          return cmp(a.assigned_at ?? '', b.assigned_at ?? '');
+      }
+    });
+    return sorted;
+  }, [leads, callStats, filterBranche, search, quickFilter, sourceFilter, sortKey, sortDir, todayStr]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageLeads = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const detailLead = detailIdx !== null ? pageLeads[detailIdx] ?? null : null;
+
+  const sourceCounts = useMemo(() => {
+    let pd = 0, sc = 0;
+    for (const l of leads) {
+      if (l.status === 'lost') continue;
+      if (l.pipedrive_org_id) pd++; else sc++;
+    }
+    return { all: pd + sc, pipedrive: pd, scraped: sc };
+  }, [leads]);
 
   // Quick filter counts
   const filterCounts = useMemo(() => {
@@ -300,7 +365,7 @@ export default function SELeadsList() {
   }, [pageLeads, selectedRowIdx, runQuickAction, callbackOpen, noteOpen, detailIdx]);
 
   // Reset selection when page changes
-  useEffect(() => { setSelectedRowIdx(0); }, [page, quickFilter, filterBranche, search]);
+  useEffect(() => { setSelectedRowIdx(0); }, [page, quickFilter, filterBranche, search, sourceFilter, sortKey, sortDir]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Leadlijst laden...</div>;
@@ -400,6 +465,25 @@ export default function SELeadsList() {
           ))}
         </div>
 
+        {/* Source filter (Pipedrive vs Scraped) */}
+        <div className="flex flex-wrap gap-1.5">
+          {SOURCE_FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => { setSourceFilter(f.id); setPage(0); }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] border transition-colors',
+                sourceFilter === f.id
+                  ? 'bg-secondary text-secondary-foreground border-secondary'
+                  : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
+              )}
+            >
+              {f.label}
+              <span className="font-mono opacity-70">{sourceCounts[f.id]}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Search/branche filter */}
         <Card>
           <CardContent className="pt-4">
@@ -453,12 +537,12 @@ export default function SELeadsList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap px-4">Status</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Bedrijf</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Telefoon</TableHead>
+                    <SortableHead label="Status" sortKey="status" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <SortableHead label="Bedrijf" sortKey="org" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <SortableHead label="Telefoon" sortKey="phone" current={sortKey} dir={sortDir} onClick={toggleSort} />
                     <TableHead className="whitespace-nowrap px-4">Website</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Laatste actie</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Branche</TableHead>
+                    <SortableHead label="Laatste actie" sortKey="last_action" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <SortableHead label="Branche" sortKey="branche" current={sortKey} dir={sortDir} onClick={toggleSort} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -584,5 +668,33 @@ export default function SELeadsList() {
         onNext={detailIdx !== null && detailIdx < pageLeads.length - 1 ? () => setDetailIdx(detailIdx + 1) : null}
       />
     </>
+  );
+}
+
+function SortableHead({
+  label, sortKey, current, dir, onClick,
+}: {
+  label: string;
+  sortKey: SortKey;
+  current: SortKey;
+  dir: SortDir;
+  onClick: (k: SortKey) => void;
+}) {
+  const active = current === sortKey;
+  const Icon = active ? (dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead className="whitespace-nowrap px-4">
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        className={cn(
+          'inline-flex items-center gap-1 -mx-1 px-1 rounded hover:text-foreground transition-colors',
+          active ? 'text-foreground font-medium' : 'text-muted-foreground',
+        )}
+      >
+        {label}
+        <Icon className={cn('h-3 w-3', active ? 'opacity-100' : 'opacity-40')} />
+      </button>
+    </TableHead>
   );
 }
