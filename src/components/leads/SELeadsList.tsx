@@ -76,6 +76,9 @@ export default function SELeadsList() {
   const [search, setSearch] = useState('');
   const [filterBranche, setFilterBranche] = useState('all');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('assigned');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
   const [selectedRowIdx, setSelectedRowIdx] = useState<number>(0);
   const [detailIdx, setDetailIdx] = useState<number | null>(null);
@@ -86,6 +89,18 @@ export default function SELeadsList() {
   const [pendingLead, setPendingLead] = useState<QuickLead | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  const toggleSort = useCallback((key: SortKey) => {
+    setSortKey(prev => {
+      if (prev === key) {
+        setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        return prev;
+      }
+      setSortDir('asc');
+      return key;
+    });
+    setPage(0);
+  }, []);
 
   // Resolve SE id
   useEffect(() => {
