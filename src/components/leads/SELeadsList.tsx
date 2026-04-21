@@ -670,3 +670,31 @@ export default function SELeadsList() {
     </>
   );
 }
+
+function SortableHead({
+  label, sortKey, current, dir, onClick,
+}: {
+  label: string;
+  sortKey: SortKey;
+  current: SortKey;
+  dir: SortDir;
+  onClick: (k: SortKey) => void;
+}) {
+  const active = current === sortKey;
+  const Icon = active ? (dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead className="whitespace-nowrap px-4">
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        className={cn(
+          'inline-flex items-center gap-1 -mx-1 px-1 rounded hover:text-foreground transition-colors',
+          active ? 'text-foreground font-medium' : 'text-muted-foreground',
+        )}
+      >
+        {label}
+        <Icon className={cn('h-3 w-3', active ? 'opacity-100' : 'opacity-40')} />
+      </button>
+    </TableHead>
+  );
+}
