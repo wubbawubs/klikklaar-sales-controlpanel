@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Search, Building2, Phone, Tag,
   Filter, RefreshCw, ChevronLeft, ChevronRight, Keyboard, Snowflake,
+  ArrowUp, ArrowDown, ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
