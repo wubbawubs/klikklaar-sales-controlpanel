@@ -151,8 +151,9 @@ interface CopyFieldProps {
   value: string | null | undefined;
   icon: React.ReactNode;
   action?: { href: string; icon: React.ReactNode; title: string };
+  fullWidth?: boolean;
 }
-function CopyField({ label, value, icon, action }: CopyFieldProps) {
+function CopyField({ label, value, icon, action, fullWidth }: CopyFieldProps) {
   if (!value) return null;
   const copy = () => {
     navigator.clipboard.writeText(value).then(
@@ -164,7 +165,10 @@ function CopyField({ label, value, icon, action }: CopyFieldProps) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); }
   };
   return (
-    <div className="flex items-start gap-2 group min-w-0 py-1 border-b border-border/30 last:border-b-0">
+    <div className={cn(
+      "flex items-start gap-2 group min-w-0 py-1 border-b border-border/30 last:border-b-0",
+      fullWidth && "lg:col-span-2"
+    )}>
       <span className="text-muted-foreground shrink-0 mt-[3px] w-3 flex justify-center">{icon}</span>
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-[72px] shrink-0 mt-[2px]">{label}</span>
       <button
@@ -197,11 +201,15 @@ interface PlainFieldProps {
   label: string;
   value: string | null | undefined;
   icon: React.ReactNode;
+  fullWidth?: boolean;
 }
-function PlainField({ label, value, icon }: PlainFieldProps) {
+function PlainField({ label, value, icon, fullWidth }: PlainFieldProps) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-2 py-1 min-w-0 border-b border-border/30 last:border-b-0">
+    <div className={cn(
+      "flex items-start gap-2 py-1 min-w-0 border-b border-border/30 last:border-b-0",
+      fullWidth && "lg:col-span-2"
+    )}>
       <span className="text-muted-foreground shrink-0 mt-[3px] w-3 flex justify-center">{icon}</span>
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-[72px] shrink-0 mt-[2px]">{label}</span>
       <span className="text-xs text-foreground flex-1 min-w-0 break-words leading-snug">{value}</span>
@@ -267,7 +275,7 @@ export function DealDetailSheet({
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v);
 
-  // Calendly inline widget — proper prefill via official script
+  // Calendly inline widget — prefill via official script + URL params (most reliable)
   useEffect(() => {
     if (!showCalendly || !open) return;
     const el = calendlyRef.current;
@@ -277,19 +285,31 @@ export function DealDetailSheet({
       .then(() => {
         if (cancelled || !window.Calendly || !calendlyRef.current) return;
         calendlyRef.current.innerHTML = '';
+        const name = personName ?? persons[0]?.name ?? '';
+        const email = personEmail ?? persons[0]?.email?.[0] ?? '';
         const phone = normalizeNlPhone(personPhone ?? persons[0]?.phone?.[0] ?? '');
+
+        // Build URL with prefill query params (Calendly's most reliable prefill mechanism)
+        const params = new URLSearchParams({
+          hide_gdpr_banner: '1',
+          primary_color: '0F9B7A',
+        });
+        if (name) params.set('name', name);
+        if (email) params.set('email', email);
+        if (phone) params.set('a1', phone);
+        if (website) params.set('a2', website);
+        if (orgName) params.set('a3', orgName);
+
+        // customAnswers as fallback for the inline widget API
         const customAnswers: Record<string, string> = {};
         if (phone) customAnswers.a1 = phone;
         if (website) customAnswers.a2 = website;
         if (orgName) customAnswers.a3 = orgName;
+
         window.Calendly.initInlineWidget({
-          url: CALENDLY_URL + '?hide_gdpr_banner=1&primary_color=0F9B7A',
+          url: `${CALENDLY_URL}?${params.toString()}`,
           parentElement: calendlyRef.current,
-          prefill: {
-            name: personName ?? persons[0]?.name ?? '',
-            email: personEmail ?? persons[0]?.email?.[0] ?? '',
-            customAnswers,
-          },
+          prefill: { name, email, customAnswers },
         });
       })
       .catch(() => {/* fallback link is shown */});
@@ -401,6 +421,7 @@ export function DealDetailSheet({
                       value={em}
                       icon={<Mail className="h-3 w-3" />}
                       action={{ href: `mailto:${em}`, icon: <Mail className="h-3 w-3" />, title: 'Stuur mail' }}
+                      fullWidth
                     />
                   ))}
 
@@ -413,6 +434,7 @@ export function DealDetailSheet({
                       icon: <ExternalLink className="h-3 w-3" />,
                       title: 'Open website',
                     }}
+                    fullWidth
                   />
 
                   <PlainField label="Productlijn" value={productLine} icon={<FileText className="h-3 w-3" />} />
