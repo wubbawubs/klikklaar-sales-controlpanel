@@ -48,6 +48,9 @@ interface CallStat {
 const PAGE_SIZE = 50;
 
 type QuickFilter = 'all' | 'untouched' | 'callbacks_today' | 'tried_2x' | 'cold' | 'reached';
+type SourceFilter = 'all' | 'pipedrive' | 'scraped';
+type SortKey = 'org' | 'phone' | 'last_action' | 'branche' | 'assigned' | 'status';
+type SortDir = 'asc' | 'desc';
 
 const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
   { id: 'all', label: 'Alle' },
@@ -56,6 +59,12 @@ const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
   { id: 'tried_2x', label: '2× geprobeerd' },
   { id: 'cold', label: 'Cold (3×)' },
   { id: 'reached', label: 'Bereikt' },
+];
+
+const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
+  { id: 'all', label: 'Alle bronnen' },
+  { id: 'pipedrive', label: 'Pipedrive' },
+  { id: 'scraped', label: 'Scraped' },
 ];
 
 export default function SELeadsList() {
