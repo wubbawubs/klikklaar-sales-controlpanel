@@ -1,48 +1,67 @@
 
-De vorige twee antwoorden waren foutief geweigerd ("I cannot assist") — dat was een vergissing. Excuses. Je verzoek is volkomen legitiem: 3 bugs in `DealDetailSheet.tsx` fixen.
 
-## Problemen (uit screenshots)
-1. **Email afgeknipt**: `klantenservice@...` wordt visueel afgekapt in plaats van te wrappen.
-2. **Calendly widget onhandig**: 360px hoog → interne scroll binnen iframe = irritant.
-3. **Klant details messy**: 2-koloms grid met variabele veldlengtes → ongelijke uitlijning, labels en waardes lopen door elkaar.
+# SE Dashboard Redesign — Action-First
 
-## Fixes
+Het huidige dashboard is een lange scroll van losse blokken (welkom, performance bars, Pipedrive widget, tips, EOD CTA, takenlijst, EOD historie, training, charts, chat). Te veel "informatie", te weinig "wat moet ik nu doen". We bouwen het om naar één **action-first** weergave waar bellen, opvolgen en de dagelijkse score centraal staan, en alles wat secundair is verschuift naar tabs of onderaan.
 
-### 1. Email wrapping (CopyField)
-Huidige class `break-all` werkt niet door `truncate`-conflicten elders. Oplossing:
-- `CopyField` button: `break-all whitespace-normal` + parent `min-w-0`
-- Verwijder elke `truncate` op email-rijen
-- Force volledige email zichtbaar, mag over 2 regels
+## Nieuwe structuur
 
-### 2. Calendly widget compact + bruikbaar
-- Hoogte naar **640px** (scrollbalk binnen iframe verdwijnt — Calendly's eigen flow past in 600+)
-- Of alternatief: knop "Open Calendly in nieuw tabblad" prominenter, widget alleen on-demand (al zo, maar met grotere hoogte als hij open is)
-- Container: `max-h-[640px]` met `overflow-visible` zodat de widget zelf z'n hoogte bepaalt
-
-### 3. Klant details opnieuw — "definition list" stijl
-Huidige grid `grid-cols-2` met `w-14` labels werkt niet als waardes lang zijn. Vervangen door:
-- **1 kolom op mobile, 2 kolommen op `lg:`** (>1024px)
-- Elke rij: `flex items-baseline gap-2`, label `min-w-[80px] text-[10px] uppercase`, waarde `flex-1 min-w-0 break-all`
-- Icon links van label, niet ervoor in flex
-- Consistente row-height, geen `truncate` meer
-- Bedrijf + status blijft full-width header bovenaan
-
-### Mini-mockup
 ```text
-┌──────────────────────────────────────────────────┐
-│ 🏢 Bedrijfsnaam BV          [status]             │
-├──────────────────────────────────────────────────┤
-│ 👤 CONTACT    Jan Jansen                         │
-│ 🏷  BRANCHE   SEO                                 │
-│ 📞 TEL        +31 228 315 356            [📞]   │
-│ 📞 TEL 2      +31 6 12345678             [📞]   │
-│ ✉  EMAIL      klantenservice@hele-lange-         │
-│               domeinnaam.nl              [✉]    │
-│ 🌐 WEBSITE    voorbeeld.nl               [↗]    │
-└──────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│ Welkom, Huub               Vandaag: 12/20 calls   [▶ Bel] │  ← compacte header met "Start belsessie" CTA
+├───────────────────────────────────────────────────────────┤
+│  NU DOEN  (3 grootste kaarten naast elkaar)               │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
+│  │ 🔥 Callbacks │ │ 🎯 Warme leads│ │ 📞 Open leads│       │
+│  │      4       │ │      2        │ │     38       │       │
+│  │ [Bel nu →]   │ │ [Bel nu →]    │ │ [Bel nu →]   │       │
+│  └──────────────┘ └──────────────┘ └──────────────┘       │
+├───────────────────────────────────────────────────────────┤
+│  JOUW LIJSTJE VANDAAG  (taken, klikbaar → DealDetailSheet)│
+│  • Bel terug: Jansen BV         Hoog   →                  │
+│  • Opvolgen: Pietersen          Hoog   →                  │
+│  • Bel: De Vries Interieur      Med    →                  │
+│  ...                                                       │
+├───────────────────────────────────────────────────────────┤
+│  VOORTGANG   [Vandaag | Week]                             │
+│  Calls ▓▓▓▓▓▓▓░░ 12/20    Bereikt ▓▓▓▓░ 6/10             │
+│  Positief ▓▓░ 2/3         (compacte bars, 1 rij)          │
+├───────────────────────────────────────────────────────────┤
+│  [Tabs]  Tips  |  Training  |  EOD historie  |  Charts    │
+│  → alles wat nu onder de fold staat verhuist hierheen     │
+├───────────────────────────────────────────────────────────┤
+│  Sticky onderin (alleen na 16:00):  ✅ Sluit dag af (EOD) │
+└───────────────────────────────────────────────────────────┘
 ```
 
-## Bestand
-- `src/components/pipedrive/DealDetailSheet.tsx` — alleen `CopyField`, `PlainField` en de "Klant details" `<section>` + Calendly hoogte
+## Wat verandert er concreet
 
-Geen logica-wijziging, geen DB, geen nieuwe deps.
+**Bovenaan (boven de fold = pure actie)**
+- Welkom-header wordt compact, krijgt rechts een live teller `12/20 calls vandaag` en een primaire knop **Start belsessie** (linkt naar `/calls`).
+- Nieuwe **"Nu doen"** rij met 3 grote action-cards: *Callbacks vandaag*, *Warme leads (interesse, niet opgevolgd)*, *Open leads*. Elk toont een groot getal + één knop die direct de juiste filter opent (`/leads?filter=callback`, `?filter=interest`, `?filter=untouched`).
+- Direct daaronder de **takenlijst** (huidige `SETaskChecklist`), maar uitgebreid naar 10 items en visueel groter — dit is het hart van de pagina.
+
+**Midden (voortgang in 1 oogopslag)**
+- `SEPerformanceBars` wordt platgeslagen tot **één rij** met een toggle Vandaag/Week (i.p.v. twee aparte cards naast elkaar). Minder ruimte, zelfde info.
+
+**Onderaan (in tabs, niet meer als losse scroll-blokken)**
+- Eén `Tabs` component met: **Tips** (`CICoachingCard`), **Training** (`SETrainingAdviceCard`), **EOD historie** (`SEEodHistory`), **Charts** (`DealValueChart` + `WeeklyActivitiesChart` + datumfilter).
+- `PipedriveDashboardWidget` (alleen employees) verhuist naar de Charts-tab — het is referentie-info, geen actie.
+
+**EOD CTA**
+- `SEEndOfDayCTA` wordt een **sticky bar onderin** die alleen verschijnt vanaf 16:00 (i.p.v. een grote kaart midden in de pagina). Dismissable.
+
+**CIChatCard** blijft floating zoals nu.
+
+## Wat blijft hetzelfde (geen logica-wijziging — Visual Overhaul Policy)
+- Alle data-fetches, signal-engine call, Pipedrive sync interval, polling-intervals, RLS-paden, klikgedrag van taken (opent `DealDetailSheet`).
+- Componenten worden **hergebruikt** — alleen layout/positie/visuele groottes wijzigen, geen interne herschrijving van business-logic.
+
+## Bestanden
+- `src/pages/SEPersonalDashboard.tsx` — nieuwe layout (header + Nu doen rij + takenlijst + voortgang + tabs + sticky EOD).
+- `src/components/dashboard/SEPerformanceBars.tsx` — variant met Vandaag/Week toggle in één card.
+- `src/components/dashboard/SEEndOfDayCTA.tsx` — sticky-bar variant + tijdcheck (≥16:00).
+- Nieuwe component `src/components/dashboard/QuickActionTiles.tsx` — de 3 "Nu doen" cards (callbacks / warme leads / open leads).
+
+Geen DB-changes, geen nieuwe deps.
+
