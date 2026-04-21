@@ -537,12 +537,12 @@ export default function SELeadsList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap px-4">Status</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Bedrijf</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Telefoon</TableHead>
+                    <SortableHead label="Status" sortKey="status" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <SortableHead label="Bedrijf" sortKey="org" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <SortableHead label="Telefoon" sortKey="phone" current={sortKey} dir={sortDir} onClick={toggleSort} />
                     <TableHead className="whitespace-nowrap px-4">Website</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Laatste actie</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Branche</TableHead>
+                    <SortableHead label="Laatste actie" sortKey="last_action" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <SortableHead label="Branche" sortKey="branche" current={sortKey} dir={sortDir} onClick={toggleSort} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
