@@ -135,25 +135,46 @@ serve(async (req) => {
     const target = Math.min(Math.max(max_results, 5), 50);
     const baseQuery = query.trim();
 
-    // Step 1: Google Maps scrape (gestandaardiseerde business cards met telefoon)
-    const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(baseQuery)}`;
-    console.log(`Scraping Google Maps: ${mapsUrl}`);
-    const mapsMarkdownPromise = firecrawlScrape(FIRECRAWL_API_KEY, mapsUrl, { waitFor: 3000, onlyMain: false });
+    // Schaal diepte op basis van target: meer leads = meer Maps pagina's + meer search queries
+    const mapsPages = target >= 40 ? 4 : target >= 25 ? 3 : target >= 15 ? 2 : 1;
+    const perQueryLimit = target >= 30 ? 15 : 10;
 
-    // Step 2: Firecrawl Search met meerdere queries parallel
+    // Step 1: Google Maps scrape — meerdere pagina's parallel (paginering via Maps URL variaties)
+    const mapsUrls: string[] = [];
+    // Hoofdzoekopdracht
+    mapsUrls.push(`https://www.google.com/maps/search/${encodeURIComponent(baseQuery)}`);
+    // Variaties die Google Maps dwingen meer/andere resultaten te tonen
+    if (mapsPages >= 2) mapsUrls.push(`https://www.google.com/maps/search/${encodeURIComponent(baseQuery + " bedrijf")}`);
+    if (mapsPages >= 3) mapsUrls.push(`https://www.google.com/maps/search/${encodeURIComponent(baseQuery + " kantoor")}`);
+    if (mapsPages >= 4) mapsUrls.push(`https://www.google.com/maps/search/${encodeURIComponent(baseQuery + " in de buurt")}`);
+    console.log(`Scraping ${mapsUrls.length} Google Maps pagina's`);
+    const mapsMarkdownPromise = Promise.all(
+      mapsUrls.map(u => firecrawlScrape(FIRECRAWL_API_KEY, u, { waitFor: 3000, onlyMain: false }))
+    );
+
+    // Step 2: Firecrawl Search met uitgebreide query varianten parallel
     const queries = [
       `${baseQuery} telefoon contact`,
       `${baseQuery} bellen offerte`,
       `${baseQuery} bedrijf contactgegevens`,
     ];
-    console.log(`Running ${queries.length} Firecrawl searches for: "${baseQuery}"`);
+    if (target >= 25) {
+      queries.push(`${baseQuery} adres openingstijden`);
+      queries.push(`${baseQuery} ondernemer zzp`);
+    }
+    if (target >= 40) {
+      queries.push(`${baseQuery} review klanten`);
+      queries.push(`${baseQuery} kvk inschrijving`);
+    }
+    console.log(`Running ${queries.length} Firecrawl searches (limit ${perQueryLimit} elk) voor: "${baseQuery}"`);
     const searchPromise = Promise.all(
-      queries.map(q => firecrawlSearch(FIRECRAWL_API_KEY, q, Math.ceil(target / 2)))
+      queries.map(q => firecrawlSearch(FIRECRAWL_API_KEY, q, perQueryLimit))
     );
 
-    const [mapsMarkdown, searchBatches] = await Promise.all([mapsMarkdownPromise, searchPromise]);
+    const [mapsMarkdownArr, searchBatches] = await Promise.all([mapsMarkdownPromise, searchPromise]);
+    const mapsMarkdown = mapsMarkdownArr.filter(Boolean).join("\n\n--- VOLGENDE MAPS PAGINA ---\n\n");
 
-    console.log(`Maps markdown: ${mapsMarkdown.length} chars`);
+    console.log(`Maps markdown: ${mapsMarkdown.length} chars uit ${mapsMarkdownArr.filter(Boolean).length} pagina's`);
 
     // Dedup search results by hostname, skip directories
     const seenHosts = new Set<string>();
@@ -184,14 +205,14 @@ serve(async (req) => {
       });
     }
 
-    const sitesForAi = webResults.slice(0, Math.min(target * 2, 25));
+    const sitesForAi = webResults.slice(0, Math.min(target * 2, 50));
 
     // Step 3: AI extractie — Maps markdown + web snippets samen
     const mapsBlock = mapsMarkdown
-      ? `=== GOOGLE MAPS RESULTATEN (PRIMAIRE BRON) ===\n${mapsMarkdown.slice(0, 20000)}\n\n`
+      ? `=== GOOGLE MAPS RESULTATEN (PRIMAIRE BRON) ===\n${mapsMarkdown.slice(0, 60000)}\n\n`
       : "";
     const webBlock = sitesForAi.map((r, i) => {
-      const content = (r.markdown || r.description || "").slice(0, 4000);
+      const content = (r.markdown || r.description || "").slice(0, 3000);
       return `--- Website ${i + 1} ---\nURL: ${r.url}\nTitle: ${r.title || ""}\nContent:\n${content}`;
     }).join("\n\n");
 
