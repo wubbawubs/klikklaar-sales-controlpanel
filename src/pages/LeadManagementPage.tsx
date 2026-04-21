@@ -20,6 +20,7 @@ import MailExportList from '@/components/leads/MailExportList';
 import PipedrivePage from '@/pages/PipedrivePage';
 import CallLoggingPage from '@/pages/CallLoggingPage';
 import LeadScraper from '@/components/leads/LeadScraper';
+import SELeadScraper from '@/components/leads/SELeadScraper';
 
 interface LeadAssignment {
   id: string;
@@ -67,16 +68,20 @@ export default function LeadManagementPage() {
     });
   };
 
-  // SE's see their own lead list with Mail Export tab
+  // SE's see their own lead list with Mail Export and Scraper tabs
   if (!isCoachOrAdmin) {
     return (
       <Tabs defaultValue="leads" className="space-y-4">
         <TabsList>
           <TabsTrigger value="leads">Mijn leads</TabsTrigger>
+          <TabsTrigger value="scraper">Scraper</TabsTrigger>
           <TabsTrigger value="mail-export">Mail export</TabsTrigger>
         </TabsList>
         <TabsContent value="leads">
           <SELeadsList />
+        </TabsContent>
+        <TabsContent value="scraper">
+          <SELeadScraper />
         </TabsContent>
         <TabsContent value="mail-export">
           <MailExportList />
