@@ -192,7 +192,7 @@ export default function SELeadsList() {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const filtered = useMemo(() => {
-    return leads.filter(l => {
+    const list = leads.filter(l => {
       // Always hide "Geen interesse" (lost) — those live in Mail Export tab
       if (l.status === 'lost') return false;
 
@@ -208,6 +208,10 @@ export default function SELeadsList() {
       if (quickFilter === 'cold' && attempts < 3) return false;
       if (quickFilter === 'reached' && !reached) return false;
 
+      // Source filter: scraped = no Pipedrive org id, pipedrive = has org id
+      if (sourceFilter === 'pipedrive' && !l.pipedrive_org_id) return false;
+      if (sourceFilter === 'scraped' && l.pipedrive_org_id) return false;
+
       if (filterBranche !== 'all' && l.branche !== filterBranche) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -221,11 +225,47 @@ export default function SELeadsList() {
       }
       return true;
     });
-  }, [leads, callStats, filterBranche, search, quickFilter, todayStr]);
+
+    // Sorting
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const cmp = (a: string | number | null | undefined, b: string | number | null | undefined) => {
+      const av = a ?? '';
+      const bv = b ?? '';
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    };
+    const sorted = [...list].sort((a, b) => {
+      switch (sortKey) {
+        case 'org': return cmp(a.org_name?.toLowerCase(), b.org_name?.toLowerCase());
+        case 'phone': return cmp(a.person_phone ?? '', b.person_phone ?? '');
+        case 'branche': return cmp(a.branche?.toLowerCase() ?? '', b.branche?.toLowerCase() ?? '');
+        case 'status': return cmp(a.status, b.status);
+        case 'last_action': {
+          const al = callStats[a.id]?.lastCallAt ?? '';
+          const bl = callStats[b.id]?.lastCallAt ?? '';
+          return cmp(al, bl);
+        }
+        case 'assigned':
+        default:
+          return cmp(a.assigned_at ?? '', b.assigned_at ?? '');
+      }
+    });
+    return sorted;
+  }, [leads, callStats, filterBranche, search, quickFilter, sourceFilter, sortKey, sortDir, todayStr]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageLeads = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const detailLead = detailIdx !== null ? pageLeads[detailIdx] ?? null : null;
+
+  const sourceCounts = useMemo(() => {
+    let pd = 0, sc = 0;
+    for (const l of leads) {
+      if (l.status === 'lost') continue;
+      if (l.pipedrive_org_id) pd++; else sc++;
+    }
+    return { all: pd + sc, pipedrive: pd, scraped: sc };
+  }, [leads]);
 
   // Quick filter counts
   const filterCounts = useMemo(() => {
