@@ -205,14 +205,14 @@ serve(async (req) => {
       });
     }
 
-    const sitesForAi = webResults.slice(0, Math.min(target * 2, 25));
+    const sitesForAi = webResults.slice(0, Math.min(target * 2, 50));
 
     // Step 3: AI extractie — Maps markdown + web snippets samen
     const mapsBlock = mapsMarkdown
-      ? `=== GOOGLE MAPS RESULTATEN (PRIMAIRE BRON) ===\n${mapsMarkdown.slice(0, 20000)}\n\n`
+      ? `=== GOOGLE MAPS RESULTATEN (PRIMAIRE BRON) ===\n${mapsMarkdown.slice(0, 60000)}\n\n`
       : "";
     const webBlock = sitesForAi.map((r, i) => {
-      const content = (r.markdown || r.description || "").slice(0, 4000);
+      const content = (r.markdown || r.description || "").slice(0, 3000);
       return `--- Website ${i + 1} ---\nURL: ${r.url}\nTitle: ${r.title || ""}\nContent:\n${content}`;
     }).join("\n\n");
 
