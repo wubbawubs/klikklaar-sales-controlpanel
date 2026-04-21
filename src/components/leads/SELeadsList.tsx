@@ -70,7 +70,7 @@ const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
 
 export default function SELeadsList() {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get('filter') as QuickFilter | null;
   const validInitial: QuickFilter = initialFilter && QUICK_FILTERS.some(f => f.id === initialFilter) ? initialFilter : 'all';
   const [leads, setLeads] = useState<Lead[]>([]);
