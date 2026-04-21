@@ -465,6 +465,25 @@ export default function SELeadsList() {
           ))}
         </div>
 
+        {/* Source filter (Pipedrive vs Scraped) */}
+        <div className="flex flex-wrap gap-1.5">
+          {SOURCE_FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => { setSourceFilter(f.id); setPage(0); }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] border transition-colors',
+                sourceFilter === f.id
+                  ? 'bg-secondary text-secondary-foreground border-secondary'
+                  : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
+              )}
+            >
+              {f.label}
+              <span className="font-mono opacity-70">{sourceCounts[f.id]}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Search/branche filter */}
         <Card>
           <CardContent className="pt-4">
