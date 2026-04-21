@@ -1,24 +1,33 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ClipboardCheck, CheckCircle2, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
+import { ClipboardCheck, CheckCircle2, ChevronRight, X } from 'lucide-react';
 
 interface Props {
   seId: string;
   seName: string;
 }
 
+const DISMISS_KEY = 'kk-eod-dismissed-date';
+
 export default function SEEndOfDayCTA({ seId, seName }: Props) {
   const [eodUrl, setEodUrl] = useState('');
   const [todayDone, setTodayDone] = useState(false);
-  const [recentCount, setRecentCount] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  // Refresh time every minute so the bar appears at 16:00
+  useEffect(() => {
+    const i = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(i);
+  }, []);
 
   useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const dismissedDate = localStorage.getItem(DISMISS_KEY);
+    if (dismissedDate === today) setDismissed(true);
+
     const load = async () => {
-      // Get form slug
       const { data: form } = await (supabase as any)
         .from('forms')
         .select('slug')
@@ -30,10 +39,7 @@ export default function SEEndOfDayCTA({ seId, seName }: Props) {
         setEodUrl(`${window.location.origin}/form/${form.slug}`);
       }
 
-      // Check if today's EOD is already submitted
-      const today = new Date().toISOString().split('T')[0];
       const firstName = seName.split(' ')[0];
-
       const { data: todaySubs } = await (supabase as any)
         .from('eod_submission_data')
         .select('id')
@@ -41,72 +47,53 @@ export default function SEEndOfDayCTA({ seId, seName }: Props) {
         .ilike('employee_name', `%${firstName}%`)
         .limit(1);
 
-      if (todaySubs && todaySubs.length > 0) {
-        setTodayDone(true);
-      }
-
-      // Count recent submissions (last 7 days)
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const { count } = await (supabase as any)
-        .from('eod_submission_data')
-        .select('*', { count: 'exact', head: true })
-        .ilike('employee_name', `%${firstName}%`)
-        .gte('work_date', weekAgo.toISOString().split('T')[0]);
-
-      setRecentCount(count || 0);
+      if (todaySubs && todaySubs.length > 0) setTodayDone(true);
     };
     load();
   }, [seId, seName]);
 
-  if (!eodUrl) return null;
+  const handleDismiss = () => {
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem(DISMISS_KEY, today);
+    setDismissed(true);
+  };
 
-  const today = format(new Date(), 'EEEE d MMMM', { locale: nl });
+  if (!eodUrl || dismissed || todayDone) return null;
 
-  if (todayDone) {
-    return (
-      <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
-        <CardContent className="p-4 flex items-center gap-3">
-          <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/40">
-            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-green-800 dark:text-green-300">EOD ingevuld voor vandaag ✓</p>
-            <p className="text-sm text-green-600/80 dark:text-green-400/70">
-              {recentCount} evaluatie{recentCount !== 1 ? 's' : ''} deze week
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Only show from 16:00 onwards
+  if (now.getHours() < 16) return null;
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent hover:border-primary/30 transition-colors">
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="p-3 rounded-xl bg-primary/10">
-            <ClipboardCheck className="h-6 w-6 text-primary" />
+    <div className="fixed bottom-0 inset-x-0 z-40 px-4 pb-4 sm:px-6 sm:pb-6 pointer-events-none">
+      <div className="mx-auto max-w-3xl pointer-events-auto">
+        <div className="rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-md shadow-card-hover p-4 flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
+            <ClipboardCheck className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground">Klaar voor vandaag?</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Sluit {today} af met een korte evaluatie — het kost je maar 2 minuten.
-            </p>
-            {recentCount > 0 && (
-              <p className="text-xs text-muted-foreground/70 mt-1">
-                {recentCount} evaluatie{recentCount !== 1 ? 's' : ''} ingevuld deze week
-              </p>
-            )}
+            <p className="font-semibold text-foreground text-sm">Sluit je dag af</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">Korte EOD evaluatie, 2 minuten</p>
           </div>
-          <Button asChild size="lg" className="shrink-0 gap-2">
+          <Button asChild size="sm" className="shrink-0 gap-1">
             <a href={eodUrl} target="_blank" rel="noopener noreferrer">
-              Dag afsluiten
+              EOD invullen
               <ChevronRight className="h-4 w-4" />
             </a>
           </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleDismiss}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
+  );
+}
+
+// Re-export a small "done" state badge for reuse if needed elsewhere
+export function EodDoneBadge() {
+  return (
+    <div className="inline-flex items-center gap-2 text-xs text-success">
+      <CheckCircle2 className="h-4 w-4" /> EOD ingevuld
+    </div>
   );
 }
