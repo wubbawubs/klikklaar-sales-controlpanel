@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { BarChart3 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -20,6 +19,7 @@ export default function SEPerformanceBars({ seId }: Props) {
   const [todayMetrics, setTodayMetrics] = useState<Metric[]>([]);
   const [weekMetrics, setWeekMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'today' | 'week'>('today');
 
   const fetchMetrics = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -70,7 +70,6 @@ export default function SEPerformanceBars({ seId }: Props) {
     return () => clearInterval(interval);
   }, [seId]);
 
-  // Refresh on tab focus
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') fetchMetrics();
@@ -81,46 +80,44 @@ export default function SEPerformanceBars({ seId }: Props) {
 
   if (loading) return null;
 
-  const MetricRow = ({ metric }: { metric: Metric }) => {
-    const pct = Math.min(100, Math.round((metric.value / metric.target) * 100));
-    return (
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground font-medium">{metric.label}</span>
-          <span className="font-semibold text-foreground tabular-nums">{metric.value}<span className="text-muted-foreground font-normal">/{metric.target}</span></span>
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className={cn('h-full rounded-full transition-all duration-700 ease-out', metric.color)}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-    );
-  };
+  const metrics = view === 'today' ? todayMetrics : weekMetrics;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Vandaag
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          {todayMetrics.map(m => <MetricRow key={m.label} metric={m} />)}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Deze week
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          {weekMetrics.map(m => <MetricRow key={m.label} metric={m} />)}
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Voortgang
+          </h3>
+          <Tabs value={view} onValueChange={v => setView(v as 'today' | 'week')}>
+            <TabsList className="h-8">
+              <TabsTrigger value="today" className="text-xs px-3 py-1">Vandaag</TabsTrigger>
+              <TabsTrigger value="week" className="text-xs px-3 py-1">Week</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className={cn('grid gap-5', metrics.length === 4 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3')}>
+          {metrics.map(metric => {
+            const pct = Math.min(100, Math.round((metric.value / metric.target) * 100));
+            return (
+              <div key={metric.label} className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">{metric.label}</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {metric.value}<span className="text-muted-foreground font-normal">/{metric.target}</span>
+                  </span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={cn('h-full rounded-full transition-all duration-700 ease-out', metric.color)}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

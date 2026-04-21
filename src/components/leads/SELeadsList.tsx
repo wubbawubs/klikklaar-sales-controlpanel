@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,13 +70,16 @@ const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
 
 export default function SELeadsList() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get('filter') as QuickFilter | null;
+  const validInitial: QuickFilter = initialFilter && QUICK_FILTERS.some(f => f.id === initialFilter) ? initialFilter : 'all';
   const [leads, setLeads] = useState<Lead[]>([]);
   const [callStats, setCallStats] = useState<Record<string, CallStat>>({});
   const [loading, setLoading] = useState(true);
   const [seId, setSeId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterBranche, setFilterBranche] = useState('all');
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(validInitial);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('assigned');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
