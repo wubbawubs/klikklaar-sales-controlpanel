@@ -365,7 +365,7 @@ export default function SELeadsList() {
   }, [pageLeads, selectedRowIdx, runQuickAction, callbackOpen, noteOpen, detailIdx]);
 
   // Reset selection when page changes
-  useEffect(() => { setSelectedRowIdx(0); }, [page, quickFilter, filterBranche, search]);
+  useEffect(() => { setSelectedRowIdx(0); }, [page, quickFilter, filterBranche, search, sourceFilter, sortKey, sortDir]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Leadlijst laden...</div>;
