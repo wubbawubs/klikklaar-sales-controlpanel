@@ -63,6 +63,8 @@ export default function SELeadScraper({ onImported }: SELeadScraperProps) {
 
       const leads: ScrapedLead[] = data?.leads || [];
       setResults(leads);
+      // Pre-fill branche with the search query so leads are filterable per scrape
+      if (!branche.trim()) setBranche(query.trim());
       if (leads.length === 0) {
         toast.info('Geen resultaten gevonden');
         return;
