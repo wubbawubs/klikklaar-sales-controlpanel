@@ -63,6 +63,8 @@ export default function SELeadScraper({ onImported }: SELeadScraperProps) {
 
       const leads: ScrapedLead[] = data?.leads || [];
       setResults(leads);
+      // Pre-fill branche with the search query so leads are filterable per scrape
+      if (!branche.trim()) setBranche(query.trim());
       if (leads.length === 0) {
         toast.info('Geen resultaten gevonden');
         return;
@@ -195,8 +197,9 @@ export default function SELeadScraper({ onImported }: SELeadScraperProps) {
                 <Input
                   value={branche}
                   onChange={e => setBranche(e.target.value)}
-                  placeholder="Branche label,"
-                  className="w-[180px]"
+                  placeholder="Branche tag (filter),"
+                  className="w-[200px]"
+                  title="Deze tag wordt opgeslagen als 'branche' zodat je later kunt filteren op deze scrape."
                 />
                 <Button
                   onClick={handleImport}
