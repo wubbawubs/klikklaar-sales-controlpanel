@@ -34,6 +34,7 @@ import FormulierDetailPage from "@/pages/evaluaties/FormulierDetailPage";
 import ResponsesPage from "@/pages/evaluaties/ResponsesPage";
 import AnalyticsPage from "@/pages/evaluaties/AnalyticsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
+import CloserCRMPage from "@/pages/CloserCRMPage";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,9 @@ function AppRoutes() {
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/account" element={<AccountPage />} />
+
+        {/* Closer CRM */}
+        <Route path="/closer" element={<ProtectedRoute allowedRoles={['closer', 'admin', 'super_admin']}><CloserCRMPage /></ProtectedRoute>} />
 
         {/* Redirects for old standalone routes */}
         <Route path="/calls" element={<LeadManagementPage />} />

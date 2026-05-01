@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Users, Shield, ShieldCheck, GraduationCap, Briefcase, Plus, Trash2 } from 'lucide-react';
+import { Users, Shield, ShieldCheck, GraduationCap, Briefcase, Handshake, Plus, Trash2 } from 'lucide-react';
 import type { AppRole } from '@/types/database';
 
 interface UserWithRoles {
@@ -23,9 +23,10 @@ const ROLE_CONFIG: Record<AppRole, { label: string; color: string; icon: typeof 
   admin: { label: 'Admin', color: 'bg-orange-500/10 text-orange-700 border-orange-200', icon: Shield },
   coach: { label: 'Coach', color: 'bg-blue-500/10 text-blue-700 border-blue-200', icon: GraduationCap },
   sales_executive: { label: 'Sales Executive', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', icon: Briefcase },
+  closer: { label: 'Closer', color: 'bg-purple-500/10 text-purple-700 border-purple-200', icon: Handshake },
 };
 
-const ALL_ROLES: AppRole[] = ['super_admin', 'admin', 'coach', 'sales_executive'];
+const ALL_ROLES: AppRole[] = ['super_admin', 'admin', 'coach', 'sales_executive', 'closer'];
 
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();

@@ -15,3 +15,5 @@ project_id = "gdeeigztmbvdpcgdpzdv"
     verify_jwt = false
   [functions.lead-scraper]
     verify_jwt = false
+  [functions.calendly-webhook]
+    verify_jwt = false

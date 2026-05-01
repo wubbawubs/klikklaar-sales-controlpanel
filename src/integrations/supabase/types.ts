@@ -110,6 +110,87 @@ export type Database = {
           },
         ]
       }
+      closer_appointments: {
+        Row: {
+          calendly_event_uri: string | null
+          calendly_invitee_uri: string | null
+          caller_sales_executive_id: string | null
+          closer_user_id: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          deal_value_eur: number | null
+          id: string
+          lead_assignment_id: string | null
+          metadata_json: Json
+          notes: string | null
+          org_name: string | null
+          position: number
+          scheduled_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          calendly_event_uri?: string | null
+          calendly_invitee_uri?: string | null
+          caller_sales_executive_id?: string | null
+          closer_user_id: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          deal_value_eur?: number | null
+          id?: string
+          lead_assignment_id?: string | null
+          metadata_json?: Json
+          notes?: string | null
+          org_name?: string | null
+          position?: number
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          calendly_event_uri?: string | null
+          calendly_invitee_uri?: string | null
+          caller_sales_executive_id?: string | null
+          closer_user_id?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          deal_value_eur?: number | null
+          id?: string
+          lead_assignment_id?: string | null
+          metadata_json?: Json
+          notes?: string | null
+          org_name?: string | null
+          position?: number
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      closer_round_robin_state: {
+        Row: {
+          id: number
+          last_assigned_closer_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          last_assigned_closer_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          last_assigned_closer_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1529,7 +1610,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "coach" | "sales_executive"
+      app_role: "super_admin" | "admin" | "coach" | "sales_executive" | "closer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1657,7 +1738,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "coach", "sales_executive"],
+      app_role: ["super_admin", "admin", "coach", "sales_executive", "closer"],
     },
   },
 } as const

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { subWeeks } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { StatCard } from '@/components/ui/stat-card';
@@ -38,6 +38,12 @@ export default function DashboardPage() {
   }
 
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
+  const isCloser = roles.includes('closer');
+
+  // Closer (without admin/coach) goes straight to /closer
+  if (isCloser && !isCoachOrAdmin && !roles.includes('sales_executive')) {
+    return <Navigate to="/closer" replace />;
+  }
 
   if (!isCoachOrAdmin) {
     return <SEPersonalDashboard />;
