@@ -53,6 +53,7 @@ export default function SettingsPage() {
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="settings">Instellingen</TabsTrigger>
+          <TabsTrigger value="funnel">Funnel targets</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           <TabsTrigger value="email">E-mail Monitor</TabsTrigger>
         </TabsList>
