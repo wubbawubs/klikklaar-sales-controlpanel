@@ -39,6 +39,8 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
   const [dealValue, setDealValue] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showUpConfirmed, setShowUpConfirmed] = useState(false);
+  const [confirmingShowUp, setConfirmingShowUp] = useState(false);
 
   useEffect(() => {
     if (appointment) {
