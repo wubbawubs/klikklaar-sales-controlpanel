@@ -6,6 +6,17 @@ import { AppointmentDetailDialog } from './AppointmentDetailDialog';
 import { fetchAll } from '@/lib/fetch-all';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast } from 'sonner';
+import { Inbox } from 'lucide-react';
+
+// Per-status accent color (used for column header dot + top stripe)
+const STATUS_ACCENT: Record<CloserStatus, string> = {
+  call:         'bg-blue-500',
+  no_show:      'bg-amber-500',
+  follow_up:    'bg-purple-500',
+  deal:         'bg-emerald-500',
+  nog_betalen:  'bg-orange-500',
+  no_deal:      'bg-rose-500',
+};
 
 export function CloserKanban() {
   const [items, setItems] = useState<CloserAppointment[]>([]);
@@ -100,19 +111,30 @@ export function CloserKanban() {
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className={`bg-muted/40 rounded-lg p-2 min-h-[200px] flex flex-col transition-colors ${
-                    snapshot.isDraggingOver ? 'bg-primary/10 ring-2 ring-primary/30' : ''
+                  className={`relative overflow-hidden bg-card border rounded-xl p-2.5 min-h-[220px] flex flex-col transition-all animate-fade-in ${
+                    snapshot.isDraggingOver
+                      ? 'border-primary/40 ring-1 ring-primary/20 bg-primary/[0.03]'
+                      : 'border-border/60 shadow-card'
                   }`}
                 >
-                  <div className="flex items-center justify-between px-1 pb-2 mb-2 border-b border-border">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{col.label}</span>
-                    <span className="text-xs font-semibold text-foreground bg-background rounded-full px-2 py-0.5">
+                  <span className={`absolute top-0 left-0 right-0 h-[2px] ${STATUS_ACCENT[col.key]}`} />
+                  <div className="flex items-center justify-between px-1 pt-0.5 pb-2.5 mb-2 border-b border-border/60">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_ACCENT[col.key]} shrink-0`} />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground/70 truncate">{col.label}</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-muted-foreground bg-background border border-border/60 rounded-full px-2 py-0.5 tabular-nums">
                       {grouped[col.key].length}
                     </span>
                   </div>
                   <div className="space-y-2 flex-1">
                     {grouped[col.key].length === 0 && !snapshot.isDraggingOver && (
-                      <p className="text-xs text-muted-foreground italic px-1 py-4 text-center">Leeg</p>
+                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/60">
+                        <div className="h-10 w-10 rounded-full border border-dashed border-border flex items-center justify-center mb-2">
+                          <Inbox className="h-4 w-4" />
+                        </div>
+                        <p className="text-[11px]">Geen kaarten</p>
+                      </div>
                     )}
                     {grouped[col.key].map((a, index) => (
                       <Draggable draggableId={a.id} index={index} key={a.id}>

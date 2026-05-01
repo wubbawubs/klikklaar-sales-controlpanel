@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { NotificationBell } from '@/components/pwa/NotificationBell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
@@ -93,16 +92,13 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                   </div>
                   <span className="text-[10px] font-semibold text-sidebar-accent-foreground tracking-widest uppercase">Control Center</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <NotificationBell />
-                  <button
-                    onClick={onCloseMobile}
-                    className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
-                    aria-label="Sluit menu"
-                  >
-                    <X className="h-5 w-5 text-sidebar-foreground/70" />
-                  </button>
-                </div>
+                <button
+                  onClick={onCloseMobile}
+                  className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
+                  aria-label="Sluit menu"
+                >
+                  <X className="h-5 w-5 text-sidebar-foreground/70" />
+                </button>
               </>
             )}
           </div>
@@ -119,14 +115,17 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                   to={to}
                   onClick={handleNavClick}
                   className={cn(
-                    'flex items-center gap-3 text-sm rounded-lg transition-all duration-150',
+                    'group relative flex items-center gap-3 text-sm rounded-lg transition-all duration-150',
                     collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
                     isActive
-                      ? 'bg-sidebar-primary/15 text-sidebar-primary font-medium shadow-sm'
-                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                      ? 'bg-sidebar-accent text-white font-medium'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
                   )}
                 >
-                  <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} />
+                  {isActive && !collapsed && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r bg-sidebar-primary" />
+                  )}
+                  <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} strokeWidth={2} />
                   {!collapsed && label}
                 </NavLink>
               );
@@ -171,28 +170,37 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase shrink-0">
+              <div className="h-8 w-8 rounded-full bg-sidebar-primary/15 flex items-center justify-center text-xs font-semibold text-sidebar-primary uppercase shrink-0 ring-1 ring-sidebar-primary/20">
                 {user?.email?.charAt(0) || '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  <button
-                    onClick={signOut}
-                    className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
-                  >
-                    <LogOut className="h-3 w-3" />
-                    Uitloggen
-                  </button>
-                  <button
-                    onClick={toggleTheme}
-                    className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
-                    aria-label="Wissel thema"
-                  >
-                    {theme === 'light' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
-                    {theme === 'light' ? 'Dark' : 'Light'}
-                  </button>
-                </div>
+                <p className="text-xs font-medium text-sidebar-foreground/90 truncate">{user?.email}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleTheme}
+                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
+                      aria-label="Wissel thema"
+                    >
+                      {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{theme === 'light' ? 'Dark mode' : 'Light mode'}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={signOut}
+                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-destructive hover:bg-sidebar-accent transition-colors"
+                      aria-label="Uitloggen"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Uitloggen</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           )}
