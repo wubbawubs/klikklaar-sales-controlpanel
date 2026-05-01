@@ -115,14 +115,17 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                   to={to}
                   onClick={handleNavClick}
                   className={cn(
-                    'flex items-center gap-3 text-sm rounded-lg transition-all duration-150',
+                    'group relative flex items-center gap-3 text-sm rounded-lg transition-all duration-150',
                     collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
                     isActive
-                      ? 'bg-sidebar-primary/15 text-sidebar-primary font-medium shadow-sm'
-                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                      ? 'bg-sidebar-accent text-white font-medium'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
                   )}
                 >
-                  <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} />
+                  {isActive && !collapsed && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r bg-sidebar-primary" />
+                  )}
+                  <Icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-sidebar-primary')} strokeWidth={2} />
                   {!collapsed && label}
                 </NavLink>
               );
