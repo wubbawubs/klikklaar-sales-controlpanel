@@ -11,6 +11,7 @@ import { Save } from 'lucide-react';
 import type { Setting } from '@/types/database';
 import AuditLogsPage from '@/pages/AuditLogsPage';
 import EmailMonitoringPage from '@/pages/EmailMonitoringPage';
+import FunnelTargetsTab from '@/components/settings/FunnelTargetsTab';
 
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
