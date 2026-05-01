@@ -1,6 +1,6 @@
 import type { Tables } from '@/integrations/supabase/types';
 
-export type AppRole = 'super_admin' | 'admin' | 'coach' | 'sales_executive';
+export type AppRole = 'super_admin' | 'admin' | 'coach' | 'sales_executive' | 'closer';
 
 // Use Supabase-generated types directly to avoid type mismatches
 export type Profile = Tables<'profiles'>;
