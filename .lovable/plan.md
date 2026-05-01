@@ -103,19 +103,13 @@ Eén tabel die alle stage-overgangen vastlegt, ongeacht of het een cold-call eve
 
 **Unieke index** op `(source_table, source_id, stage)` zodat triggers idempotent zijn.
 
-**Hoe vullen we het:**
-1. **Backfill** vanuit bestaande data (eenmalig):
-   - `calls` → dial events, en bij outcome `appointment` ook een `appointment_booked` event
-   - `pipedrive_lead_assignments.status` veranderingen → afspraak/won/lost events
-   - `closer_appointments` per status → sales_call_1, follow_up, deal_won/lost events
-2. **Live triggers** vanaf nu:
-   - DB trigger op `calls` insert → funnel_events insert
-   - DB trigger op `closer_appointments` status change → funnel_events insert
-3. **Handmatige stages** (Pre-check, Bevestigingscall, Reminder flow, Show-up):
-   - Worden níet automatisch gevuld want we loggen ze nu nergens. Twee opties later:
-     a) Knoppen in SE UI om expliciet te markeren
-     b) Afgeleid: show_up = closer_appointment heeft binnen X uur na scheduled_at een status update
-   - **Beslispunt voor jou:** voor Fase 1 doen we alleen wat automatisch kan. Ontbrekende stages markeren we als "niet gemeten" in de UI ipv geforceerd schatten.
+**Hoe vullen we het (BESLIST: geen backfill, alleen vooruit):**
+1. **Geen backfill.** Oude data is verwaarloosbaar. We starten meten vanaf go-live van de migratie. Dashboards tonen daarom de eerste weken "data wordt opgebouwd" tot er voldoende events zijn.
+2. **Live triggers** vanaf go-live:
+   - DB trigger op `calls` insert → funnel_events insert (`dial`, en `conversation` bij outcome=reached, `appointment_booked` bij outcome=appointment)
+   - DB trigger op `closer_appointments` status change → funnel_events insert (`sales_call_1`, `follow_up`, `deal_won`, `deal_lost`)
+3. **Show-up = handmatige knop** in Closer UI (BESLIST). Closer drukt "Show-up bevestigd" zodra het gesprek daadwerkelijk start. Verantwoordelijkheid bij de closer, geen auto-afleiding. Knop voegt `funnel_events` row toe met `stage='show_up'`, `source_table='manual'`, idempotent per `closer_appointment_id`.
+4. **Pre-check / Bevestigingscall / Reminder flow:** out of scope (BESLIST). Niet meten in v1. Kan later toegevoegd worden zodra die acties ergens gelogd worden.
 
 **RLS:** zelfde patroon als `calls`. Admin = alles, Coach = eigen SEs, SE = eigen events, Closer = eigen events.
 
