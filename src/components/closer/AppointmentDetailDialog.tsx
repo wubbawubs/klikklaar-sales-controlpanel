@@ -11,7 +11,7 @@ import { CLOSER_STATUSES, type CloserStatus } from '@/lib/closer-statuses';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import type { CloserAppointment } from './AppointmentCard';
-import { Phone, Mail, Calendar, Trash2 } from 'lucide-react';
+import { Phone, Mail, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   appointment: CloserAppointment | null;
@@ -39,6 +39,8 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
   const [dealValue, setDealValue] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showUpConfirmed, setShowUpConfirmed] = useState(false);
+  const [confirmingShowUp, setConfirmingShowUp] = useState(false);
 
   useEffect(() => {
     if (appointment) {
@@ -51,10 +53,53 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
       setNextActionAt(toLocalInput(appointment.next_action_at));
       setNotes(appointment.notes || '');
       setDealValue(appointment.deal_value_eur != null ? String(appointment.deal_value_eur) : '');
+      // Check if show_up already logged for this appointment
+      supabase
+        .from('funnel_events')
+        .select('id')
+        .eq('source_table', 'manual')
+        .eq('source_id', appointment.id)
+        .eq('stage', 'show_up')
+        .maybeSingle()
+        .then(({ data }) => setShowUpConfirmed(!!data));
     }
   }, [appointment]);
 
   if (!appointment) return null;
+
+  const handleConfirmShowUp = async () => {
+    if (!appointment) return;
+    setConfirmingShowUp(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) {
+      toast.error('Niet ingelogd');
+      setConfirmingShowUp(false);
+      return;
+    }
+    const { error } = await supabase.from('funnel_events').insert({
+      funnel_type: 'cold_call',
+      stage: 'show_up',
+      closer_appointment_id: appointment.id,
+      closer_user_id: userId,
+      source_table: 'manual',
+      source_id: appointment.id,
+      metadata_json: { confirmed_by: userId },
+    });
+    setConfirmingShowUp(false);
+    if (error) {
+      // Unique index will reject duplicates, treat as already confirmed
+      if (error.code === '23505') {
+        setShowUpConfirmed(true);
+        toast.info('Show-up was al bevestigd');
+      } else {
+        toast.error(error.message);
+      }
+    } else {
+      setShowUpConfirmed(true);
+      toast.success('Show-up bevestigd');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -133,6 +178,28 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
               Ingepland door, <span className="text-foreground font-medium">{appointment.caller_name}</span>
             </div>
           )}
+
+          {/* Show-up confirmation (manual, closer is responsible) */}
+          <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Show-up bevestigen</p>
+              <p className="text-xs text-muted-foreground">
+                {showUpConfirmed
+                  ? 'Lead is verschenen, show-up gelogd voor funnel tracking.'
+                  : 'Klik wanneer de lead daadwerkelijk verschijnt voor het gesprek.'}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={showUpConfirmed ? 'outline' : 'default'}
+              disabled={showUpConfirmed || confirmingShowUp}
+              onClick={handleConfirmShowUp}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              {showUpConfirmed ? 'Bevestigd' : confirmingShowUp ? 'Bezig...' : 'Show-up bevestigen'}
+            </Button>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">
