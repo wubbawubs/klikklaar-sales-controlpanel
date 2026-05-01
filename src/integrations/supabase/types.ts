@@ -601,6 +601,48 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          from_stage: string
+          funnel_type: string
+          id: string
+          scope: string
+          scope_user_id: string | null
+          target_pct: number
+          to_stage: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          from_stage: string
+          funnel_type: string
+          id?: string
+          scope?: string
+          scope_user_id?: string | null
+          target_pct: number
+          to_stage: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          from_stage?: string
+          funnel_type?: string
+          id?: string
+          scope?: string
+          scope_user_id?: string | null
+          target_pct?: number
+          to_stage?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       generated_artifacts: {
         Row: {
           artifact_content: Json | null
