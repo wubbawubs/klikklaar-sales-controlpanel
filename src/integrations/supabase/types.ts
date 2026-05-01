@@ -553,6 +553,54 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_events: {
+        Row: {
+          closer_appointment_id: string | null
+          closer_user_id: string | null
+          created_at: string
+          event_at: string
+          funnel_type: string
+          id: string
+          lead_assignment_id: string | null
+          metadata_json: Json
+          sales_executive_id: string | null
+          source_id: string | null
+          source_table: string
+          stage: string
+          value_eur: number | null
+        }
+        Insert: {
+          closer_appointment_id?: string | null
+          closer_user_id?: string | null
+          created_at?: string
+          event_at?: string
+          funnel_type: string
+          id?: string
+          lead_assignment_id?: string | null
+          metadata_json?: Json
+          sales_executive_id?: string | null
+          source_id?: string | null
+          source_table: string
+          stage: string
+          value_eur?: number | null
+        }
+        Update: {
+          closer_appointment_id?: string | null
+          closer_user_id?: string | null
+          created_at?: string
+          event_at?: string
+          funnel_type?: string
+          id?: string
+          lead_assignment_id?: string | null
+          metadata_json?: Json
+          sales_executive_id?: string | null
+          source_id?: string | null
+          source_table?: string
+          stage?: string
+          value_eur?: number | null
+        }
+        Relationships: []
+      }
       generated_artifacts: {
         Row: {
           artifact_content: Json | null
