@@ -61,3 +61,156 @@ Minimale tweaks aan de design tokens, geen kleurenrevolutie:
 
 ## Vervolg (later, niet nu)
 - Dezelfde polish toepassen op `/leads`, `/dashboard`, `/evaluaties` zodra je akkoord bent met de richting hier op `/closer`.
+
+---
+
+# Funnel Tracking & Forecasting Engine (Plan)
+
+Doel: één gesloten meetsysteem van cold dial tot close, zodat we per stage conversies meten, targets bewaken, en MRR kunnen forecasten op basis van capaciteit (cold callers, closers).
+
+Status: **plan only**, nog geen code wijzigingen. We bouwen pas na akkoord per fase.
+
+## Bron MIRO (door gebruiker gedeeld)
+
+**Cold call funnel (SE domein)**
+- Funnel: Leadlijst, Pre-check (2 verbeterpunten), Cold call, Afspraak boeken, Bevestigingscall, Reminder flow, Show-up
+- Conversies: Dials, Gesprek (35%), Afspraak (25%), Show-up (90%)
+
+**Close funnels (Closer domein)** — vijf varianten:
+- Follow-up funnel: Call booked, Sales call 1 (92%), Follow up (80%), Deal (75%)
+- 1-call-close funnel: Call booked, Sales call 1 (92%), Deal (75%)
+- Lost funnel
+- Mail funnel: Call booked, Sales call 1 (92%), Deal (75%)
+- Re-engage funnel: Call booked, Sales call 1 (92%), Deal (75%)
+
+## Fase 1 | Foundation: uniform funnel_events model
+
+Eén tabel die alle stage-overgangen vastlegt, ongeacht of het een cold-call event is of een close-event. Dit is de single source of truth voor conversies.
+
+**Nieuwe tabel: `funnel_events`**
+- `id` uuid
+- `event_at` timestamptz (wanneer de stage bereikt is)
+- `funnel_type` text — `cold_call` | `follow_up_close` | `one_call_close` | `lost` | `mail_close` | `reengage_close`
+- `stage` text — bv. `dial`, `conversation`, `appointment_booked`, `confirmation_call`, `reminder_sent`, `show_up`, `sales_call_1`, `follow_up`, `deal_won`, `deal_lost`
+- `lead_assignment_id` uuid nullable — koppeling naar pipedrive_lead_assignments
+- `closer_appointment_id` uuid nullable — koppeling naar closer_appointments
+- `sales_executive_id` uuid nullable — wie het event triggerde (caller)
+- `closer_user_id` uuid nullable — wie het event triggerde (closer)
+- `value_eur` numeric nullable — bij deal stages
+- `source_table` text — waar het event vandaan komt (`calls`, `closer_appointments`, `manual`)
+- `source_id` uuid nullable — id in source tabel, voor idempotency
+- `metadata_json` jsonb
+
+**Unieke index** op `(source_table, source_id, stage)` zodat triggers idempotent zijn.
+
+**Hoe vullen we het:**
+1. **Backfill** vanuit bestaande data (eenmalig):
+   - `calls` → dial events, en bij outcome `appointment` ook een `appointment_booked` event
+   - `pipedrive_lead_assignments.status` veranderingen → afspraak/won/lost events
+   - `closer_appointments` per status → sales_call_1, follow_up, deal_won/lost events
+2. **Live triggers** vanaf nu:
+   - DB trigger op `calls` insert → funnel_events insert
+   - DB trigger op `closer_appointments` status change → funnel_events insert
+3. **Handmatige stages** (Pre-check, Bevestigingscall, Reminder flow, Show-up):
+   - Worden níet automatisch gevuld want we loggen ze nu nergens. Twee opties later:
+     a) Knoppen in SE UI om expliciet te markeren
+     b) Afgeleid: show_up = closer_appointment heeft binnen X uur na scheduled_at een status update
+   - **Beslispunt voor jou:** voor Fase 1 doen we alleen wat automatisch kan. Ontbrekende stages markeren we als "niet gemeten" in de UI ipv geforceerd schatten.
+
+**RLS:** zelfde patroon als `calls`. Admin = alles, Coach = eigen SEs, SE = eigen events, Closer = eigen events.
+
+## Fase 2 | Targets beheerbaar in Settings
+
+**Nieuwe tabel: `funnel_targets`**
+- `id` uuid
+- `funnel_type` text
+- `from_stage` text
+- `to_stage` text
+- `target_pct` numeric (0-100)
+- `scope` text — `team` | `se` | `closer`
+- `scope_user_id` uuid nullable (alleen bij scope se/closer)
+- `effective_from` date
+- `created_by`, `updated_at`
+
+**Seed waarden (uit jouw MIRO):**
+- cold_call | dial → conversation | 35
+- cold_call | conversation → appointment_booked | 25
+- cold_call | appointment_booked → show_up | 90
+- follow_up_close | call_booked → sales_call_1 | 92
+- follow_up_close | sales_call_1 → follow_up | 80
+- follow_up_close | follow_up → deal_won | 75
+- one_call_close | call_booked → sales_call_1 | 92
+- one_call_close | sales_call_1 → deal_won | 75
+- mail_close, reengage_close: idem 92 / 75
+
+**Admin UI:** nieuwe tab in Settings → "Funnel targets". Tabel met inline editing per rij, toevoegen/verwijderen, scope kiezer (team default, optioneel per persoon override).
+
+## Fase 3 | Dashboard widgets (read-only op funnel_events)
+
+Drie nieuwe widgets, allemaal read-only op `funnel_events` + `funnel_targets`:
+
+**A. Conversie matrix per funnel**
+- Per funnel_type een rij met alle stages
+- Toont: actuele conversie %, target %, delta, kleur (groen ≥ target, geel binnen 10%, rood eronder)
+- Drill-down: klik op stage → lijst events in periode
+
+**B. MIRO-style funnel diagram (live)**
+- React Flow / svg rendering van jouw exacte MIRO layout
+- Per node de actuele count + conversie naar volgende node
+- Toggle: absoluut (#) of relatief (%)
+- Geeft het "alle inzicht in één blik" gevoel dat je beschrijft
+
+**C. Funnel performance per persoon**
+- Sortable tabel SEs (cold_call funnel) en Closers (close funnels)
+- Per persoon eigen conversie per stage vs team gemiddelde
+
+Vervangt de huidige `ConversionFunnel.tsx` (die is hard-coded op pipedrive_lead_assignments status, te beperkt).
+
+## Fase 4 | Forecasting & capacity planner
+
+**Twee modi in nieuwe pagina `/forecasting`:**
+
+**Modus 1: Reverse forecast (MRR doel → benodigde capaciteit)**
+- Input: gewenste nieuwe MRR per kwartaal (bv. 10k), gemiddelde deal value, kwartaal lengte
+- Berekening: gebruik live conversies × targets om backwards te rekenen:
+  - Deals nodig = MRR_doel / avg_deal_value
+  - Show-ups nodig = Deals / (sales_call_1 → deal conv)
+  - Afspraken nodig = Show-ups / show_up_conv
+  - Gesprekken nodig = Afspraken / appointment_conv
+  - Dials nodig = Gesprekken / conversation_conv
+- Capaciteit: dials per dag per SE (uit baseline) → benodigde FTE callers
+- Closer capaciteit: max afspraken per closer per week (configurable) → benodigde closers
+- Output: tabel "Voor 10k MRR per kwartaal: X dials, Y gesprekken, Z afspraken, A SEs, B closers"
+
+**Modus 2: Forward forecast (capaciteit → verwachte uitkomst)**
+- Input: # cold callers, # closers
+- Output: verwachte dials, gesprekken, afspraken, deals, MRR per maand/kwartaal
+- "Wat-als" sliders: pas conversies aan, zie impact op MRR direct
+
+**Datasources:**
+- Conversies: live uit `funnel_events` over rolling 30/60/90 dagen
+- SE baseline (dials/dag): uit bestaande `se_baselines`
+- Closer capaciteit (afspraken/week): nieuwe setting in `settings` tabel of `closer_capacity` config
+
+**Configurables (Settings → Forecasting):**
+- Default deal value (€)
+- Werkdagen per maand
+- Closer max afspraken/week
+- Conversie bron: live data, target waarden, of blend
+
+## Open beslispunten (wachten op jouw input)
+
+1. **Backfill scope**: alle historische data, of vanaf bv. 1 jan 2025? Hoe verder terug, hoe meer noise van pre-systeem fases.
+2. **Show-up detectie**: knop in closer UI ("Show-up bevestigd") of automatisch afleiden uit closer_appointment activity binnen X uur?
+3. **Pre-check / Bevestiging / Reminder stages**: meten we deze überhaupt, of accepteren we dat dit out-of-scope blijft (ze beïnvloeden de uiteindelijke show_up % maar zijn losse acties)?
+4. **Forecasting "deal value"**: 1 vaste avg, of per product_line apart (KlikklaarSEO etc.)?
+5. **Wie ziet `/forecasting` pagina**: alleen super_admin, ook coach, of ook closer?
+
+## Volgorde van bouwen (voorstel)
+
+1. **Akkoord op dit plan** + open punten beantwoord
+2. **Fase 1 migratie**: `funnel_events` tabel + RLS + triggers + backfill script. Deze migratie is veilig: geen wijziging aan bestaande tabellen, alleen nieuwe.
+3. **Fase 2 migratie + UI**: `funnel_targets` tabel + Settings tab.
+4. **Fase 3 widgets**: A en C eerst (snel, op data), B later (MIRO viz vraagt meer design tijd).
+5. **Fase 4**: forecasting pagina, na minimaal 30 dagen data in funnel_events zodat conversies betrouwbaar zijn (of direct met target-waarden als startpunt).
+
