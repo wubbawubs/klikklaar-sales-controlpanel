@@ -179,6 +179,28 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
             </div>
           )}
 
+          {/* Show-up confirmation (manual, closer is responsible) */}
+          <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Show-up bevestigen</p>
+              <p className="text-xs text-muted-foreground">
+                {showUpConfirmed
+                  ? 'Lead is verschenen, show-up gelogd voor funnel tracking.'
+                  : 'Klik wanneer de lead daadwerkelijk verschijnt voor het gesprek.'}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={showUpConfirmed ? 'outline' : 'default'}
+              disabled={showUpConfirmed || confirmingShowUp}
+              onClick={handleConfirmShowUp}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              {showUpConfirmed ? 'Bevestigd' : confirmingShowUp ? 'Bezig...' : 'Show-up bevestigen'}
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Status</Label>
