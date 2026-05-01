@@ -53,10 +53,54 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
       setNextActionAt(toLocalInput(appointment.next_action_at));
       setNotes(appointment.notes || '');
       setDealValue(appointment.deal_value_eur != null ? String(appointment.deal_value_eur) : '');
+      // Check if show_up already logged for this appointment
+      supabase
+        .from('funnel_events')
+        .select('id')
+        .eq('source_table', 'manual')
+        .eq('source_id', appointment.id)
+        .eq('stage', 'show_up')
+        .maybeSingle()
+        .then(({ data }) => setShowUpConfirmed(!!data));
     }
   }, [appointment]);
 
   if (!appointment) return null;
+
+  const handleConfirmShowUp = async () => {
+    if (!appointment) return;
+    setConfirmingShowUp(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) {
+      toast.error('Niet ingelogd');
+      setConfirmingShowUp(false);
+      return;
+    }
+    const { error } = await supabase.from('funnel_events').insert({
+      funnel_type: 'cold_call',
+      stage: 'show_up',
+      closer_appointment_id: appointment.id,
+      lead_assignment_id: appointment.lead_assignment_id,
+      closer_user_id: userId,
+      source_table: 'manual',
+      source_id: appointment.id,
+      metadata_json: { confirmed_by: userId },
+    });
+    setConfirmingShowUp(false);
+    if (error) {
+      // Unique index will reject duplicates, treat as already confirmed
+      if (error.code === '23505') {
+        setShowUpConfirmed(true);
+        toast.info('Show-up was al bevestigd');
+      } else {
+        toast.error(error.message);
+      }
+    } else {
+      setShowUpConfirmed(true);
+      toast.success('Show-up bevestigd');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
