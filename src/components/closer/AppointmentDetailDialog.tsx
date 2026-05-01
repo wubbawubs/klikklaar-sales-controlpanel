@@ -11,7 +11,7 @@ import { CLOSER_STATUSES, type CloserStatus } from '@/lib/closer-statuses';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import type { CloserAppointment } from './AppointmentCard';
-import { Phone, Mail, Calendar, Trash2 } from 'lucide-react';
+import { Phone, Mail, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   appointment: CloserAppointment | null;
