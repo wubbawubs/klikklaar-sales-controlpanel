@@ -38,6 +38,12 @@ export default function DashboardPage() {
   }
 
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
+  const isCloser = roles.includes('closer');
+
+  // Closer (without admin/coach) goes straight to /closer
+  if (isCloser && !isCoachOrAdmin && !roles.includes('sales_executive')) {
+    return <Navigate to="/closer" replace />;
+  }
 
   if (!isCoachOrAdmin) {
     return <SEPersonalDashboard />;

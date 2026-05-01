@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   UserCog,
+  Handshake,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -21,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
 
-type NavVisibility = 'all' | 'admin' | 'coach+admin';
+type NavVisibility = 'all' | 'admin' | 'coach+admin' | 'closer+admin';
 
 interface NavItem {
   to: string;
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
   { to: '/artifacts', icon: FileJson, label: 'Exports', visibility: 'admin' },
   { to: '/leads', icon: Target, label: 'Leads & CRM' },
+  { to: '/closer', icon: Handshake, label: 'Closer CRM', visibility: 'closer+admin' },
   { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
   { to: '/training', icon: GraduationCap, label: 'Training' },
   { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'coach+admin' },
@@ -52,11 +54,13 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
+  const isCloserOrAdmin = isAdmin || roles.includes('closer');
 
   const visibleItems = navItems.filter(item => {
     if (!item.visibility) return true;
     if (item.visibility === 'admin') return isAdmin;
     if (item.visibility === 'coach+admin') return isCoachOrAdmin;
+    if (item.visibility === 'closer+admin') return isCloserOrAdmin;
     return true;
   });
 
