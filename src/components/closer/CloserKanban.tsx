@@ -6,6 +6,17 @@ import { AppointmentDetailDialog } from './AppointmentDetailDialog';
 import { fetchAll } from '@/lib/fetch-all';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast } from 'sonner';
+import { Inbox } from 'lucide-react';
+
+// Per-status accent color (used for column header dot + top stripe)
+const STATUS_ACCENT: Record<CloserStatus, string> = {
+  call:         'bg-blue-500',
+  no_show:      'bg-amber-500',
+  follow_up:    'bg-purple-500',
+  deal:         'bg-emerald-500',
+  nog_betalen:  'bg-orange-500',
+  no_deal:      'bg-rose-500',
+};
 
 export function CloserKanban() {
   const [items, setItems] = useState<CloserAppointment[]>([]);
