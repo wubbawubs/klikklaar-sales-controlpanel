@@ -81,7 +81,6 @@ export function AppointmentDetailDialog({ appointment, open, onClose, onUpdated 
       funnel_type: 'cold_call',
       stage: 'show_up',
       closer_appointment_id: appointment.id,
-      lead_assignment_id: appointment.lead_assignment_id,
       closer_user_id: userId,
       source_table: 'manual',
       source_id: appointment.id,
