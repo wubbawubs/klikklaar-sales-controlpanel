@@ -60,13 +60,13 @@ export function NotificationBell() {
   return (
     <button
       onClick={() => navigate('/notifications')}
-      className="relative p-1.5 rounded-lg hover:bg-sidebar-accent transition-colors"
+      className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       aria-label={`Notificaties${unreadCount > 0 ? ` (${unreadCount} ongelezen)` : ''}`}
     >
-      <Bell className="h-4.5 w-4.5 text-sidebar-foreground/70" />
+      <Bell className="h-[18px] w-[18px]" />
       {unreadCount > 0 && (
         <span className={cn(
-          "absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground font-bold",
+          "absolute top-0.5 right-0.5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground font-bold ring-2 ring-background",
           unreadCount > 9 ? "text-[9px] min-w-[18px] h-[18px] px-1" : "text-[10px] w-[16px] h-[16px]"
         )}>
           {display}
