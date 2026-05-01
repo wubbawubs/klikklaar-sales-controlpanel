@@ -57,27 +57,29 @@ export function AppLayout() {
 
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-background/95 backdrop-blur border-b border-border/60">
-          <div className="flex items-center gap-3">
+        <div className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-background/80 backdrop-blur-md border-b border-border/50">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileOpen(true)}
-              className="p-1.5 rounded-lg hover:bg-muted transition-colors lg:hidden"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors lg:hidden"
               aria-label="Open menu"
             >
-              <Menu className="h-5 w-5 text-foreground" />
+              <Menu className="h-5 w-5" />
             </button>
             <button
               onClick={() => setCollapsed(c => !c)}
-              className="p-1.5 rounded-lg hover:bg-muted transition-colors hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+              className="p-2 rounded-lg hover:bg-muted transition-colors hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
               aria-label={collapsed ? 'Sidebar uitklappen' : 'Sidebar inklappen'}
               title={`${collapsed ? 'Uitklappen' : 'Inklappen'} (⌘B)`}
             >
               {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-              <span className="text-[11px] font-medium hidden xl:inline">⌘B</span>
+              <span className="text-[11px] font-medium hidden xl:inline tracking-wide">⌘B</span>
             </button>
             <span className="text-sm font-semibold text-foreground lg:hidden">Control Center</span>
           </div>
-          <UserAccountMenu />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+          </div>
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
