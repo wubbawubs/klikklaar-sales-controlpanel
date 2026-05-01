@@ -113,6 +113,10 @@ export default function SettingsPage() {
           )}
         </TabsContent>
 
+        <TabsContent value="funnel">
+          <FunnelTargetsTab />
+        </TabsContent>
+
         <TabsContent value="audit">
           <AuditLogsPage />
         </TabsContent>
