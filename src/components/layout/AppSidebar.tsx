@@ -170,28 +170,37 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground uppercase shrink-0">
+              <div className="h-8 w-8 rounded-full bg-sidebar-primary/15 flex items-center justify-center text-xs font-semibold text-sidebar-primary uppercase shrink-0 ring-1 ring-sidebar-primary/20">
                 {user?.email?.charAt(0) || '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-sidebar-foreground/80 truncate">{user?.email}</p>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  <button
-                    onClick={signOut}
-                    className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
-                  >
-                    <LogOut className="h-3 w-3" />
-                    Uitloggen
-                  </button>
-                  <button
-                    onClick={toggleTheme}
-                    className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-primary transition-colors"
-                    aria-label="Wissel thema"
-                  >
-                    {theme === 'light' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
-                    {theme === 'light' ? 'Dark' : 'Light'}
-                  </button>
-                </div>
+                <p className="text-xs font-medium text-sidebar-foreground/90 truncate">{user?.email}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleTheme}
+                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
+                      aria-label="Wissel thema"
+                    >
+                      {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{theme === 'light' ? 'Dark mode' : 'Light mode'}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={signOut}
+                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-destructive hover:bg-sidebar-accent transition-colors"
+                      aria-label="Uitloggen"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Uitloggen</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           )}
