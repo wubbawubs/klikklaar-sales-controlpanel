@@ -122,8 +122,10 @@ export type Database = {
           created_at: string
           deal_value_eur: number | null
           id: string
+          last_activity_at: string
           lead_assignment_id: string | null
           metadata_json: Json
+          next_action_at: string | null
           notes: string | null
           org_name: string | null
           position: number
@@ -142,8 +144,10 @@ export type Database = {
           created_at?: string
           deal_value_eur?: number | null
           id?: string
+          last_activity_at?: string
           lead_assignment_id?: string | null
           metadata_json?: Json
+          next_action_at?: string | null
           notes?: string | null
           org_name?: string | null
           position?: number
@@ -162,8 +166,10 @@ export type Database = {
           created_at?: string
           deal_value_eur?: number | null
           id?: string
+          last_activity_at?: string
           lead_assignment_id?: string | null
           metadata_json?: Json
+          next_action_at?: string | null
           notes?: string | null
           org_name?: string | null
           position?: number
