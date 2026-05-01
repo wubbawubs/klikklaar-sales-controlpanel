@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { AppSidebar } from './AppSidebar';
-import { UserAccountMenu } from './UserAccountMenu';
 import { Breadcrumbs } from './Breadcrumbs';
+import { NotificationBell } from '@/components/pwa/NotificationBell';
 
 const STORAGE_KEY = 'kk-sidebar-collapsed';
 
