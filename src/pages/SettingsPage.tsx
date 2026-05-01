@@ -11,6 +11,7 @@ import { Save } from 'lucide-react';
 import type { Setting } from '@/types/database';
 import AuditLogsPage from '@/pages/AuditLogsPage';
 import EmailMonitoringPage from '@/pages/EmailMonitoringPage';
+import FunnelTargetsTab from '@/components/settings/FunnelTargetsTab';
 
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
@@ -52,6 +53,7 @@ export default function SettingsPage() {
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="settings">Instellingen</TabsTrigger>
+          <TabsTrigger value="funnel">Funnel targets</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           <TabsTrigger value="email">E-mail Monitor</TabsTrigger>
         </TabsList>
@@ -109,6 +111,10 @@ export default function SettingsPage() {
               </Card>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="funnel">
+          <FunnelTargetsTab />
         </TabsContent>
 
         <TabsContent value="audit">
