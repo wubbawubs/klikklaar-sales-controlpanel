@@ -13,6 +13,8 @@ import TeamActivityTrend from '@/components/dashboard/TeamActivityTrend';
 import ConversionFunnel from '@/components/dashboard/ConversionFunnel';
 import RepLeaderboard from '@/components/dashboard/RepLeaderboard';
 import OperationalSignals from '@/components/dashboard/OperationalSignals';
+import FunnelConversionMatrix from '@/components/dashboard/FunnelConversionMatrix';
+import FunnelPerPerson from '@/components/dashboard/FunnelPerPerson';
 
 type Period = 'week' | 'month' | 'quarter';
 
@@ -114,6 +116,12 @@ function AdminDashboard() {
 
       {/* Leaderboard */}
       <RepLeaderboard from={range.from} to={range.to} />
+
+      {/* Funnel conversion matrix (Phase 3 widget A) */}
+      <FunnelConversionMatrix from={range.from} to={range.to} />
+
+      {/* Funnel per person (Phase 3 widget C) */}
+      <FunnelPerPerson from={range.from} to={range.to} />
 
       {/* Operational signals */}
       <OperationalSignals />
