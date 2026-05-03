@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Loader2, Users, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Users, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -30,220 +30,222 @@ interface Target {
   target_pct: number;
 }
 
-interface PersonRow {
+interface Person {
   id: string;
   name: string;
-  dials: number;
-  conversations: number;
-  appointments: number;
-  shows: number;
-  deals: number;
-  conv_dial_to_conv: number;
-  conv_conv_to_appt: number;
-  conv_appt_to_show: number;
-  conv_appt_to_deal: number;
+  link?: string;
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  dial: 'Dials',
+  conversation: 'Gesprek',
+  appointment_booked: 'Afspraak',
+  show_up: 'Show-up',
+  sales_call_1: 'Sales call 1',
+  follow_up: 'Follow up',
+  deal_won: 'Deal gewonnen',
+  deal_lost: 'Deal verloren',
+};
+
+// Stage chains per role
+const SE_STAGES = ['dial', 'conversation', 'appointment_booked'];
+const CLOSER_STAGES = ['sales_call_1', 'show_up', 'deal_won'];
+
 export default function FunnelPerPerson({ from, to }: Props) {
-  const [seRows, setSeRows] = useState<PersonRow[] | null>(null);
-  const [closerRows, setCloserRows] = useState<PersonRow[] | null>(null);
+  const [events, setEvents] = useState<FunnelEvent[] | null>(null);
+  const [ses, setSes] = useState<Person[]>([]);
+  const [closers, setClosers] = useState<Person[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
+  const [seSelected, setSeSelected] = useState<string>('');
+  const [closerSelected, setCloserSelected] = useState<string>('');
 
   useEffect(() => {
     const load = async () => {
-      const [events, { data: ses }, { data: closers }, { data: targetsData }] = await Promise.all([
+      const [ev, { data: sesData }, { data: closersData }, { data: targetsData }] = await Promise.all([
         fetchAll<FunnelEvent>('funnel_events', q =>
           q.select('funnel_type, stage, sales_executive_id, closer_user_id, lead_assignment_id, closer_appointment_id, source_id')
             .gte('event_at', from.toISOString())
             .lte('event_at', to.toISOString())
         ),
-        supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active'),
-        supabase.from('profiles').select('user_id, full_name').eq('active', true),
+        supabase.from('sales_executives').select('id, full_name').eq('status', 'active').order('full_name'),
+        supabase.from('profiles').select('user_id, full_name').eq('active', true).order('full_name'),
         supabase.from('funnel_targets').select('funnel_type, from_stage, to_stage, target_pct').eq('scope', 'team'),
       ]);
-
+      setEvents(ev);
       setTargets((targetsData as Target[]) || []);
-
-      // Per SE: count cold_call funnel stages (distinct lead_assignment per stage)
-      const sePeople: PersonRow[] = (ses || []).map(se => {
-        const seEvents = events.filter(e => e.sales_executive_id === se.id && e.funnel_type === 'cold_call');
-        const distinctByStage = (stage: string) => {
-          const set = new Set<string>();
-          seEvents.filter(e => e.stage === stage).forEach(e => {
-            set.add(e.lead_assignment_id || e.source_id || crypto.randomUUID());
-          });
-          return set.size;
-        };
-        const dials = distinctByStage('dial');
-        const conversations = distinctByStage('conversation');
-        const appointments = distinctByStage('appointment_booked');
-        return {
-          id: se.id,
-          name: se.full_name || 'Onbekend',
-          dials,
-          conversations,
-          appointments,
-          shows: 0,
-          deals: 0,
-          conv_dial_to_conv: dials > 0 ? (conversations / dials) * 100 : 0,
-          conv_conv_to_appt: conversations > 0 ? (appointments / conversations) * 100 : 0,
-          conv_appt_to_show: 0,
-          conv_appt_to_deal: 0,
-        };
-      });
-      sePeople.sort((a, b) => b.dials - a.dials);
-      setSeRows(sePeople);
-
-      // Per Closer: count close funnels (distinct closer_appointment per stage)
-      const closerPeople: PersonRow[] = (closers || []).map(c => {
-        const cEvents = events.filter(e => e.closer_user_id === c.user_id);
-        const distinctByStage = (stage: string) => {
-          const set = new Set<string>();
-          cEvents.filter(e => e.stage === stage).forEach(e => {
-            set.add(e.closer_appointment_id || e.source_id || crypto.randomUUID());
-          });
-          return set.size;
-        };
-        const appointments = distinctByStage('sales_call_1');
-        const shows = distinctByStage('show_up');
-        const deals = distinctByStage('deal_won');
-        return {
-          id: c.user_id,
-          name: c.full_name || 'Onbekend',
-          dials: 0,
-          conversations: 0,
-          appointments,
-          shows,
-          deals,
-          conv_dial_to_conv: 0,
-          conv_conv_to_appt: 0,
-          conv_appt_to_show: appointments > 0 ? (shows / appointments) * 100 : 0,
-          conv_appt_to_deal: appointments > 0 ? (deals / appointments) * 100 : 0,
-        };
-      }).filter(c => c.appointments > 0 || c.deals > 0);
-      closerPeople.sort((a, b) => b.deals - a.deals);
-      setCloserRows(closerPeople);
+      const sePeople = (sesData || []).map(s => ({ id: s.id, name: s.full_name || 'Onbekend', link: `/sales-executives/${s.id}` }));
+      setSes(sePeople);
+      if (sePeople.length && !seSelected) setSeSelected(sePeople[0].id);
+      const closerPeople = (closersData || []).map(c => ({ id: c.user_id, name: c.full_name || 'Onbekend' }));
+      setClosers(closerPeople);
+      if (closerPeople.length && !closerSelected) setCloserSelected(closerPeople[0].id);
     };
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
-  const targetFor = (ft: string, from_stage: string, to_stage: string) =>
-    targets.find(t => t.funnel_type === ft && t.from_stage === from_stage && t.to_stage === to_stage)?.target_pct ?? null;
+  const targetFor = (ft: string, fs: string, ts: string) =>
+    targets.find(t => t.funnel_type === ft && t.from_stage === fs && t.to_stage === ts)?.target_pct ?? null;
 
-  const Cell = ({ value, target }: { value: number; target: number | null }) => {
-    if (target === null) return <span className="tabular-nums">{value.toFixed(1)}%</span>;
-    const onTarget = value >= target;
-    const nearTarget = value >= target * 0.9;
-    const Icon = onTarget ? TrendingUp : nearTarget ? Minus : TrendingDown;
-    return (
-      <span className={cn(
-        'tabular-nums inline-flex items-center gap-1',
-        onTarget ? 'text-success font-semibold' : nearTarget ? 'text-warning' : 'text-destructive'
-      )}>
-        <Icon className="h-3 w-3" />
-        {value.toFixed(1)}%
-      </span>
-    );
+  const buildFlow = (
+    stages: string[],
+    funnelType: string,
+    matcher: (e: FunnelEvent) => boolean,
+    distinctKey: (e: FunnelEvent) => string,
+  ) => {
+    if (!events) return null;
+    const countFor = (stage: string) => {
+      const set = new Set<string>();
+      events.filter(e => e.funnel_type === funnelType && e.stage === stage && matcher(e)).forEach(e => set.add(distinctKey(e)));
+      return set.size;
+    };
+    return stages.map((s, i) => {
+      const count = countFor(s);
+      const prev = i > 0 ? countFor(stages[i - 1]) : null;
+      const target = i > 0 ? targetFor(funnelType, stages[i - 1], s) : null;
+      const actual = prev !== null && prev > 0 ? (count / prev) * 100 : null;
+      return { stage: s, count, actual, target };
+    });
   };
 
-  const t_dial_conv = targetFor('cold_call', 'dial', 'conversation');
-  const t_conv_appt = targetFor('cold_call', 'conversation', 'appointment_booked');
-  const t_appt_show = targetFor('cold_call', 'appointment_booked', 'show_up');
-  const t_call_deal = targetFor('one_call_close', 'sales_call_1', 'deal_won');
+  const seFlow = useMemo(() => {
+    if (!seSelected) return null;
+    return buildFlow(
+      SE_STAGES,
+      'cold_call',
+      e => e.sales_executive_id === seSelected,
+      e => e.lead_assignment_id || e.source_id || crypto.randomUUID(),
+    );
+  }, [events, targets, seSelected]);
+
+  const closerFlow = useMemo(() => {
+    if (!closerSelected) return null;
+    return buildFlow(
+      CLOSER_STAGES,
+      'one_call_close',
+      e => e.closer_user_id === closerSelected,
+      e => e.closer_appointment_id || e.source_id || crypto.randomUUID(),
+    );
+  }, [events, targets, closerSelected]);
+
+  const selectedSeLink = ses.find(s => s.id === seSelected)?.link;
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Users className="h-4 w-4 text-primary" />
           Funnel performance per persoon
         </CardTitle>
-        <p className="text-[11px] text-muted-foreground">
-          Individuele conversies per stage vs team targets. Distinct leads of afspraken per stage.
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Individuele conversie flow vs team targets. Selecteer een persoon.
         </p>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent>
         <Tabs defaultValue="se" className="w-full">
-          <div className="px-4 pt-2">
-            <TabsList>
-              <TabsTrigger value="se">Sales Executives, cold call</TabsTrigger>
-              <TabsTrigger value="closer">Closers, deals</TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="mb-4">
+            <TabsTrigger value="se">Sales Executives, cold call</TabsTrigger>
+            <TabsTrigger value="closer">Closers, deals</TabsTrigger>
+          </TabsList>
 
-          <TabsContent value="se" className="mt-0">
-            {!seRows ? (
-              <div className="h-32 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-            ) : seRows.length === 0 ? (
+          <TabsContent value="se" className="mt-0 space-y-4">
+            {ses.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">Geen actieve Sales Executives</div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Sales Executive</TableHead>
-                      <TableHead className="text-right">Dials</TableHead>
-                      <TableHead className="text-right">Gesprekken</TableHead>
-                      <TableHead className="text-right">Afspraken</TableHead>
-                      <TableHead className="text-right">Dial, Gesprek</TableHead>
-                      <TableHead className="text-right">Gesprek, Afspraak</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {seRows.map(r => (
-                      <TableRow key={r.id} className="hover:bg-muted/40">
-                        <TableCell>
-                          <Link to={`/sales-executives/${r.id}`} className="font-medium hover:text-primary">{r.name}</Link>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{r.dials}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.conversations}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.appointments}</TableCell>
-                        <TableCell className="text-right"><Cell value={r.conv_dial_to_conv} target={t_dial_conv} /></TableCell>
-                        <TableCell className="text-right"><Cell value={r.conv_conv_to_appt} target={t_conv_appt} /></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <>
+                <div className="flex items-center gap-2">
+                  <Select value={seSelected} onValueChange={setSeSelected}>
+                    <SelectTrigger className="w-[260px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {selectedSeLink && (
+                    <Link to={selectedSeLink} className="text-xs text-primary hover:underline">Open profiel</Link>
+                  )}
+                </div>
+                <FlowDisplay flow={seFlow} />
+              </>
             )}
           </TabsContent>
 
-          <TabsContent value="closer" className="mt-0">
-            {!closerRows ? (
-              <div className="h-32 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-            ) : closerRows.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">Nog geen closer activiteit in deze periode</div>
+          <TabsContent value="closer" className="mt-0 space-y-4">
+            {closers.length === 0 ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">Geen actieve closers</div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Closer</TableHead>
-                      <TableHead className="text-right">Sales calls</TableHead>
-                      <TableHead className="text-right">Show, ups</TableHead>
-                      <TableHead className="text-right">Deals</TableHead>
-                      <TableHead className="text-right">Show, up %</TableHead>
-                      <TableHead className="text-right">Call, Deal %</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {closerRows.map(r => (
-                      <TableRow key={r.id} className="hover:bg-muted/40">
-                        <TableCell className="font-medium">{r.name}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.appointments}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.shows}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold text-success">{r.deals}</TableCell>
-                        <TableCell className="text-right"><Cell value={r.conv_appt_to_show} target={t_appt_show} /></TableCell>
-                        <TableCell className="text-right"><Cell value={r.conv_appt_to_deal} target={t_call_deal} /></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <>
+                <Select value={closerSelected} onValueChange={setCloserSelected}>
+                  <SelectTrigger className="w-[260px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {closers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FlowDisplay flow={closerFlow} />
+              </>
             )}
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
+  );
+}
+
+function FlowDisplay({ flow }: { flow: { stage: string; count: number; actual: number | null; target: number | null }[] | null }) {
+  if (!flow) {
+    return <div className="h-32 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  }
+  return (
+    <div className="overflow-x-auto pb-2">
+      <div className="flex items-stretch gap-2 min-w-max">
+        {flow.map((node, i) => (
+          <div key={node.stage} className="flex items-center gap-2">
+            {i > 0 && <ConversionArrow actual={node.actual} target={node.target} />}
+            <StageBlock label={STAGE_LABELS[node.stage] || node.stage} count={node.count} highlight={i === 0} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StageBlock({ label, count, highlight }: { label: string; count: number; highlight?: boolean }) {
+  return (
+    <div className={cn(
+      'flex flex-col items-center justify-center rounded-xl border px-5 py-4 min-w-[120px]',
+      highlight ? 'bg-primary/10 border-primary/30' : 'bg-muted/30 border-border/60'
+    )}>
+      <div className="text-2xl font-bold tabular-nums text-foreground">{count}</div>
+      <div className="text-[11px] text-muted-foreground mt-0.5 text-center whitespace-nowrap">{label}</div>
+    </div>
+  );
+}
+
+function ConversionArrow({ actual, target }: { actual: number | null; target: number | null }) {
+  const onTarget = target !== null && actual !== null && actual >= target;
+  const nearTarget = target !== null && actual !== null && actual >= target * 0.9;
+  const colorClass = actual === null || target === null
+    ? 'text-muted-foreground'
+    : onTarget ? 'text-success' : nearTarget ? 'text-warning' : 'text-destructive';
+  const Icon = actual === null || target === null ? Minus : onTarget ? TrendingUp : nearTarget ? Minus : TrendingDown;
+  const delta = actual !== null && target !== null ? actual - target : null;
+
+  return (
+    <div className="flex flex-col items-center justify-center px-1 min-w-[90px]">
+      <div className={cn('text-sm font-semibold tabular-nums inline-flex items-center gap-1', colorClass)}>
+        <Icon className="h-3.5 w-3.5" />
+        {actual !== null ? `${actual.toFixed(1)}%` : '–'}
+      </div>
+      {target !== null && (
+        <div className="text-[10px] text-muted-foreground tabular-nums">
+          target {target.toFixed(0)}%
+          {delta !== null && (
+            <span className={cn('ml-1', delta >= 0 ? 'text-success' : 'text-destructive')}>
+              ({delta >= 0 ? '+' : ''}{delta.toFixed(0)})
+            </span>
+          )}
+        </div>
+      )}
+      <ArrowRight className={cn('h-4 w-4 mt-1', colorClass)} />
+    </div>
   );
 }
