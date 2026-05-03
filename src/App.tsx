@@ -15,9 +15,7 @@ import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
 import NewSalesExecutivePage from "@/pages/NewSalesExecutivePage";
 import SalesExecutiveDetailPage from "@/pages/SalesExecutiveDetailPage";
 
-import ArtifactsPage from "@/pages/ArtifactsPage";
 import IntegrationsPage from "@/pages/IntegrationsPage";
-import TrainingPage from "@/pages/TrainingPage";
 import EodPage from "@/pages/EodPage";
 import SettingsPage from "@/pages/SettingsPage";
 import LeadManagementPage from "@/pages/LeadManagementPage";
@@ -28,11 +26,6 @@ import PublicFormPage from "@/pages/public/PublicFormPage";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
 import UnsubscribePage from "@/pages/UnsubscribePage";
-import EvaluatiesDashboard from "@/pages/evaluaties/EvaluatiesDashboard";
-import FormulierenPage from "@/pages/evaluaties/FormulierenPage";
-import FormulierDetailPage from "@/pages/evaluaties/FormulierDetailPage";
-import ResponsesPage from "@/pages/evaluaties/ResponsesPage";
-import AnalyticsPage from "@/pages/evaluaties/AnalyticsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
 import CloserCRMPage from "@/pages/CloserCRMPage";
 
@@ -112,7 +105,6 @@ function AppRoutes() {
         {/* Accessible by all authenticated users */}
         <Route path="/" element={<DashboardPage />} />
         <Route path="/leads" element={<LeadManagementPage />} />
-        <Route path="/training" element={<TrainingPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/account" element={<AccountPage />} />
 
@@ -132,16 +124,10 @@ function AppRoutes() {
         <Route path="/sales-executives/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutiveDetailPage /></ProtectedRoute>} />
         <Route path="/sales-executives/:id/edit" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><NewSalesExecutivePage /></ProtectedRoute>} />
         <Route path="/provisioning" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><SalesExecutivesPage /></ProtectedRoute>} />
-        <Route path="/artifacts" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ArtifactsPage /></ProtectedRoute>} />
         <Route path="/integrations" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/integraties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />
-        <Route path="/evaluaties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><EvaluatiesDashboard /></ProtectedRoute>} />
-        <Route path="/evaluaties/formulieren" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierenPage /></ProtectedRoute>} />
-        <Route path="/evaluaties/formulieren/:id" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><FormulierDetailPage /></ProtectedRoute>} />
-        <Route path="/evaluaties/responses" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><ResponsesPage /></ProtectedRoute>} />
-        <Route path="/evaluaties/analytics" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AnalyticsPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
