@@ -15,9 +15,7 @@ import SalesExecutivesPage from "@/pages/SalesExecutivesPage";
 import NewSalesExecutivePage from "@/pages/NewSalesExecutivePage";
 import SalesExecutiveDetailPage from "@/pages/SalesExecutiveDetailPage";
 
-import ArtifactsPage from "@/pages/ArtifactsPage";
 import IntegrationsPage from "@/pages/IntegrationsPage";
-import TrainingPage from "@/pages/TrainingPage";
 import EodPage from "@/pages/EodPage";
 import SettingsPage from "@/pages/SettingsPage";
 import LeadManagementPage from "@/pages/LeadManagementPage";
@@ -28,11 +26,6 @@ import PublicFormPage from "@/pages/public/PublicFormPage";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import FormSuccessPage from "@/pages/public/FormSuccessPage";
 import UnsubscribePage from "@/pages/UnsubscribePage";
-import EvaluatiesDashboard from "@/pages/evaluaties/EvaluatiesDashboard";
-import FormulierenPage from "@/pages/evaluaties/FormulierenPage";
-import FormulierDetailPage from "@/pages/evaluaties/FormulierDetailPage";
-import ResponsesPage from "@/pages/evaluaties/ResponsesPage";
-import AnalyticsPage from "@/pages/evaluaties/AnalyticsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
 import CloserCRMPage from "@/pages/CloserCRMPage";
 
