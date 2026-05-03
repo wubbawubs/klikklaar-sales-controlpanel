@@ -1,19 +1,19 @@
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  FileJson,
   Plug,
-  GraduationCap,
   Settings,
   LogOut,
-  ListChecks,
   Target,
   X,
   Sun,
   Moon,
   UserCog,
   Handshake,
+  Shield,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -30,18 +30,30 @@ interface NavItem {
   visibility?: NavVisibility;
 }
 
-const navItems: NavItem[] = [
+interface NavGroup {
+  label: string;
+  icon: any;
+  visibility?: NavVisibility;
+  items: NavItem[];
+}
+
+const topItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
-  { to: '/artifacts', icon: FileJson, label: 'Exports', visibility: 'admin' },
   { to: '/leads', icon: Target, label: 'Leads & CRM' },
   { to: '/closer', icon: Handshake, label: 'Closer CRM', visibility: 'closer+admin' },
-  { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
-  { to: '/training', icon: GraduationCap, label: 'Training' },
-  { to: '/evaluaties', icon: ListChecks, label: 'Evaluaties', visibility: 'coach+admin' },
-  { to: '/users', icon: UserCog, label: 'Gebruikers', visibility: 'admin' },
-  { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
 ];
+
+const beheerGroup: NavGroup = {
+  label: 'Beheer',
+  icon: Shield,
+  visibility: 'admin',
+  items: [
+    { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
+    { to: '/users', icon: UserCog, label: 'Gebruikers', visibility: 'admin' },
+    { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
+    { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
+  ],
+};
 
 interface AppSidebarProps {
   onCloseMobile?: () => void;
