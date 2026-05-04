@@ -14,6 +14,7 @@ import {
   Handshake,
   Shield,
   ChevronDown,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -41,6 +42,7 @@ const topItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/leads', icon: Target, label: 'Leads & CRM' },
   { to: '/closer', icon: Handshake, label: 'Closer CRM', visibility: 'closer+admin' },
+  { to: '/forecasting', icon: TrendingUp, label: 'Forecasting', visibility: 'admin' },
 ];
 
 const beheerGroup: NavGroup = {
