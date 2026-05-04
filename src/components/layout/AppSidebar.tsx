@@ -98,8 +98,8 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
           'group relative flex items-center gap-3 text-sm rounded-lg transition-all duration-150',
           collapsed ? 'justify-center px-0 py-2.5' : cn('px-3 py-2', indent && 'pl-9'),
           isActive
-            ? 'bg-sidebar-accent text-white font-medium'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm'
+            : 'text-sidebar-foreground/75 hover:bg-sidebar-hover hover:text-white'
         )}
       >
         {isActive && !collapsed && (
@@ -140,11 +140,11 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                       <span className="text-sm font-bold text-white tracking-tight">KlikKlaar<span className="text-emerald-400">WEB</span></span>
                     </div>
                   </div>
-                  <span className="text-[10px] font-semibold text-sidebar-accent-foreground tracking-widest uppercase">Control Center</span>
+                  <span className="text-[10px] font-semibold text-sidebar-foreground/60 tracking-widest uppercase">Control Center</span>
                 </div>
                 <button
                   onClick={onCloseMobile}
-                  className="p-1 rounded-lg hover:bg-sidebar-accent transition-colors lg:hidden"
+                  className="p-1 rounded-lg hover:bg-sidebar-hover transition-colors lg:hidden"
                   aria-label="Sluit menu"
                 >
                   <X className="h-5 w-5 text-sidebar-foreground/70" />
@@ -201,7 +201,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                 <TooltipTrigger asChild>
                   <button
                     onClick={toggleTheme}
-                    className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-sidebar-primary transition-colors"
+                    className="p-2 rounded-lg hover:bg-sidebar-hover text-sidebar-foreground/70 hover:text-sidebar-primary transition-colors"
                     aria-label="Wissel thema"
                   >
                     {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
@@ -213,7 +213,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                 <TooltipTrigger asChild>
                   <button
                     onClick={signOut}
-                    className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-sidebar-primary transition-colors"
+                    className="p-2 rounded-lg hover:bg-sidebar-hover text-sidebar-foreground/70 hover:text-sidebar-primary transition-colors"
                     aria-label="Uitloggen"
                   >
                     <LogOut className="h-4 w-4" />
@@ -235,7 +235,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                   <TooltipTrigger asChild>
                     <button
                       onClick={toggleTheme}
-                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-primary hover:bg-sidebar-accent transition-colors"
+                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-primary hover:bg-sidebar-hover transition-colors"
                       aria-label="Wissel thema"
                     >
                       {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
@@ -247,7 +247,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
                   <TooltipTrigger asChild>
                     <button
                       onClick={signOut}
-                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-destructive hover:bg-sidebar-accent transition-colors"
+                      className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-destructive hover:bg-sidebar-hover transition-colors"
                       aria-label="Uitloggen"
                     >
                       <LogOut className="h-3.5 w-3.5" />
