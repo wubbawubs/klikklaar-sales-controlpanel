@@ -28,6 +28,7 @@ import FormSuccessPage from "@/pages/public/FormSuccessPage";
 import UnsubscribePage from "@/pages/UnsubscribePage";
 import UserManagementPage from "@/pages/UserManagementPage";
 import CloserCRMPage from "@/pages/CloserCRMPage";
+import ForecastingPage from "@/pages/ForecastingPage";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,7 @@ function AppRoutes() {
         <Route path="/integraties" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><IntegrationsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />
+        <Route path="/forecasting" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ForecastingPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
