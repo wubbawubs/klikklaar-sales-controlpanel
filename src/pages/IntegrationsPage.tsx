@@ -2,15 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { AlertTriangle } from 'lucide-react';
-import { PipedriveFunnel } from '@/components/integrations/PipedriveFunnel';
 
 const providers = [
-  {
-    id: 'pipedrive', name: 'Pipedrive',
-    description: 'Leads, deals en activiteiten spiegelen en opvolgen',
-    features: ['Pipeline mapping', 'Status mapping', 'Activity mapping', 'Eigenaar mapping'],
-    hasLiveComponent: true,
-  },
   {
     id: 'exact', name: 'Exact',
     description: 'Klant-, abonnement- of financiële opvolging voorbereiden',
