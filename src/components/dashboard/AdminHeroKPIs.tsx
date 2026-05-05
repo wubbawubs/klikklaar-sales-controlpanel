@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
+import { useOrgId } from '@/hooks/useOrgId';
 import { Card, CardContent } from '@/components/ui/card';
 import { PhoneCall, MessageSquare, CalendarCheck, Trophy, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ interface Props {
 
 export default function AdminHeroKPIs({ from, to }: Props) {
   const [kpis, setKpis] = useState<KPI[] | null>(null);
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
@@ -30,12 +32,16 @@ export default function AdminHeroKPIs({ from, to }: Props) {
       const prevTo = from;
 
       const [calls, leads] = await Promise.all([
-        fetchAll<any>('calls', q =>
-          q.select('id, outcome, created_at').gte('created_at', prevFrom.toISOString()).lte('created_at', to.toISOString())
-        ),
-        fetchAll<any>('pipedrive_lead_assignments', q =>
-          q.select('id, status, updated_at').gte('updated_at', prevFrom.toISOString()).lte('updated_at', to.toISOString())
-        ),
+        fetchAll<any>('calls', q => {
+          let qq = q.select('id, outcome, created_at, organization_id').gte('created_at', prevFrom.toISOString()).lte('created_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
+        fetchAll<any>('pipedrive_lead_assignments', q => {
+          let qq = q.select('id, status, updated_at, organization_id').gte('updated_at', prevFrom.toISOString()).lte('updated_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
       ]);
 
       const inRange = (d: string, a: Date, b: Date) => {
