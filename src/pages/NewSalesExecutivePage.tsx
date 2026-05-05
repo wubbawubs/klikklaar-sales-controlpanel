@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
-import PipedriveLeadSelector, { type SelectedLead } from '@/components/pipedrive/PipedriveLeadSelector';
+type SelectedLead = { pipedrive_org_id?: string | null; pipedrive_person_id?: string | null; org_name: string; person_name?: string | null; person_email?: string | null; person_phone?: string | null };
 
 const steps = [
   { id: 'personal', title: 'SE Gegevens', description: 'Persoonlijke informatie' },
