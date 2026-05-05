@@ -213,7 +213,6 @@ export default function SalesExecutiveDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overzicht</TabsTrigger>
-          <TabsTrigger value="crm">CRM / Leads</TabsTrigger>
           <TabsTrigger value="workspace">Workspace</TabsTrigger>
           <TabsTrigger value="sharepoint">SharePoint</TabsTrigger>
           <TabsTrigger value="integrations">Integraties</TabsTrigger>
