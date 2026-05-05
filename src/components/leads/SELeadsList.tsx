@@ -129,7 +129,7 @@ export default function SELeadsList() {
     while (hasMore) {
       const { data } = await supabase
         .from('lead_assignments')
-        .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, pipedrive_org_id, pipedrive_person_id, product_line, assigned_at')
+        .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, product_line, assigned_at')
         .eq('sales_executive_id', seId)
         .order('assigned_at', { ascending: false })
         .range(from, from + batchSize - 1);
