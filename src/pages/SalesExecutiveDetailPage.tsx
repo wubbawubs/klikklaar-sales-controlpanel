@@ -252,9 +252,6 @@ export default function SalesExecutiveDetailPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="crm">
-          <SalesExecutiveCRM salesExecutiveId={id!} salesExecutiveName={se.full_name || ''} />
-        </TabsContent>
 
         <TabsContent value="workspace">
           <Card>
