@@ -172,7 +172,7 @@ export default function SEPersonalDashboard() {
         </TabsContent>
 
         <TabsContent value="charts" className="mt-4 space-y-4">
-          {isEmployee && <PipedriveDashboardWidget seId={seId} seEmail={seEmail} />}
+          {/* Pipedrive widget verwijderd */}
           <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DealValueChart from={chartRange.from} to={chartRange.to} seId={seId} />
