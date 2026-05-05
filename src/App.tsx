@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { OrganizationProvider } from "@/hooks/useOrganization";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
@@ -143,8 +144,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
-          <IOSInstallPrompt />
+          <OrganizationProvider>
+            <AppRoutes />
+            <IOSInstallPrompt />
+          </OrganizationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
