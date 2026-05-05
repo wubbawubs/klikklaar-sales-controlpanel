@@ -101,7 +101,7 @@ export type Database = {
             foreignKeyName: "calls_lead_assignment_id_fkey"
             columns: ["lead_assignment_id"]
             isOneToOne: false
-            referencedRelation: "pipedrive_lead_assignments"
+            referencedRelation: "lead_assignments"
             referencedColumns: ["id"]
           },
           {
@@ -217,6 +217,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      crm_activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          done: boolean | null
+          due_date: string | null
+          duration_minutes: number | null
+          id: string
+          lead_assignment_id: string | null
+          note: string | null
+          outcome: string | null
+          sales_executive_id: string
+          subject: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          activity_type?: string
+          created_at?: string | null
+          done?: boolean | null
+          due_date?: string | null
+          duration_minutes?: number | null
+          id?: string
+          lead_assignment_id?: string | null
+          note?: string | null
+          outcome?: string | null
+          sales_executive_id: string
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          done?: boolean | null
+          due_date?: string | null
+          duration_minutes?: number | null
+          id?: string
+          lead_assignment_id?: string | null
+          note?: string | null
+          outcome?: string | null
+          sales_executive_id?: string
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_activities_lead_assignment_id_fkey"
+            columns: ["lead_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipedrive_activities_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -889,6 +949,81 @@ export type Database = {
           },
         ]
       }
+      lead_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          branche: string | null
+          created_at: string | null
+          deal_title: string | null
+          id: string
+          notes: string | null
+          org_name: string | null
+          organization_id: string | null
+          person_email: string | null
+          person_name: string | null
+          person_phone: string | null
+          product_line: string | null
+          sales_executive_id: string
+          status: string
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          branche?: string | null
+          created_at?: string | null
+          deal_title?: string | null
+          id?: string
+          notes?: string | null
+          org_name?: string | null
+          organization_id?: string | null
+          person_email?: string | null
+          person_name?: string | null
+          person_phone?: string | null
+          product_line?: string | null
+          sales_executive_id: string
+          status?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          branche?: string | null
+          created_at?: string | null
+          deal_title?: string | null
+          id?: string
+          notes?: string | null
+          org_name?: string | null
+          organization_id?: string | null
+          person_email?: string | null
+          person_name?: string | null
+          person_phone?: string | null
+          product_line?: string | null
+          sales_executive_id?: string
+          status?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_lead_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipedrive_lead_assignments_sales_executive_id_fkey"
+            columns: ["sales_executive_id"]
+            isOneToOne: false
+            referencedRelation: "sales_executives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_updates: {
         Row: {
           created_at: string
@@ -1011,8 +1146,6 @@ export type Database = {
           logo_url: string | null
           modules: string[]
           name: string
-          pipedrive_api_token: string | null
-          pipedrive_company_domain: string | null
           primary_color_hex: string | null
           slug: string
           subdomain: string | null
@@ -1026,8 +1159,6 @@ export type Database = {
           logo_url?: string | null
           modules?: string[]
           name: string
-          pipedrive_api_token?: string | null
-          pipedrive_company_domain?: string | null
           primary_color_hex?: string | null
           slug: string
           subdomain?: string | null
@@ -1041,176 +1172,12 @@ export type Database = {
           logo_url?: string | null
           modules?: string[]
           name?: string
-          pipedrive_api_token?: string | null
-          pipedrive_company_domain?: string | null
           primary_color_hex?: string | null
           slug?: string
           subdomain?: string | null
           updated_at?: string
         }
         Relationships: []
-      }
-      pipedrive_activities: {
-        Row: {
-          activity_type: string
-          created_at: string | null
-          done: boolean | null
-          due_date: string | null
-          duration_minutes: number | null
-          id: string
-          lead_assignment_id: string | null
-          note: string | null
-          outcome: string | null
-          pipedrive_activity_id: number | null
-          pipedrive_deal_id: number | null
-          pipedrive_org_id: number | null
-          pipedrive_person_id: number | null
-          pipedrive_sync_error: string | null
-          sales_executive_id: string
-          subject: string | null
-          synced_to_pipedrive: boolean | null
-          updated_at: string | null
-        }
-        Insert: {
-          activity_type?: string
-          created_at?: string | null
-          done?: boolean | null
-          due_date?: string | null
-          duration_minutes?: number | null
-          id?: string
-          lead_assignment_id?: string | null
-          note?: string | null
-          outcome?: string | null
-          pipedrive_activity_id?: number | null
-          pipedrive_deal_id?: number | null
-          pipedrive_org_id?: number | null
-          pipedrive_person_id?: number | null
-          pipedrive_sync_error?: string | null
-          sales_executive_id: string
-          subject?: string | null
-          synced_to_pipedrive?: boolean | null
-          updated_at?: string | null
-        }
-        Update: {
-          activity_type?: string
-          created_at?: string | null
-          done?: boolean | null
-          due_date?: string | null
-          duration_minutes?: number | null
-          id?: string
-          lead_assignment_id?: string | null
-          note?: string | null
-          outcome?: string | null
-          pipedrive_activity_id?: number | null
-          pipedrive_deal_id?: number | null
-          pipedrive_org_id?: number | null
-          pipedrive_person_id?: number | null
-          pipedrive_sync_error?: string | null
-          sales_executive_id?: string
-          subject?: string | null
-          synced_to_pipedrive?: boolean | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipedrive_activities_lead_assignment_id_fkey"
-            columns: ["lead_assignment_id"]
-            isOneToOne: false
-            referencedRelation: "pipedrive_lead_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipedrive_activities_sales_executive_id_fkey"
-            columns: ["sales_executive_id"]
-            isOneToOne: false
-            referencedRelation: "sales_executives"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pipedrive_lead_assignments: {
-        Row: {
-          assigned_at: string | null
-          assigned_by: string | null
-          branche: string | null
-          created_at: string | null
-          deal_title: string | null
-          id: string
-          notes: string | null
-          org_name: string | null
-          organization_id: string | null
-          person_email: string | null
-          person_name: string | null
-          person_phone: string | null
-          pipedrive_deal_id: number | null
-          pipedrive_org_id: number | null
-          pipedrive_person_id: number | null
-          product_line: string | null
-          sales_executive_id: string
-          status: string
-          updated_at: string | null
-          website: string | null
-        }
-        Insert: {
-          assigned_at?: string | null
-          assigned_by?: string | null
-          branche?: string | null
-          created_at?: string | null
-          deal_title?: string | null
-          id?: string
-          notes?: string | null
-          org_name?: string | null
-          organization_id?: string | null
-          person_email?: string | null
-          person_name?: string | null
-          person_phone?: string | null
-          pipedrive_deal_id?: number | null
-          pipedrive_org_id?: number | null
-          pipedrive_person_id?: number | null
-          product_line?: string | null
-          sales_executive_id: string
-          status?: string
-          updated_at?: string | null
-          website?: string | null
-        }
-        Update: {
-          assigned_at?: string | null
-          assigned_by?: string | null
-          branche?: string | null
-          created_at?: string | null
-          deal_title?: string | null
-          id?: string
-          notes?: string | null
-          org_name?: string | null
-          organization_id?: string | null
-          person_email?: string | null
-          person_name?: string | null
-          person_phone?: string | null
-          pipedrive_deal_id?: number | null
-          pipedrive_org_id?: number | null
-          pipedrive_person_id?: number | null
-          product_line?: string | null
-          sales_executive_id?: string
-          status?: string
-          updated_at?: string | null
-          website?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipedrive_lead_assignments_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipedrive_lead_assignments_sales_executive_id_fkey"
-            columns: ["sales_executive_id"]
-            isOneToOne: false
-            referencedRelation: "sales_executives"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       profiles: {
         Row: {
