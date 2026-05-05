@@ -31,6 +31,7 @@ interface NavItem {
   icon: any;
   label: string;
   visibility?: NavVisibility;
+  module?: string;
 }
 
 interface NavGroup {
@@ -41,10 +42,10 @@ interface NavGroup {
 }
 
 const topItems: NavItem[] = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/leads', icon: Target, label: 'Leads & CRM' },
-  { to: '/closer', icon: Handshake, label: 'Closer CRM', visibility: 'closer+admin' },
-  { to: '/forecasting', icon: TrendingUp, label: 'Forecasting', visibility: 'admin' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', module: 'dashboard' },
+  { to: '/leads', icon: Target, label: 'Leads & CRM', module: 'leads' },
+  { to: '/closer', icon: Handshake, label: 'Closer CRM', visibility: 'closer+admin', module: 'closer' },
+  { to: '/forecasting', icon: TrendingUp, label: 'Forecasting', visibility: 'admin', module: 'forecasting' },
 ];
 
 const beheerGroup: NavGroup = {
@@ -52,7 +53,7 @@ const beheerGroup: NavGroup = {
   icon: Shield,
   visibility: 'admin',
   items: [
-    { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin' },
+    { to: '/sales-executives', icon: Users, label: 'Sales Executives', visibility: 'coach+admin', module: 'sales_executives' },
     { to: '/users', icon: UserCog, label: 'Gebruikers', visibility: 'admin' },
     { to: '/integraties', icon: Plug, label: 'Integraties', visibility: 'admin' },
     { to: '/settings', icon: Settings, label: 'Instellingen', visibility: 'admin' },
@@ -66,6 +67,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps) {
   const { signOut, user, isAdmin, roles } = useAuth();
+  const { hasModule } = useOrganization();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isCoachOrAdmin = isAdmin || roles.includes('coach');
@@ -79,8 +81,11 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
     return true;
   };
 
-  const visibleTop = topItems.filter(i => isVisible(i.visibility));
-  const visibleBeheer = beheerGroup.items.filter(i => isVisible(i.visibility));
+  const isAllowed = (item: NavItem) =>
+    isVisible(item.visibility) && (!item.module || hasModule(item.module));
+
+  const visibleTop = topItems.filter(isAllowed);
+  const visibleBeheer = beheerGroup.items.filter(isAllowed);
   const showBeheer = isVisible(beheerGroup.visibility) && visibleBeheer.length > 0;
   const beheerActive = visibleBeheer.some(i => location.pathname.startsWith(i.to));
   const [beheerOpen, setBeheerOpen] = useState(beheerActive);
