@@ -92,9 +92,6 @@ export default function LeadActivityHistory({ leadAssignmentId }: LeadActivityHi
                 ) : (
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
-                {activity.synced_to_pipedrive && (
-                  <Badge variant="outline" className="text-xs">Synced</Badge>
-                )}
               </div>
               {activity.note && (
                 <p className="text-xs text-muted-foreground line-clamp-2">{activity.note}</p>
