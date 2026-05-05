@@ -588,13 +588,8 @@ export default function NewSalesExecutivePage() {
           {step === 4 && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Selecteer organisaties en contactpersonen uit Pipedrive die aan deze Sales Executive worden toegewezen. 
-                Deze worden direct zichtbaar in het persoonlijke CRM dashboard.
+                Lead-toewijzing gebeurt nu via het interne CRM (Lead Management).
               </p>
-              <PipedriveLeadSelector
-                selectedLeads={selectedLeads}
-                onSelectionChange={setSelectedLeads}
-              />
             </div>
           )}
 
