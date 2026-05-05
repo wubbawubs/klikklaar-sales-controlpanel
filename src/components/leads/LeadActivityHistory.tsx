@@ -13,7 +13,6 @@ interface Activity {
   due_date: string | null;
   duration_minutes: number | null;
   created_at: string | null;
-  synced_to_pipedrive: boolean | null;
 }
 
 const activityIcons: Record<string, typeof PhoneCall> = {
