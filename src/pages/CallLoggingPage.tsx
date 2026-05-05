@@ -14,7 +14,7 @@ import { Phone, PhoneOff, PhoneForwarded, Calendar, Handshake, XCircle, Plus, Cl
 import { format, isToday, parseISO } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { LeadInfoPanel } from '@/components/pipedrive/LeadInfoPanel';
+
 
 const OUTCOMES = [
   { value: 'not_reached', label: 'Niet bereikbaar', icon: PhoneOff, color: 'text-muted-foreground' },
