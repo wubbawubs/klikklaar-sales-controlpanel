@@ -13,7 +13,6 @@ interface Activity {
   due_date: string | null;
   duration_minutes: number | null;
   created_at: string | null;
-  synced_to_pipedrive: boolean | null;
 }
 
 const activityIcons: Record<string, typeof PhoneCall> = {
@@ -43,7 +42,7 @@ export default function LeadActivityHistory({ leadAssignmentId }: LeadActivityHi
       setLoading(true);
       const { data } = await supabase
         .from('crm_activities')
-        .select('id, activity_type, subject, note, outcome, done, due_date, duration_minutes, created_at, synced_to_pipedrive')
+        .select('id, activity_type, subject, note, outcome, done, due_date, duration_minutes, created_at')
         .eq('lead_assignment_id', leadAssignmentId)
         .order('created_at', { ascending: false });
       setActivities(data || []);
@@ -92,9 +91,6 @@ export default function LeadActivityHistory({ leadAssignmentId }: LeadActivityHi
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                 ) : (
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-                {activity.synced_to_pipedrive && (
-                  <Badge variant="outline" className="text-xs">Synced</Badge>
                 )}
               </div>
               {activity.note && (

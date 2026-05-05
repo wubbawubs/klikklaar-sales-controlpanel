@@ -96,7 +96,6 @@ export default function LeadManagementPage() {
         <TabsList>
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="scraper">Scraper</TabsTrigger>
-          <TabsTrigger value="pipedrive">Pipedrive</TabsTrigger>
           <TabsTrigger value="calls">Call Logging</TabsTrigger>
         </TabsList>
         <TabsContent value="leads">
@@ -104,9 +103,6 @@ export default function LeadManagementPage() {
         </TabsContent>
         <TabsContent value="scraper">
           <LeadScraper ses={ses} onImported={refreshData} />
-        </TabsContent>
-        <TabsContent value="pipedrive">
-          <PipedrivePage />
         </TabsContent>
         <TabsContent value="calls">
           <CallLoggingPage />
