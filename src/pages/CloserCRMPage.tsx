@@ -3,6 +3,7 @@ import { CloserKanban } from '@/components/closer/CloserKanban';
 import { Handshake, TrendingUp, Trophy, Euro, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
+import { useOrgId } from '@/hooks/useOrgId';
 
 interface KPIs {
   total: number;
@@ -14,6 +15,7 @@ interface KPIs {
 
 export default function CloserCRMPage() {
   const [kpis, setKpis] = useState<KPIs>({ total: 0, active: 0, deals: 0, totalValue: 0, scheduledThisWeek: 0 });
+  const orgId = useOrgId();
 
   useEffect(() => {
     load();
@@ -22,12 +24,15 @@ export default function CloserCRMPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'closer_appointments' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
 
   async function load() {
-    const rows = await fetchAll<any>('closer_appointments', (q) =>
-      q.select('status, deal_value_eur, scheduled_at')
-    );
+    const rows = await fetchAll<any>('closer_appointments', (q) => {
+      let qq = q.select('status, deal_value_eur, scheduled_at, organization_id');
+      if (orgId) qq = qq.eq('organization_id', orgId);
+      return qq;
+    });
     const now = new Date();
     const weekAhead = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
     const k: KPIs = {
