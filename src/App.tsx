@@ -115,7 +115,7 @@ function AppRoutes() {
 
         {/* Redirects for old standalone routes */}
         <Route path="/calls" element={<LeadManagementPage />} />
-        <Route path="/pipedrive" element={<LeadManagementPage />} />
+        <Route path="/pipedrive" element={<LeadManagementPage />} /> {/* legacy redirect */}
         <Route path="/eod" element={<EodPage />} />
         <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/email-monitoring" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
