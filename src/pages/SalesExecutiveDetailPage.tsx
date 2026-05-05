@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { buildArtifactInserts, getNextVersion } from '@/lib/artifact-generator';
 import type { SalesExecutive, Workspace, IntegrationConfig, EodSubmission, GeneratedArtifact, AuditLog, ProvisioningJob } from '@/types/database';
-import SalesExecutiveCRM from '@/components/pipedrive/SalesExecutiveCRM';
+
 import { ArtifactsList } from '@/components/dashboard/ArtifactsList';
 import { EodDetailList } from '@/components/dashboard/EodDetailList';
 
