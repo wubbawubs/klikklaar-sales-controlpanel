@@ -63,7 +63,7 @@ export default function LeadScraper({ ses, onImported }: LeadScraperProps) {
       const orgNames = leads.map(l => l.org_name).filter(Boolean);
       if (orgNames.length > 0) {
         const { data: existing } = await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('org_name')
           .in('org_name', orgNames);
         if (existing) {
@@ -121,7 +121,7 @@ export default function LeadScraper({ ses, onImported }: LeadScraperProps) {
     }));
 
     const { error } = await supabase
-      .from('pipedrive_lead_assignments')
+      .from('lead_assignments')
       .insert(rows);
 
     if (error) {

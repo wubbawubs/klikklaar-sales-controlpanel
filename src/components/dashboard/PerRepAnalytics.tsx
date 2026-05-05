@@ -32,7 +32,7 @@ export default function PerRepAnalytics() {
   const fetchStats = async () => {
     const [seList, leads, calls] = await Promise.all([
       supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active').then(r => r.data || []),
-      fetchAll('pipedrive_lead_assignments', q => q.select('sales_executive_id, status')),
+      fetchAll('lead_assignments', q => q.select('sales_executive_id, status')),
       fetchAll('calls', q => q.select('sales_executive_id, outcome')),
     ]);
 

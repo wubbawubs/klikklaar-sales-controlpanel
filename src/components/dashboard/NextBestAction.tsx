@@ -50,7 +50,7 @@ export default function NextBestAction({ seId }: Props) {
           .lt('callback_date', today)
           .not('callback_date', 'is', null),
         supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('id, org_name, person_name, created_at')
           .eq('sales_executive_id', seId)
           .in('status', ['assigned']),

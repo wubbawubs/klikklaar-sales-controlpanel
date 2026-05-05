@@ -15,7 +15,7 @@ import {
   ArrowUp, ArrowDown, ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
+import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
@@ -33,8 +33,6 @@ interface Lead {
   status: string;
   notes: string | null;
   deal_title: string | null;
-  pipedrive_org_id: number | null;
-  pipedrive_person_id: number | null;
   product_line: string | null;
   assigned_at: string | null;
 }
@@ -130,8 +128,8 @@ export default function SELeadsList() {
     let hasMore = true;
     while (hasMore) {
       const { data } = await supabase
-        .from('pipedrive_lead_assignments')
-        .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, pipedrive_org_id, pipedrive_person_id, product_line, assigned_at')
+        .from('lead_assignments')
+        .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, product_line, assigned_at')
         .eq('sales_executive_id', seId)
         .order('assigned_at', { ascending: false })
         .range(from, from + batchSize - 1);
@@ -212,9 +210,8 @@ export default function SELeadsList() {
       if (quickFilter === 'cold' && attempts < 3) return false;
       if (quickFilter === 'reached' && !reached) return false;
 
-      // Source filter: scraped = no Pipedrive org id, pipedrive = has org id
-      if (sourceFilter === 'pipedrive' && !l.pipedrive_org_id) return false;
-      if (sourceFilter === 'scraped' && l.pipedrive_org_id) return false;
+      // Source filter not relevant zonder Pipedrive
+      if (sourceFilter === 'pipedrive') return false;
 
       if (filterBranche !== 'all' && l.branche !== filterBranche) return false;
       if (search) {
@@ -263,12 +260,8 @@ export default function SELeadsList() {
   const detailLead = detailIdx !== null ? pageLeads[detailIdx] ?? null : null;
 
   const sourceCounts = useMemo(() => {
-    let pd = 0, sc = 0;
-    for (const l of leads) {
-      if (l.status === 'lost') continue;
-      if (l.pipedrive_org_id) pd++; else sc++;
-    }
-    return { all: pd + sc, pipedrive: pd, scraped: sc };
+    const total = leads.filter(l => l.status !== 'lost').length;
+    return { all: total, pipedrive: 0, scraped: total };
   }, [leads]);
 
   // Quick filter counts
@@ -642,7 +635,7 @@ export default function SELeadsList() {
         onConfirm={async (note) => {
           if (!pendingLead || !seId) return;
           await supabase
-            .from('pipedrive_lead_assignments')
+            .from('lead_assignments')
             .update({ notes: note, updated_at: new Date().toISOString() })
             .eq('id', pendingLead.id);
           toast.success('Notitie opgeslagen');
@@ -651,13 +644,11 @@ export default function SELeadsList() {
       />
 
       {/* Lead detail sheet */}
-      <DealDetailSheet
+      <LeadDetailSheet
         open={!!detailLead}
         onOpenChange={(open) => { if (!open) { setDetailIdx(null); fetchLeads(); fetchCallStats(); } }}
         dealTitle={detailLead?.deal_title ?? detailLead?.org_name ?? undefined}
         assignedAt={detailLead?.assigned_at ?? null}
-        orgId={detailLead?.pipedrive_org_id}
-        personId={detailLead?.pipedrive_person_id}
         leadAssignmentId={detailLead?.id}
         orgName={detailLead?.org_name}
         personName={detailLead?.person_name}

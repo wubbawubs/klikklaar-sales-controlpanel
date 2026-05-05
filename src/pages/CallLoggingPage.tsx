@@ -14,7 +14,7 @@ import { Phone, PhoneOff, PhoneForwarded, Calendar, Handshake, XCircle, Plus, Cl
 import { format, isToday, parseISO } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { LeadInfoPanel } from '@/components/pipedrive/LeadInfoPanel';
+
 
 const OUTCOMES = [
   { value: 'not_reached', label: 'Niet bereikbaar', icon: PhoneOff, color: 'text-muted-foreground' },
@@ -82,7 +82,7 @@ export default function CallLoggingPage() {
     queryKey: ['se-leads', seData?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('*')
         .eq('sales_executive_id', seData!.id)
         .in('status', ['assigned', 'in_progress', 'contacted']);
@@ -129,7 +129,7 @@ export default function CallLoggingPage() {
           ? 'qualified'
           : 'contacted';
         await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .update({ status: newStatus })
           .eq('id', selectedLead)
           .eq('sales_executive_id', seData!.id);
@@ -248,13 +248,7 @@ export default function CallLoggingPage() {
               </div>
             )}
 
-            {/* Lead Info Panel - shows context when a lead is selected */}
-            {selectedLead !== 'none' && (() => {
-              const lead = leads?.find(l => l.id === selectedLead);
-              return lead?.pipedrive_org_id ? (
-                <LeadInfoPanel orgId={lead.pipedrive_org_id} orgName={lead.org_name} />
-              ) : null;
-            })()}
+            {/* Lead info panel verwijderd met Pipedrive */}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">

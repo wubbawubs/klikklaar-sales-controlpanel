@@ -35,7 +35,7 @@ export default function WeeklyActivitiesChart({ from, to, seId }: Props) {
       setLoading(true);
       try {
         const [activities, ses] = await Promise.all([
-          fetchAll('pipedrive_activities', q => {
+          fetchAll('crm_activities', q => {
             let query = q.select('sales_executive_id, created_at');
             if (seId) query = query.eq('sales_executive_id', seId);
             return query;

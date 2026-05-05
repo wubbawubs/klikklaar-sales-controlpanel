@@ -38,7 +38,7 @@ export default function DealValueChart({ from, to, seId }: Props) {
       setLoading(true);
       try {
         const [assignments, ses] = await Promise.all([
-          fetchAll('pipedrive_lead_assignments', q => q.select('sales_executive_id, org_name')),
+          fetchAll('lead_assignments', q => q.select('sales_executive_id, org_name')),
           supabase.from('sales_executives').select('id, full_name').then(r => r.data || []),
         ]);
         const seMap = Object.fromEntries(ses.map(se => [se.id, se.full_name || 'Onbekend']));

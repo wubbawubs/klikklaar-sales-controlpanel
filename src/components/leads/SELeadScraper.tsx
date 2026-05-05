@@ -75,7 +75,7 @@ export default function SELeadScraper({ onImported }: SELeadScraperProps) {
         const orgNames = leads.map(l => l.org_name).filter(Boolean);
         if (orgNames.length > 0) {
           const { data: existing } = await supabase
-            .from('pipedrive_lead_assignments')
+            .from('lead_assignments')
             .select('org_name')
             .eq('sales_executive_id', seId)
             .in('org_name', orgNames);
@@ -130,7 +130,7 @@ export default function SELeadScraper({ onImported }: SELeadScraperProps) {
       assigned_at: new Date().toISOString(),
     }));
 
-    const { error } = await supabase.from('pipedrive_lead_assignments').insert(rows);
+    const { error } = await supabase.from('lead_assignments').insert(rows);
 
     if (error) {
       toast.error('Import mislukt: ' + error.message);

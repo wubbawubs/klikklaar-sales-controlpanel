@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
         supabase.from("calls").select("*").eq("sales_executive_id", se.id).gte("created_at", `${today}T00:00:00`),
         supabase.from("calls").select("*").eq("sales_executive_id", se.id).gte("created_at", `${weekAgo}T00:00:00`),
         supabase.from("calls").select("*").eq("sales_executive_id", se.id).eq("outcome", "callback").or(`callback_date.is.null,callback_date.lte.${today}`),
-        supabase.from("pipedrive_lead_assignments").select("id, status").eq("sales_executive_id", se.id).in("status", ["assigned", "in_progress"]),
+        supabase.from("lead_assignments").select("id, status").eq("sales_executive_id", se.id).in("status", ["assigned", "in_progress"]),
       ]);
 
       const ctx: SEContext = {

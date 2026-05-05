@@ -38,7 +38,7 @@ export default function RepLeaderboard({ from, to }: Props) {
         fetchAll<any>('calls', q =>
           q.select('sales_executive_id, outcome, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
         ),
-        fetchAll<any>('pipedrive_lead_assignments', q =>
+        fetchAll<any>('lead_assignments', q =>
           q.select('sales_executive_id, status, updated_at').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString())
         ),
       ]);

@@ -45,7 +45,7 @@ export default function AdminNBAOverview() {
           .lt('callback_date', today)
           .not('callback_date', 'is', null),
         supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('id, sales_executive_id')
           .in('status', ['assigned']),
         supabase

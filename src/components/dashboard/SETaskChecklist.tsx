@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PhoneForwarded, Target, TrendingUp, ClipboardList, Phone, ArrowRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
+import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 
 interface TaskItem {
   id: string;
@@ -48,8 +48,8 @@ export default function SETaskChecklist({ seId }: Props) {
         .order('callback_date', { ascending: true }),
       // Untouched leads (only 'assigned' status)
       supabase
-        .from('pipedrive_lead_assignments')
-        .select('id, org_name, person_name, person_phone, deal_title, pipedrive_org_id, pipedrive_person_id')
+        .from('lead_assignments')
+        .select('id, org_name, person_name, person_phone, deal_title')
         .eq('sales_executive_id', seId)
         .in('status', ['assigned'])
         .order('created_at', { ascending: true }),
@@ -86,11 +86,11 @@ export default function SETaskChecklist({ seId }: Props) {
       ...(interestRes.data || []).map(c => c.lead_assignment_id).filter(Boolean),
     ];
 
-    let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
+    let assignmentMap: Record<string, { deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
     if (assignmentIds.length > 0) {
       const { data: assignments } = await supabase
-        .from('pipedrive_lead_assignments')
-        .select('id, pipedrive_org_id, pipedrive_person_id, deal_title, org_name, person_name, person_phone')
+        .from('lead_assignments')
+        .select('id, deal_title, org_name, person_name, person_phone')
         .in('id', assignmentIds);
       (assignments || []).forEach(a => {
         assignmentMap[a.id] = a;
@@ -117,8 +117,8 @@ export default function SETaskChecklist({ seId }: Props) {
         label: `Bel terug: ${cb.contact_name || cb.org_name || 'Contact'}`,
         sublabel: isOverdue ? `Gepland: ${cb.callback_date}` : 'Vandaag',
         priority: 'high',
-        orgId: assignment?.pipedrive_org_id ?? null,
-        personId: assignment?.pipedrive_person_id ?? null,
+        orgId: null,
+        personId: null,
         dealTitle: assignment?.deal_title ?? null,
         leadAssignmentId: cb.lead_assignment_id ?? null,
         orgName: cb.org_name ?? assignment?.org_name ?? null,
@@ -147,8 +147,8 @@ export default function SETaskChecklist({ seId }: Props) {
         label: `Opvolgen: ${c.contact_name || c.org_name || 'Contact'}`,
         sublabel: 'Toonde interesse, nog niet opgevolgd',
         priority: 'high',
-        orgId: assignment?.pipedrive_org_id ?? null,
-        personId: assignment?.pipedrive_person_id ?? null,
+        orgId: null,
+        personId: null,
         dealTitle: assignment?.deal_title ?? null,
         leadAssignmentId: c.lead_assignment_id ?? null,
         orgName: c.org_name ?? assignment?.org_name ?? null,
@@ -165,8 +165,8 @@ export default function SETaskChecklist({ seId }: Props) {
         label: `Bel: ${lead.org_name || lead.person_name || 'Nieuwe lead'}`,
         sublabel: lead.deal_title || 'Nog niet gebeld',
         priority: 'medium',
-        orgId: lead.pipedrive_org_id ?? null,
-        personId: lead.pipedrive_person_id ?? null,
+        orgId: null,
+        personId: null,
         dealTitle: lead.deal_title ?? null,
         leadAssignmentId: lead.id,
         orgName: lead.org_name ?? null,
@@ -265,13 +265,11 @@ export default function SETaskChecklist({ seId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Direct klantkaart — opent DealDetailSheet met alle context */}
-      <DealDetailSheet
+      {/* Direct klantkaart — opent LeadDetailSheet met alle context */}
+      <LeadDetailSheet
         open={!!selectedTask}
         onOpenChange={(open) => { if (!open) { setSelectedIdx(null); fetchTasks(); } }}
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
-        orgId={selectedTask?.orgId}
-        personId={selectedTask?.personId}
         leadAssignmentId={selectedTask?.leadAssignmentId}
         orgName={selectedTask?.orgName}
         personName={selectedTask?.personName}

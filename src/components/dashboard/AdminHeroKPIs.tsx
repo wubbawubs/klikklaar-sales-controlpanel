@@ -37,7 +37,7 @@ export default function AdminHeroKPIs({ from, to }: Props) {
           if (orgId) qq = qq.eq('organization_id', orgId);
           return qq;
         }),
-        fetchAll<any>('pipedrive_lead_assignments', q => {
+        fetchAll<any>('lead_assignments', q => {
           let qq = q.select('id, status, updated_at, organization_id').gte('updated_at', prevFrom.toISOString()).lte('updated_at', to.toISOString());
           if (orgId) qq = qq.eq('organization_id', orgId);
           return qq;

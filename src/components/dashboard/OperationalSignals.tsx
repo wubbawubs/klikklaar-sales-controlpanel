@@ -30,7 +30,7 @@ export default function OperationalSignals() {
         supabase.from('sales_executives').select('id').eq('status', 'active'),
         supabase.from('eod_submissions').select('session_date, status').gte('session_date', sevenDaysAgo),
         supabase.from('calls').select('id').eq('outcome', 'callback').not('callback_date', 'is', null).lte('callback_date', today),
-        fetchAll<any>('pipedrive_lead_assignments', q =>
+        fetchAll<any>('lead_assignments', q =>
           q.select('id, updated_at, status').in('status', ['assigned', 'contacted'])
         ),
         supabase.from('signals').select('id, title, severity, created_at').eq('resolved', false).order('created_at', { ascending: false }).limit(5),

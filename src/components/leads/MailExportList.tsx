@@ -52,7 +52,7 @@ export default function MailExportList() {
     const ps = 1000;
     while (true) {
       const { data } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id, org_name, person_name, person_email, person_phone, branche, updated_at')
         .eq('sales_executive_id', seId)
         .eq('status', 'lost')
@@ -126,7 +126,7 @@ export default function MailExportList() {
 
   const reactivate = async (id: string) => {
     const { error } = await supabase
-      .from('pipedrive_lead_assignments')
+      .from('lead_assignments')
       .update({ status: 'assigned', updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {

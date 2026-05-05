@@ -13,7 +13,7 @@ import SEPerformanceBars from '@/components/dashboard/SEPerformanceBars';
 import DashboardDateFilter from '@/components/dashboard/DashboardDateFilter';
 import DealValueChart from '@/components/dashboard/DealValueChart';
 import WeeklyActivitiesChart from '@/components/dashboard/WeeklyActivitiesChart';
-import PipedriveDashboardWidget from '@/components/dashboard/PipedriveDashboardWidget';
+
 import SEEndOfDayCTA from '@/components/dashboard/SEEndOfDayCTA';
 import SEEodHistory from '@/components/dashboard/SEEodHistory';
 import CICoachingCard from '@/components/dashboard/CICoachingCard';
@@ -51,7 +51,7 @@ export default function SEPersonalDashboard() {
       setIsEmployee((seData as any).employment_type === 'employee');
 
       const { count } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id', { count: 'exact', head: true })
         .eq('sales_executive_id', seData.id)
         .in('status', ['assigned', 'in_progress']);
@@ -172,7 +172,7 @@ export default function SEPersonalDashboard() {
         </TabsContent>
 
         <TabsContent value="charts" className="mt-4 space-y-4">
-          {isEmployee && <PipedriveDashboardWidget seId={seId} seEmail={seEmail} />}
+          {/* Pipedrive widget verwijderd */}
           <DashboardDateFilter from={chartRange.from} to={chartRange.to} onChange={setChartRange} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DealValueChart from={chartRange.from} to={chartRange.to} seId={seId} />

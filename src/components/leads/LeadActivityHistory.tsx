@@ -42,7 +42,7 @@ export default function LeadActivityHistory({ leadAssignmentId }: LeadActivityHi
     const fetchActivities = async () => {
       setLoading(true);
       const { data } = await supabase
-        .from('pipedrive_activities')
+        .from('crm_activities')
         .select('id, activity_type, subject, note, outcome, done, due_date, duration_minutes, created_at, synced_to_pipedrive')
         .eq('lead_assignment_id', leadAssignmentId)
         .order('created_at', { ascending: false });
