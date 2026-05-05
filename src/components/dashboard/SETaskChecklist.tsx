@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PhoneForwarded, Target, TrendingUp, ClipboardList, Phone, ArrowRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
+import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 
 interface TaskItem {
   id: string;
