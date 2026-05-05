@@ -17,7 +17,6 @@ import type { SalesExecutive } from '@/types/database';
 import LeadActivityHistory from '@/components/leads/LeadActivityHistory';
 import SELeadsList from '@/components/leads/SELeadsList';
 import MailExportList from '@/components/leads/MailExportList';
-import PipedrivePage from '@/pages/PipedrivePage';
 import CallLoggingPage from '@/pages/CallLoggingPage';
 import LeadScraper from '@/components/leads/LeadScraper';
 import SELeadScraper from '@/components/leads/SELeadScraper';
@@ -25,8 +24,8 @@ import SELeadScraper from '@/components/leads/SELeadScraper';
 interface LeadAssignment {
   id: string;
   sales_executive_id: string;
-  pipedrive_org_id: number | null;
-  pipedrive_person_id: number | null;
+
+
   org_name: string | null;
   person_name: string | null;
   person_email: string | null;
