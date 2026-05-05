@@ -59,6 +59,7 @@ export type Database = {
           lead_assignment_id: string | null
           notes: string | null
           org_name: string | null
+          organization_id: string | null
           outcome: string
           sales_executive_id: string
           updated_at: string
@@ -74,6 +75,7 @@ export type Database = {
           lead_assignment_id?: string | null
           notes?: string | null
           org_name?: string | null
+          organization_id?: string | null
           outcome?: string
           sales_executive_id: string
           updated_at?: string
@@ -89,6 +91,7 @@ export type Database = {
           lead_assignment_id?: string | null
           notes?: string | null
           org_name?: string | null
+          organization_id?: string | null
           outcome?: string
           sales_executive_id?: string
           updated_at?: string
@@ -99,6 +102,13 @@ export type Database = {
             columns: ["lead_assignment_id"]
             isOneToOne: false
             referencedRelation: "pipedrive_lead_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -128,6 +138,7 @@ export type Database = {
           next_action_at: string | null
           notes: string | null
           org_name: string | null
+          organization_id: string | null
           position: number
           scheduled_at: string | null
           status: string
@@ -150,6 +161,7 @@ export type Database = {
           next_action_at?: string | null
           notes?: string | null
           org_name?: string | null
+          organization_id?: string | null
           position?: number
           scheduled_at?: string | null
           status?: string
@@ -172,12 +184,21 @@ export type Database = {
           next_action_at?: string | null
           notes?: string | null
           org_name?: string | null
+          organization_id?: string | null
           position?: number
           scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "closer_appointments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       closer_round_robin_state: {
         Row: {
@@ -388,6 +409,7 @@ export type Database = {
           follow_up_required: boolean | null
           follow_up_status: string | null
           id: string
+          organization_id: string | null
           sales_executive_id: string
           session_date: string
           status: string | null
@@ -402,6 +424,7 @@ export type Database = {
           follow_up_required?: boolean | null
           follow_up_status?: string | null
           id?: string
+          organization_id?: string | null
           sales_executive_id: string
           session_date: string
           status?: string | null
@@ -416,6 +439,7 @@ export type Database = {
           follow_up_required?: boolean | null
           follow_up_status?: string | null
           id?: string
+          organization_id?: string | null
           sales_executive_id?: string
           session_date?: string
           status?: string | null
@@ -425,6 +449,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "eod_submissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "eod_submissions_sales_executive_id_fkey"
             columns: ["sales_executive_id"]
@@ -563,6 +594,7 @@ export type Database = {
           id: string
           lead_assignment_id: string | null
           metadata_json: Json
+          organization_id: string | null
           sales_executive_id: string | null
           source_id: string | null
           source_table: string
@@ -578,6 +610,7 @@ export type Database = {
           id?: string
           lead_assignment_id?: string | null
           metadata_json?: Json
+          organization_id?: string | null
           sales_executive_id?: string | null
           source_id?: string | null
           source_table: string
@@ -593,13 +626,22 @@ export type Database = {
           id?: string
           lead_assignment_id?: string | null
           metadata_json?: Json
+          organization_id?: string | null
           sales_executive_id?: string | null
           source_id?: string | null
           source_table?: string
           stage?: string
           value_eur?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "funnel_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       funnel_targets: {
         Row: {
@@ -743,6 +785,7 @@ export type Database = {
           id: string
           last_tested_at: string | null
           notes: string | null
+          organization_id: string | null
           provider: string
           status: string | null
           updated_at: string | null
@@ -756,6 +799,7 @@ export type Database = {
           id?: string
           last_tested_at?: string | null
           notes?: string | null
+          organization_id?: string | null
           provider: string
           status?: string | null
           updated_at?: string | null
@@ -769,12 +813,20 @@ export type Database = {
           id?: string
           last_tested_at?: string | null
           notes?: string | null
+          organization_id?: string | null
           provider?: string
           status?: string | null
           updated_at?: string | null
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "integration_configs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "integration_configs_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -950,6 +1002,54 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          accent_color_hex: string | null
+          active: boolean
+          created_at: string
+          id: string
+          logo_url: string | null
+          modules: string[]
+          name: string
+          pipedrive_api_token: string | null
+          pipedrive_company_domain: string | null
+          primary_color_hex: string | null
+          slug: string
+          subdomain: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color_hex?: string | null
+          active?: boolean
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          modules?: string[]
+          name: string
+          pipedrive_api_token?: string | null
+          pipedrive_company_domain?: string | null
+          primary_color_hex?: string | null
+          slug: string
+          subdomain?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color_hex?: string | null
+          active?: boolean
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          modules?: string[]
+          name?: string
+          pipedrive_api_token?: string | null
+          pipedrive_company_domain?: string | null
+          primary_color_hex?: string | null
+          slug?: string
+          subdomain?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pipedrive_activities: {
         Row: {
           activity_type: string
@@ -1038,6 +1138,7 @@ export type Database = {
           id: string
           notes: string | null
           org_name: string | null
+          organization_id: string | null
           person_email: string | null
           person_name: string | null
           person_phone: string | null
@@ -1059,6 +1160,7 @@ export type Database = {
           id?: string
           notes?: string | null
           org_name?: string | null
+          organization_id?: string | null
           person_email?: string | null
           person_name?: string | null
           person_phone?: string | null
@@ -1080,6 +1182,7 @@ export type Database = {
           id?: string
           notes?: string | null
           org_name?: string | null
+          organization_id?: string | null
           person_email?: string | null
           person_name?: string | null
           person_phone?: string | null
@@ -1093,6 +1196,13 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pipedrive_lead_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pipedrive_lead_assignments_sales_executive_id_fkey"
             columns: ["sales_executive_id"]
@@ -1228,6 +1338,7 @@ export type Database = {
           full_name: string | null
           id: string
           last_name: string
+          organization_id: string | null
           phone: string | null
           start_date: string | null
           status: string | null
@@ -1246,6 +1357,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_name: string
+          organization_id?: string | null
           phone?: string | null
           start_date?: string | null
           status?: string | null
@@ -1264,13 +1376,22 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_name?: string
+          organization_id?: string | null
           phone?: string | null
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_executives_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       se_baselines: {
         Row: {
@@ -1352,6 +1473,7 @@ export type Database = {
           description: string | null
           escalation_level: number | null
           id: string
+          organization_id: string | null
           resolved: boolean | null
           resolved_at: string | null
           sales_executive_id: string
@@ -1367,6 +1489,7 @@ export type Database = {
           description?: string | null
           escalation_level?: number | null
           id?: string
+          organization_id?: string | null
           resolved?: boolean | null
           resolved_at?: string | null
           sales_executive_id: string
@@ -1382,6 +1505,7 @@ export type Database = {
           description?: string | null
           escalation_level?: number | null
           id?: string
+          organization_id?: string | null
           resolved?: boolean | null
           resolved_at?: string | null
           sales_executive_id?: string
@@ -1390,6 +1514,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "signals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "signals_sales_executive_id_fkey"
             columns: ["sales_executive_id"]
@@ -1527,6 +1658,41 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      user_organizations: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          organization_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_organizations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1687,6 +1853,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
