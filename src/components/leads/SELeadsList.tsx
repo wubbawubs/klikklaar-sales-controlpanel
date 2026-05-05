@@ -15,7 +15,7 @@ import {
   ArrowUp, ArrowDown, ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DealDetailSheet } from '@/components/pipedrive/DealDetailSheet';
+import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
@@ -651,7 +651,7 @@ export default function SELeadsList() {
       />
 
       {/* Lead detail sheet */}
-      <DealDetailSheet
+      <LeadDetailSheet
         open={!!detailLead}
         onOpenChange={(open) => { if (!open) { setDetailIdx(null); fetchLeads(); fetchCallStats(); } }}
         dealTitle={detailLead?.deal_title ?? detailLead?.org_name ?? undefined}
