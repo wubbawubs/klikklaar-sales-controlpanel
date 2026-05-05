@@ -210,9 +210,8 @@ export default function SELeadsList() {
       if (quickFilter === 'cold' && attempts < 3) return false;
       if (quickFilter === 'reached' && !reached) return false;
 
-      // Source filter: scraped = no Pipedrive org id, pipedrive = has org id
-      if (sourceFilter === 'pipedrive' && !l.pipedrive_org_id) return false;
-      if (sourceFilter === 'scraped' && l.pipedrive_org_id) return false;
+      // Source filter not relevant zonder Pipedrive
+      if (sourceFilter === 'pipedrive') return false;
 
       if (filterBranche !== 'all' && l.branche !== filterBranche) return false;
       if (search) {
