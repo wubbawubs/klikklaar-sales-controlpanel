@@ -161,6 +161,11 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
           </div>
         </div>
 
+        {/* Brand switcher */}
+        <div className={cn('border-b border-sidebar-border', collapsed ? 'px-1.5 py-2' : 'px-3 py-2')}>
+          <BrandSwitcher collapsed={collapsed} />
+        </div>
+
         {/* Navigation */}
         <nav className={cn('flex-1 overflow-y-auto py-3', collapsed ? 'px-1.5' : 'px-3')}>
           <div className="space-y-0.5">
