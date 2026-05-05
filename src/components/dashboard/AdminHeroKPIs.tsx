@@ -103,7 +103,7 @@ export default function AdminHeroKPIs({ from, to }: Props) {
       ]);
     };
     load();
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   if (!kpis) {
     return (
