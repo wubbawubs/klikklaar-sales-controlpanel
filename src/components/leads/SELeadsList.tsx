@@ -33,8 +33,6 @@ interface Lead {
   status: string;
   notes: string | null;
   deal_title: string | null;
-  pipedrive_org_id: number | null;
-  pipedrive_person_id: number | null;
   product_line: string | null;
   assigned_at: string | null;
 }
