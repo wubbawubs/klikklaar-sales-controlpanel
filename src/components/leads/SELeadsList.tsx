@@ -650,7 +650,6 @@ export default function SELeadsList() {
         dealTitle={detailLead?.deal_title ?? detailLead?.org_name ?? undefined}
         assignedAt={detailLead?.assigned_at ?? null}
         leadAssignmentId={detailLead?.id}
-        leadAssignmentId={detailLead?.id}
         orgName={detailLead?.org_name}
         personName={detailLead?.person_name}
         personPhone={detailLead?.person_phone}
