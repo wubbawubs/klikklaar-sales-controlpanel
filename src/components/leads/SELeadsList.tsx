@@ -260,12 +260,8 @@ export default function SELeadsList() {
   const detailLead = detailIdx !== null ? pageLeads[detailIdx] ?? null : null;
 
   const sourceCounts = useMemo(() => {
-    let pd = 0, sc = 0;
-    for (const l of leads) {
-      if (l.status === 'lost') continue;
-      if (l.pipedrive_org_id) pd++; else sc++;
-    }
-    return { all: pd + sc, pipedrive: pd, scraped: sc };
+    const total = leads.filter(l => l.status !== 'lost').length;
+    return { all: total, pipedrive: 0, scraped: total };
   }, [leads]);
 
   // Quick filter counts
