@@ -145,7 +145,7 @@ function AdminLeadManagement() {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('*')
           .order('assigned_at', { ascending: false })
           .range(from, from + ps - 1);
@@ -165,7 +165,7 @@ function AdminLeadManagement() {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await supabase
-          .from('pipedrive_activities')
+          .from('crm_activities')
           .select('lead_assignment_id')
           .range(from, from + ps - 1);
         if (error) { console.error('Activity fetch error:', error.message); break; }
@@ -242,7 +242,7 @@ function AdminLeadManagement() {
     if (!targetSeId || selectedLeads.size === 0) return;
     setReassigning(true);
     const { error } = await supabase
-      .from('pipedrive_lead_assignments')
+      .from('lead_assignments')
       .update({ sales_executive_id: targetSeId, updated_at: new Date().toISOString() })
       .in('id', Array.from(selectedLeads));
 

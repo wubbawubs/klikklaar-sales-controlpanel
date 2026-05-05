@@ -130,7 +130,7 @@ export default function SELeadsList() {
     let hasMore = true;
     while (hasMore) {
       const { data } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id, org_name, person_name, person_email, person_phone, website, branche, status, notes, deal_title, pipedrive_org_id, pipedrive_person_id, product_line, assigned_at')
         .eq('sales_executive_id', seId)
         .order('assigned_at', { ascending: false })
@@ -642,7 +642,7 @@ export default function SELeadsList() {
         onConfirm={async (note) => {
           if (!pendingLead || !seId) return;
           await supabase
-            .from('pipedrive_lead_assignments')
+            .from('lead_assignments')
             .update({ notes: note, updated_at: new Date().toISOString() })
             .eq('id', pendingLead.id);
           toast.success('Notitie opgeslagen');

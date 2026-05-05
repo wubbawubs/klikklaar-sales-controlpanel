@@ -64,14 +64,14 @@ export function useHealthCheck(seId: string | null, seName: string, isEmployee: 
       try {
         const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         const { data } = await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('updated_at')
           .eq('sales_executive_id', seId)
           .gte('updated_at', thirtyMinAgo)
           .limit(1);
 
         const { count } = await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('id', { count: 'exact', head: true })
           .eq('sales_executive_id', seId);
 

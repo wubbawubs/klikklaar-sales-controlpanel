@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       let leadAssignmentId: string | null = null;
       if (inviteeEmail || orgName) {
         const { data: leads } = await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .select('id')
           .or([
             inviteeEmail ? `person_email.eq.${inviteeEmail}` : null,

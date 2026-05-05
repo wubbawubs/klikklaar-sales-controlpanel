@@ -39,7 +39,7 @@ export default function LeadHealthOverview() {
       { data: callsData },
     ] = await Promise.all([
       supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active'),
-      supabase.from('pipedrive_lead_assignments').select('sales_executive_id, status'),
+      supabase.from('lead_assignments').select('sales_executive_id, status'),
       supabase.from('calls').select('sales_executive_id, created_at, outcome, callback_date'),
     ]);
 

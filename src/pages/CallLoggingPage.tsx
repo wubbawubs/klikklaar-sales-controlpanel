@@ -82,7 +82,7 @@ export default function CallLoggingPage() {
     queryKey: ['se-leads', seData?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('*')
         .eq('sales_executive_id', seData!.id)
         .in('status', ['assigned', 'in_progress', 'contacted']);
@@ -129,7 +129,7 @@ export default function CallLoggingPage() {
           ? 'qualified'
           : 'contacted';
         await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .update({ status: newStatus })
           .eq('id', selectedLead)
           .eq('sales_executive_id', seData!.id);

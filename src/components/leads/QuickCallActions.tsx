@@ -152,7 +152,7 @@ export async function logQuickCall({
 
   if (newStatus && newStatus !== lead.status) {
     await supabase
-      .from('pipedrive_lead_assignments')
+      .from('lead_assignments')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', lead.id);
   }

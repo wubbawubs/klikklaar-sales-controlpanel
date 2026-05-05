@@ -48,7 +48,7 @@ export default function SETaskChecklist({ seId }: Props) {
         .order('callback_date', { ascending: true }),
       // Untouched leads (only 'assigned' status)
       supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id, org_name, person_name, person_phone, deal_title, pipedrive_org_id, pipedrive_person_id')
         .eq('sales_executive_id', seId)
         .in('status', ['assigned'])
@@ -89,7 +89,7 @@ export default function SETaskChecklist({ seId }: Props) {
     let assignmentMap: Record<string, { pipedrive_org_id: number | null; pipedrive_person_id: number | null; deal_title: string | null; id: string; org_name: string | null; person_name: string | null; person_phone: string | null }> = {};
     if (assignmentIds.length > 0) {
       const { data: assignments } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id, pipedrive_org_id, pipedrive_person_id, deal_title, org_name, person_name, person_phone')
         .in('id', assignmentIds);
       (assignments || []).forEach(a => {

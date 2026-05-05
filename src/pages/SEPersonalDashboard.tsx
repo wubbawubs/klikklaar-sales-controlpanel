@@ -51,7 +51,7 @@ export default function SEPersonalDashboard() {
       setIsEmployee((seData as any).employment_type === 'employee');
 
       const { count } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id', { count: 'exact', head: true })
         .eq('sales_executive_id', seData.id)
         .in('status', ['assigned', 'in_progress']);

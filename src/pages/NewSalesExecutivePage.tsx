@@ -283,7 +283,7 @@ export default function NewSalesExecutivePage() {
             assigned_by: user?.id,
             status: 'assigned',
           }));
-          await (supabase as any).from('pipedrive_lead_assignments').insert(leadRows);
+          await (supabase as any).from('lead_assignments').insert(leadRows);
         }
 
         // Provision auth account (creates login + assigns role + sends reset email)

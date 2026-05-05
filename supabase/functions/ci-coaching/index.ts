@@ -58,11 +58,11 @@ serve(async (req) => {
           .eq("sales_executive_id", sales_executive_id)
           .gte("created_at", `${weekAgo}T00:00:00`),
         supabase
-          .from("pipedrive_lead_assignments")
+          .from("lead_assignments")
           .select("status, deal_title, org_name, updated_at")
           .eq("sales_executive_id", sales_executive_id),
         supabase
-          .from("pipedrive_activities")
+          .from("crm_activities")
           .select("activity_type, done, due_date, outcome, subject")
           .eq("sales_executive_id", sales_executive_id)
           .gte("created_at", `${weekAgo}T00:00:00`),

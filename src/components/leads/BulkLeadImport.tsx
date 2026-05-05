@@ -135,7 +135,7 @@ export default function BulkLeadImport({ ses, onImported }: BulkLeadImportProps)
     let inserted = 0;
     for (let i = 0; i < rows.length; i += 100) {
       const batch = rows.slice(i, i + 100);
-      const { error } = await supabase.from('pipedrive_lead_assignments').insert(batch);
+      const { error } = await supabase.from('lead_assignments').insert(batch);
       if (error) {
         toast.error(`Import fout bij rij ${i + 1}: ${error.message}`);
         setImporting(false);

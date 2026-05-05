@@ -113,8 +113,8 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
     setLoading(true);
     try {
       const [leadsRes, activitiesRes] = await Promise.all([
-        (supabase as any).from('pipedrive_lead_assignments').select('*').eq('sales_executive_id', salesExecutiveId).order('created_at', { ascending: false }),
-        (supabase as any).from('pipedrive_activities').select('*').eq('sales_executive_id', salesExecutiveId).order('created_at', { ascending: false }).limit(100),
+        (supabase as any).from('lead_assignments').select('*').eq('sales_executive_id', salesExecutiveId).order('created_at', { ascending: false }),
+        (supabase as any).from('crm_activities').select('*').eq('sales_executive_id', salesExecutiveId).order('created_at', { ascending: false }).limit(100),
       ]);
       setLeads(leadsRes.data || []);
       setActivities(activitiesRes.data || []);
@@ -187,7 +187,7 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
     setSyncing(true);
     try {
       // 1. Create activity in our database
-      const { data: localActivity, error: localErr } = await (supabase as any).from('pipedrive_activities').insert({
+      const { data: localActivity, error: localErr } = await (supabase as any).from('crm_activities').insert({
         sales_executive_id: salesExecutiveId,
         lead_assignment_id: selectedLead.id,
         pipedrive_org_id: selectedLead.pipedrive_org_id,
@@ -227,13 +227,13 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
         const result = await res.json();
         if (result.success && result.activity) {
           // Update local record with Pipedrive ID
-          await (supabase as any).from('pipedrive_activities')
+          await (supabase as any).from('crm_activities')
             .update({ pipedrive_activity_id: result.activity.id, synced_to_pipedrive: true })
             .eq('id', localActivity.id);
         }
       } catch (syncErr) {
         console.error('Failed to sync to Pipedrive:', syncErr);
-        await (supabase as any).from('pipedrive_activities')
+        await (supabase as any).from('crm_activities')
           .update({ pipedrive_sync_error: String(syncErr) })
           .eq('id', localActivity.id);
       }
@@ -250,7 +250,7 @@ export default function SalesExecutiveCRM({ salesExecutiveId, salesExecutiveName
   };
 
   const updateLeadStatus = async (leadId: string, status: string) => {
-    await (supabase as any).from('pipedrive_lead_assignments').update({ status }).eq('id', leadId);
+    await (supabase as any).from('lead_assignments').update({ status }).eq('id', leadId);
     loadData();
     toast.success('Lead status bijgewerkt');
   };

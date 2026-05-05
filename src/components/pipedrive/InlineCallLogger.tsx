@@ -81,7 +81,7 @@ export function InlineCallLogger({ leadAssignmentId, orgName, personName, person
       if (leadAssignmentId) {
         const newStatus = ['interest', 'appointment', 'deal'].includes(outcome) ? 'qualified' : 'contacted';
         await supabase
-          .from('pipedrive_lead_assignments')
+          .from('lead_assignments')
           .update({ status: newStatus })
           .eq('id', leadAssignmentId)
           .eq('sales_executive_id', seData.id);

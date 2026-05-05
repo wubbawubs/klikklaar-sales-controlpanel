@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
     // Find leads that are 'contacted' and whose most recent call was 'not_reached' and older than 3 days
     const { data: contactedLeads, error: clErr } = await supabase
-      .from("pipedrive_lead_assignments")
+      .from("lead_assignments")
       .select("id, sales_executive_id")
       .eq("status", "contacted");
 
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       // Voicemail (not_reached): recycle after 3 days
       if (lastCall.outcome === "not_reached" && daysSinceCall >= 3) {
         await supabase
-          .from("pipedrive_lead_assignments")
+          .from("lead_assignments")
           .update({ status: "assigned", updated_at: now.toISOString() })
           .eq("id", lead.id);
         voicemailReset++;
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
         if (daysPastReference >= 7) {
           await supabase
-            .from("pipedrive_lead_assignments")
+            .from("lead_assignments")
             .update({ status: "assigned", updated_at: now.toISOString() })
             .eq("id", lead.id);
           callbackReset++;

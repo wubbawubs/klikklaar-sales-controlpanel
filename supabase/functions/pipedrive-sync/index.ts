@@ -142,7 +142,7 @@ serve(async (req) => {
       } catch { /* skip */ }
     }
 
-    // Sync deals → pipedrive_lead_assignments (batch upsert)
+    // Sync deals → lead_assignments (batch upsert)
     const leadRows = deals.map((deal: any) => {
       const orgId = typeof deal.org_id === 'object' ? deal.org_id?.value : deal.org_id;
       const personId = typeof deal.person_id === 'object' ? deal.person_id?.value : deal.person_id;
@@ -173,7 +173,7 @@ serve(async (req) => {
     for (let i = 0; i < leadRows.length; i += 50) {
       const batch = leadRows.slice(i, i + 50);
       const { error } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .upsert(batch, { onConflict: 'sales_executive_id,pipedrive_deal_id' });
       if (error) console.error('Lead batch upsert error:', error.message);
       else synced_leads += batch.length;
@@ -214,7 +214,7 @@ serve(async (req) => {
         for (let i = 0; i < actRows.length; i += 50) {
           const batch = actRows.slice(i, i + 50);
           const { error } = await supabase
-            .from('pipedrive_activities')
+            .from('crm_activities')
             .upsert(batch, { onConflict: 'sales_executive_id,pipedrive_activity_id' });
           if (error) console.error('Activity batch upsert error:', error.message);
           else synced_activities += batch.length;

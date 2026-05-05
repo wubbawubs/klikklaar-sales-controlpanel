@@ -22,7 +22,7 @@ export default function ConversionFunnel({ from, to }: Props) {
   useEffect(() => {
     const load = async () => {
       const [leads, calls] = await Promise.all([
-        fetchAll<any>('pipedrive_lead_assignments', q =>
+        fetchAll<any>('lead_assignments', q =>
           q.select('id, status, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
         ),
         fetchAll<any>('calls', q =>

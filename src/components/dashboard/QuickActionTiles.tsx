@@ -34,14 +34,14 @@ export default function QuickActionTiles({ seId }: Props) {
 
       // Warm: leads with status interest
       const { count: warmCount } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id', { count: 'exact', head: true })
         .eq('sales_executive_id', seId)
         .eq('status', 'interest');
 
       // Open: assigned/in_progress
       const { count: openCount } = await supabase
-        .from('pipedrive_lead_assignments')
+        .from('lead_assignments')
         .select('id', { count: 'exact', head: true })
         .eq('sales_executive_id', seId)
         .in('status', ['assigned', 'in_progress', 'contacted', 'no_answer']);
