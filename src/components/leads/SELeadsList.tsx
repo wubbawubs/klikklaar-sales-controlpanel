@@ -649,8 +649,7 @@ export default function SELeadsList() {
         onOpenChange={(open) => { if (!open) { setDetailIdx(null); fetchLeads(); fetchCallStats(); } }}
         dealTitle={detailLead?.deal_title ?? detailLead?.org_name ?? undefined}
         assignedAt={detailLead?.assigned_at ?? null}
-        orgId={detailLead?.pipedrive_org_id}
-        personId={detailLead?.pipedrive_person_id}
+        leadAssignmentId={detailLead?.id}
         leadAssignmentId={detailLead?.id}
         orgName={detailLead?.org_name}
         personName={detailLead?.person_name}
