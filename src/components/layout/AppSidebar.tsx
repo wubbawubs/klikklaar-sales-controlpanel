@@ -17,8 +17,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BrandSwitcher } from '@/components/layout/BrandSwitcher';
 import { cn } from '@/lib/utils';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
 
