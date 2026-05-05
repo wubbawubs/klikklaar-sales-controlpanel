@@ -270,8 +270,6 @@ export default function SETaskChecklist({ seId }: Props) {
         open={!!selectedTask}
         onOpenChange={(open) => { if (!open) { setSelectedIdx(null); fetchTasks(); } }}
         dealTitle={selectedTask?.dealTitle ?? selectedTask?.label ?? undefined}
-        orgId={selectedTask?.orgId}
-        personId={selectedTask?.personId}
         leadAssignmentId={selectedTask?.leadAssignmentId}
         orgName={selectedTask?.orgName}
         personName={selectedTask?.personName}
