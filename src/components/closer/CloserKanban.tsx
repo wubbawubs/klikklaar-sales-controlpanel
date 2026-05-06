@@ -45,7 +45,7 @@ export function CloserKanban() {
 
     setItems(rows.map(r => ({ ...r, caller_name: r.caller_sales_executive_id ? nameMap.get(r.caller_sales_executive_id) ?? null : null })));
     setLoading(false);
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     load();
