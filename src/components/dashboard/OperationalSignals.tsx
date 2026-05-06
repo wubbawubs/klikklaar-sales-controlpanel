@@ -76,7 +76,7 @@ export default function OperationalSignals() {
       });
     };
     load();
-  }, []);
+  }, [orgId]);
 
   if (!data) {
     return (
