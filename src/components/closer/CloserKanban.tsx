@@ -23,12 +23,15 @@ export function CloserKanban() {
   const [items, setItems] = useState<CloserAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CloserAppointment | null>(null);
+  const orgId = useOrgId();
 
   const load = useCallback(async () => {
-    const rows = await fetchAll<any>('closer_appointments', (q) =>
-      q.select('id, status, org_name, contact_name, contact_email, contact_phone, scheduled_at, notes, deal_value_eur, caller_sales_executive_id, last_activity_at, next_action_at')
-        .order('scheduled_at', { ascending: true, nullsFirst: false })
-    );
+    const rows = await fetchAll<any>('closer_appointments', (q) => {
+      let qq = q.select('id, status, org_name, contact_name, contact_email, contact_phone, scheduled_at, notes, deal_value_eur, caller_sales_executive_id, last_activity_at, next_action_at, organization_id')
+        .order('scheduled_at', { ascending: true, nullsFirst: false });
+      if (orgId) qq = qq.eq('organization_id', orgId);
+      return qq;
+    });
 
     const callerIds = Array.from(new Set(rows.map(r => r.caller_sales_executive_id).filter(Boolean)));
     const nameMap = new Map<string, string>();
