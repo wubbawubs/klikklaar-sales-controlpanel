@@ -44,7 +44,7 @@ export default function TeamActivityTrend({ from, to }: Props) {
       setData(rows);
     };
     load();
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   return (
     <Card>
