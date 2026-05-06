@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import klikklaarIcon from '@/assets/klikklaar-icon.jpeg';
-import otrIcon from '@/assets/org-otr-icon.png';
+import otrIcon from '@/assets/org-otr-icon.webp';
 import oneideaIcon from '@/assets/org-oneidea-icon.png';
 import { cn } from '@/lib/utils';
 
