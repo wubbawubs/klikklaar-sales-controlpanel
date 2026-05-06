@@ -64,6 +64,9 @@ export default function CloserCRMPage() {
             <p className="text-sm text-muted-foreground">Jouw afspraken via Calendly, ingedeeld per status.</p>
           </div>
         </div>
+        <Button onClick={() => setNewOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Nieuwe lead
+        </Button>
       </div>
 
       {/* KPI strip */}
@@ -76,6 +79,7 @@ export default function CloserCRMPage() {
       </div>
 
       <CloserKanban />
+      <NewAppointmentDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={load} />
     </div>
   );
 }
