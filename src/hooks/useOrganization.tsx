@@ -95,6 +95,27 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     let active: Organization | null = null;
 
     if (sub) active = orgs.find(o => o.subdomain === sub) ?? null;
+
+    // Auto-redirect: on production, if user landed on a subdomain they have NO access to,
+    // forward them to their default brand subdomain (one-shot to avoid loops).
+    if (!active && sub && isProductionHost() && !isAdmin && orgs.length > 0) {
+      const alreadyTried = sessionStorage.getItem(SUBDOMAIN_REDIRECT_KEY);
+      if (!alreadyTried) {
+        const { data: defMem } = await supabase
+          .from('user_organizations')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .eq('is_default', true)
+          .maybeSingle();
+        const target = orgs.find(o => o.id === defMem?.organization_id) ?? orgs[0];
+        if (target?.subdomain && target.subdomain !== sub) {
+          sessionStorage.setItem(SUBDOMAIN_REDIRECT_KEY, '1');
+          window.location.href = `https://${target.subdomain}.klikklaarseo.nl/`;
+          return;
+        }
+      }
+    }
+
     if (!active && stored) active = orgs.find(o => o.id === stored) ?? null;
     if (!active && !isAdmin && user) {
       const { data: defMem } = await supabase
@@ -106,6 +127,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       if (defMem) active = orgs.find(o => o.id === defMem.organization_id) ?? null;
     }
     if (!active) active = orgs[0] ?? null;
+
+    // Clear redirect guard once we successfully landed on a valid org
+    if (active) sessionStorage.removeItem(SUBDOMAIN_REDIRECT_KEY);
 
     setCurrent(active);
     applyTheme(active);
