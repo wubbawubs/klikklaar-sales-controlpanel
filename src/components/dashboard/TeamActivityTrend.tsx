@@ -14,11 +14,14 @@ interface Props {
 
 export default function TeamActivityTrend({ from, to }: Props) {
   const [data, setData] = useState<any[] | null>(null);
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
-      const calls = await fetchAll<any>('calls', q =>
-        q.select('outcome, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
+      const calls = await fetchAll<any>('calls', q => {
+        let qq = q.select('outcome, created_at, organization_id').gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+        if (orgId) qq = qq.eq('organization_id', orgId);
+        return qq;
       );
 
       const days = eachDayOfInterval({ start: from, end: to });
