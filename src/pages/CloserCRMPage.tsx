@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CloserKanban } from '@/components/closer/CloserKanban';
-import { Handshake, TrendingUp, Trophy, Euro, Calendar } from 'lucide-react';
+import { NewAppointmentDialog } from '@/components/closer/NewAppointmentDialog';
+import { Button } from '@/components/ui/button';
+import { Handshake, TrendingUp, Trophy, Euro, Calendar, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
 import { useOrgId } from '@/hooks/useOrgId';
@@ -15,6 +17,7 @@ interface KPIs {
 
 export default function CloserCRMPage() {
   const [kpis, setKpis] = useState<KPIs>({ total: 0, active: 0, deals: 0, totalValue: 0, scheduledThisWeek: 0 });
+  const [newOpen, setNewOpen] = useState(false);
   const orgId = useOrgId();
 
   useEffect(() => {
@@ -61,6 +64,9 @@ export default function CloserCRMPage() {
             <p className="text-sm text-muted-foreground">Jouw afspraken via Calendly, ingedeeld per status.</p>
           </div>
         </div>
+        <Button onClick={() => setNewOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Nieuwe lead
+        </Button>
       </div>
 
       {/* KPI strip */}
@@ -73,6 +79,7 @@ export default function CloserCRMPage() {
       </div>
 
       <CloserKanban />
+      <NewAppointmentDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={load} />
     </div>
   );
 }

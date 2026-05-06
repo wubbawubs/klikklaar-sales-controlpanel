@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchAll } from '@/lib/fetch-all';
+import { useOrgId } from '@/hooks/useOrgId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Loader2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -13,12 +14,15 @@ interface Props {
 
 export default function TeamActivityTrend({ from, to }: Props) {
   const [data, setData] = useState<any[] | null>(null);
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
-      const calls = await fetchAll<any>('calls', q =>
-        q.select('outcome, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
-      );
+      const calls = await fetchAll<any>('calls', q => {
+        let qq = q.select('outcome, created_at, organization_id').gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+        if (orgId) qq = qq.eq('organization_id', orgId);
+        return qq;
+      });
 
       const days = eachDayOfInterval({ start: from, end: to });
       const rows = days.map(d => {
@@ -40,7 +44,7 @@ export default function TeamActivityTrend({ from, to }: Props) {
       setData(rows);
     };
     load();
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   return (
     <Card>

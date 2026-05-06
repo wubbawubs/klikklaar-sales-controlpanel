@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrgId } from '@/hooks/useOrgId';
+import { fetchAll } from '@/lib/fetch-all';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,24 +25,33 @@ interface SELeadHealth {
 export default function LeadHealthOverview() {
   const [data, setData] = useState<SELeadHealth[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrgId();
 
   useEffect(() => {
     fetchHealth();
     const interval = setInterval(fetchHealth, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
 
   const fetchHealth = async () => {
     const today = new Date().toISOString().split('T')[0];
 
-    const [
-      { data: sesData },
-      { data: leadsData },
-      { data: callsData },
-    ] = await Promise.all([
-      supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active'),
-      supabase.from('lead_assignments').select('sales_executive_id, status'),
-      supabase.from('calls').select('sales_executive_id, created_at, outcome, callback_date'),
+    let sesQ = supabase.from('sales_executives').select('id, full_name, status, organization_id').eq('status', 'active');
+    if (orgId) sesQ = sesQ.eq('organization_id', orgId);
+
+    const [{ data: sesData }, leadsData, callsData] = await Promise.all([
+      sesQ,
+      fetchAll<any>('lead_assignments', q => {
+        let qq = q.select('sales_executive_id, status, organization_id');
+        if (orgId) qq = qq.eq('organization_id', orgId);
+        return qq;
+      }),
+      fetchAll<any>('calls', q => {
+        let qq = q.select('sales_executive_id, created_at, outcome, callback_date, organization_id');
+        if (orgId) qq = qq.eq('organization_id', orgId);
+        return qq;
+      }),
     ]);
 
     const seList = sesData || [];

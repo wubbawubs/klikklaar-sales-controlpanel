@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
+import { useOrgId } from '@/hooks/useOrgId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -24,16 +25,28 @@ interface RepStats {
 export default function PerRepAnalytics() {
   const [stats, setStats] = useState<RepStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrgId();
 
   useEffect(() => {
     fetchStats();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
 
   const fetchStats = async () => {
+    let seQ = supabase.from('sales_executives').select('id, full_name, status, organization_id').eq('status', 'active');
+    if (orgId) seQ = seQ.eq('organization_id', orgId);
     const [seList, leads, calls] = await Promise.all([
-      supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active').then(r => r.data || []),
-      fetchAll('lead_assignments', q => q.select('sales_executive_id, status')),
-      fetchAll('calls', q => q.select('sales_executive_id, outcome')),
+      seQ.then(r => r.data || []),
+      fetchAll<any>('lead_assignments', q => {
+        let qq = q.select('sales_executive_id, status, organization_id');
+        if (orgId) qq = qq.eq('organization_id', orgId);
+        return qq;
+      }),
+      fetchAll<any>('calls', q => {
+        let qq = q.select('sales_executive_id, outcome, organization_id');
+        if (orgId) qq = qq.eq('organization_id', orgId);
+        return qq;
+      }),
     ]);
 
     const repStats: RepStats[] = seList.map(se => {

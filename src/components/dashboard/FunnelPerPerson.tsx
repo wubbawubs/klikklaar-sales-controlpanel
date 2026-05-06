@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
+import { useOrgId } from '@/hooks/useOrgId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -58,16 +59,21 @@ export default function FunnelPerPerson({ from, to }: Props) {
   const [targets, setTargets] = useState<Target[]>([]);
   const [seSelected, setSeSelected] = useState<string>('');
   const [closerSelected, setCloserSelected] = useState<string>('');
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
+      let seQ = supabase.from('sales_executives').select('id, full_name, organization_id').eq('status', 'active').order('full_name');
+      if (orgId) seQ = seQ.eq('organization_id', orgId);
       const [ev, { data: sesData }, { data: closersData }, { data: targetsData }] = await Promise.all([
-        fetchAll<FunnelEvent>('funnel_events', q =>
-          q.select('funnel_type, stage, sales_executive_id, closer_user_id, lead_assignment_id, closer_appointment_id, source_id')
+        fetchAll<FunnelEvent>('funnel_events', q => {
+          let qq = q.select('funnel_type, stage, sales_executive_id, closer_user_id, lead_assignment_id, closer_appointment_id, source_id, organization_id')
             .gte('event_at', from.toISOString())
-            .lte('event_at', to.toISOString())
-        ),
-        supabase.from('sales_executives').select('id, full_name').eq('status', 'active').order('full_name'),
+            .lte('event_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
+        seQ,
         supabase.from('profiles').select('user_id, full_name').eq('active', true).order('full_name'),
         supabase.from('funnel_targets').select('funnel_type, from_stage, to_stage, target_pct').eq('scope', 'team'),
       ]);
@@ -82,7 +88,7 @@ export default function FunnelPerPerson({ from, to }: Props) {
     };
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   const targetFor = (ft: string, fs: string, ts: string) =>
     targets.find(t => t.funnel_type === ft && t.from_stage === fs && t.to_stage === ts)?.target_pct ?? null;

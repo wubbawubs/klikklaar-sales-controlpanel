@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrgId } from '@/hooks/useOrgId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,35 +25,32 @@ interface SEAction {
 export default function AdminNBAOverview() {
   const [seActions, setSeActions] = useState<SEAction[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrgId();
 
   useEffect(() => {
     const analyze = async () => {
-      const { data: seData } = await supabase
+      let seQ = supabase
         .from('sales_executives')
-        .select('id, full_name, first_name, last_name')
+        .select('id, full_name, first_name, last_name, organization_id')
         .eq('status', 'active');
+      if (orgId) seQ = seQ.eq('organization_id', orgId);
+      const { data: seData } = await seQ;
 
       if (!seData?.length) { setLoading(false); return; }
 
       const today = new Date().toISOString().split('T')[0];
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const [callbacksRes, leadsRes, weekCallsRes] = await Promise.all([
-        supabase
-          .from('calls')
-          .select('id, sales_executive_id, callback_date')
-          .eq('outcome', 'callback')
-          .lt('callback_date', today)
-          .not('callback_date', 'is', null),
-        supabase
-          .from('lead_assignments')
-          .select('id, sales_executive_id')
-          .in('status', ['assigned']),
-        supabase
-          .from('calls')
-          .select('id, sales_executive_id, outcome, created_at')
-          .gte('created_at', weekAgo),
-      ]);
+      let cbQ = supabase.from('calls').select('id, sales_executive_id, callback_date, organization_id')
+        .eq('outcome', 'callback').lt('callback_date', today).not('callback_date', 'is', null);
+      let leadsQ = supabase.from('lead_assignments').select('id, sales_executive_id, organization_id').in('status', ['assigned']);
+      let wkQ = supabase.from('calls').select('id, sales_executive_id, outcome, created_at, organization_id').gte('created_at', weekAgo);
+      if (orgId) {
+        cbQ = cbQ.eq('organization_id', orgId);
+        leadsQ = leadsQ.eq('organization_id', orgId);
+        wkQ = wkQ.eq('organization_id', orgId);
+      }
+      const [callbacksRes, leadsRes, weekCallsRes] = await Promise.all([cbQ, leadsQ, wkQ]);
 
       const callbacks = callbacksRes.data || [];
       const leads = leadsRes.data || [];
@@ -117,7 +115,7 @@ export default function AdminNBAOverview() {
       setLoading(false);
     };
     analyze();
-  }, []);
+  }, [orgId]);
 
   if (loading || seActions.length === 0) return null;
 

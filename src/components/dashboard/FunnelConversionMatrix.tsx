@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
+import { useOrgId } from '@/hooks/useOrgId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, GitBranch, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -52,22 +53,25 @@ export default function FunnelConversionMatrix({ from, to }: Props) {
   const [events, setEvents] = useState<FunnelEvent[] | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
   const [activeFunnel, setActiveFunnel] = useState<string>('cold_call');
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
       const [ev, { data: targetsData }] = await Promise.all([
-        fetchAll<FunnelEvent>('funnel_events', q =>
-          q.select('funnel_type, stage, source_id, lead_assignment_id, closer_appointment_id')
+        fetchAll<FunnelEvent>('funnel_events', q => {
+          let qq = q.select('funnel_type, stage, source_id, lead_assignment_id, closer_appointment_id, organization_id')
             .gte('event_at', from.toISOString())
-            .lte('event_at', to.toISOString())
-        ),
+            .lte('event_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
         supabase.from('funnel_targets').select('funnel_type, from_stage, to_stage, target_pct').eq('scope', 'team'),
       ]);
       setEvents(ev);
       setTargets((targetsData as Target[]) || []);
     };
     load();
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   const availableFunnels = useMemo(() => {
     const set = new Set<string>(targets.map(t => t.funnel_type));
