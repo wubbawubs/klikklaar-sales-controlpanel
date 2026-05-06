@@ -31,17 +31,24 @@ export default function RepLeaderboard({ from, to }: Props) {
   const [reps, setReps] = useState<Rep[] | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('calls');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
+      let seQ = supabase.from('sales_executives').select('id, full_name, status, organization_id').eq('status', 'active');
+      if (orgId) seQ = seQ.eq('organization_id', orgId);
       const [{ data: ses }, calls, leads] = await Promise.all([
-        supabase.from('sales_executives').select('id, full_name, status').eq('status', 'active'),
-        fetchAll<any>('calls', q =>
-          q.select('sales_executive_id, outcome, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
-        ),
-        fetchAll<any>('lead_assignments', q =>
-          q.select('sales_executive_id, status, updated_at').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString())
-        ),
+        seQ,
+        fetchAll<any>('calls', q => {
+          let qq = q.select('sales_executive_id, outcome, created_at, organization_id').gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
+        fetchAll<any>('lead_assignments', q => {
+          let qq = q.select('sales_executive_id, status, updated_at, organization_id').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
       ]);
 
       const list: Rep[] = (ses || []).map(se => {
@@ -63,7 +70,7 @@ export default function RepLeaderboard({ from, to }: Props) {
       setReps(list);
     };
     load();
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   const teamAvg = reps && reps.length > 0 ? {
     calls: reps.reduce((s, r) => s + r.calls, 0) / reps.length,
