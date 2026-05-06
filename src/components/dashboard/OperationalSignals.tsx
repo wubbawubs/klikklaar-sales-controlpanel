@@ -21,20 +21,33 @@ interface Snapshot {
 
 export default function OperationalSignals() {
   const [data, setData] = useState<Snapshot | null>(null);
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
       const today = new Date().toISOString().split('T')[0];
       const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
 
+      let sesQ = supabase.from('sales_executives').select('id, organization_id').eq('status', 'active');
+      let eodQ = supabase.from('eod_submissions').select('session_date, status, organization_id').gte('session_date', sevenDaysAgo);
+      let callbacksQ = supabase.from('calls').select('id, organization_id').eq('outcome', 'callback').not('callback_date', 'is', null).lte('callback_date', today);
+      let signalsQ = supabase.from('signals').select('id, title, severity, created_at, organization_id').eq('resolved', false).order('created_at', { ascending: false }).limit(5);
+      if (orgId) {
+        sesQ = sesQ.eq('organization_id', orgId);
+        eodQ = eodQ.eq('organization_id', orgId);
+        callbacksQ = callbacksQ.eq('organization_id', orgId);
+        signalsQ = signalsQ.eq('organization_id', orgId);
+      }
       const [{ data: ses }, eodWeek, callbacks, leads, signalsRes, healthRes] = await Promise.all([
-        supabase.from('sales_executives').select('id').eq('status', 'active'),
-        supabase.from('eod_submissions').select('session_date, status').gte('session_date', sevenDaysAgo),
-        supabase.from('calls').select('id').eq('outcome', 'callback').not('callback_date', 'is', null).lte('callback_date', today),
-        fetchAll<any>('lead_assignments', q =>
-          q.select('id, updated_at, status').in('status', ['assigned', 'contacted'])
-        ),
-        supabase.from('signals').select('id, title, severity, created_at').eq('resolved', false).order('created_at', { ascending: false }).limit(5),
+        sesQ,
+        eodQ,
+        callbacksQ,
+        fetchAll<any>('lead_assignments', q => {
+          let qq = q.select('id, updated_at, status, organization_id').in('status', ['assigned', 'contacted']);
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
+        signalsQ,
         supabase.from('health_events').select('id, check_type, status, error_message, created_at').neq('status', 'ok').order('created_at', { ascending: false }).limit(5),
       ]);
 
