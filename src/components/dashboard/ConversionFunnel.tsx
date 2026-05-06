@@ -61,7 +61,7 @@ export default function ConversionFunnel({ from, to }: Props) {
       setStages(data);
     };
     load();
-  }, [from, to]);
+  }, [from, to, orgId]);
 
   return (
     <Card>
