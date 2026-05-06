@@ -19,16 +19,21 @@ interface Stage {
 
 export default function ConversionFunnel({ from, to }: Props) {
   const [stages, setStages] = useState<Stage[] | null>(null);
+  const orgId = useOrgId();
 
   useEffect(() => {
     const load = async () => {
       const [leads, calls] = await Promise.all([
-        fetchAll<any>('lead_assignments', q =>
-          q.select('id, status, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
-        ),
-        fetchAll<any>('calls', q =>
-          q.select('id, outcome, lead_assignment_id, created_at').gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
-        ),
+        fetchAll<any>('lead_assignments', q => {
+          let qq = q.select('id, status, created_at, organization_id').gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
+        fetchAll<any>('calls', q => {
+          let qq = q.select('id, outcome, lead_assignment_id, created_at, organization_id').gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+          if (orgId) qq = qq.eq('organization_id', orgId);
+          return qq;
+        }),
       ]);
 
       const totalLeads = leads.length;
