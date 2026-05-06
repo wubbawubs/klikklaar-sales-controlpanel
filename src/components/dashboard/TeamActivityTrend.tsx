@@ -22,7 +22,7 @@ export default function TeamActivityTrend({ from, to }: Props) {
         let qq = q.select('outcome, created_at, organization_id').gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
         if (orgId) qq = qq.eq('organization_id', orgId);
         return qq;
-      );
+      });
 
       const days = eachDayOfInterval({ start: from, end: to });
       const rows = days.map(d => {
