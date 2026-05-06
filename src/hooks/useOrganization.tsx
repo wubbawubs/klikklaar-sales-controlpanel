@@ -38,6 +38,13 @@ function detectSubdomain(): string | null {
   return parts[0];
 }
 
+function isProductionHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname.endsWith('klikklaarseo.nl');
+}
+
+const SUBDOMAIN_REDIRECT_KEY = 'kk-org-redirect-attempted';
+
 function applyTheme(org: Organization | null) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
