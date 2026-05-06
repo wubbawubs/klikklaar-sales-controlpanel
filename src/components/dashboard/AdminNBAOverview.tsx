@@ -115,7 +115,7 @@ export default function AdminNBAOverview() {
       setLoading(false);
     };
     analyze();
-  }, []);
+  }, [orgId]);
 
   if (loading || seActions.length === 0) return null;
 
