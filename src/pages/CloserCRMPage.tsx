@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CloserKanban } from '@/components/closer/CloserKanban';
-import { Handshake, TrendingUp, Trophy, Euro, Calendar } from 'lucide-react';
+import { NewAppointmentDialog } from '@/components/closer/NewAppointmentDialog';
+import { Button } from '@/components/ui/button';
+import { Handshake, TrendingUp, Trophy, Euro, Calendar, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetch-all';
 import { useOrgId } from '@/hooks/useOrgId';
