@@ -17,6 +17,7 @@ interface KPIs {
 
 export default function CloserCRMPage() {
   const [kpis, setKpis] = useState<KPIs>({ total: 0, active: 0, deals: 0, totalValue: 0, scheduledThisWeek: 0 });
+  const [newOpen, setNewOpen] = useState(false);
   const orgId = useOrgId();
 
   useEffect(() => {
