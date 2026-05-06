@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrgId } from '@/hooks/useOrgId';
 import { CLOSER_STATUSES, type CloserStatus } from '@/lib/closer-statuses';
 import { AppointmentCard, type CloserAppointment } from './AppointmentCard';
 import { AppointmentDetailDialog } from './AppointmentDetailDialog';
