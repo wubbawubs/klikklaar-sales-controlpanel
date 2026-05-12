@@ -20,6 +20,7 @@ import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
 import { PhoneCell, WebsiteCell } from './ContactCells';
+import { LeadNoteButton } from './LeadNoteButton';
 import { toast } from 'sonner';
 
 interface Lead {
@@ -540,6 +541,7 @@ export default function SELeadsList() {
                     <TableHead className="whitespace-nowrap px-4">Website</TableHead>
                     <SortableHead label="Laatste actie" sortKey="last_action" current={sortKey} dir={sortDir} onClick={toggleSort} />
                     <SortableHead label="Branche" sortKey="branche" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <TableHead className="whitespace-nowrap px-4 w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -583,6 +585,9 @@ export default function SELeadsList() {
                               {lead.branche}
                             </Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="px-2 w-10" onClick={(e) => e.stopPropagation()}>
+                          {seId && <LeadNoteButton leadAssignmentId={lead.id} salesExecutiveId={seId} />}
                         </TableCell>
                       </TableRow>
                     );
