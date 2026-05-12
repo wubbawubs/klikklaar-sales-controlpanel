@@ -541,6 +541,7 @@ export default function SELeadsList() {
                     <TableHead className="whitespace-nowrap px-4">Website</TableHead>
                     <SortableHead label="Laatste actie" sortKey="last_action" current={sortKey} dir={sortDir} onClick={toggleSort} />
                     <SortableHead label="Branche" sortKey="branche" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                    <TableHead className="whitespace-nowrap px-4 w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
