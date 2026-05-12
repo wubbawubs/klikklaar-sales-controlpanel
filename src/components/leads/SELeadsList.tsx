@@ -586,6 +586,9 @@ export default function SELeadsList() {
                             </Badge>
                           )}
                         </TableCell>
+                        <TableCell className="px-2 w-10" onClick={(e) => e.stopPropagation()}>
+                          {seId && <LeadNoteButton leadAssignmentId={lead.id} salesExecutiveId={seId} />}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
