@@ -20,6 +20,7 @@ import MailExportList from '@/components/leads/MailExportList';
 import CallLoggingPage from '@/pages/CallLoggingPage';
 import LeadScraper from '@/components/leads/LeadScraper';
 import SELeadScraper from '@/components/leads/SELeadScraper';
+import CloserStatusList from '@/components/leads/CloserStatusList';
 
 interface LeadAssignment {
   id: string;
@@ -73,11 +74,15 @@ export default function LeadManagementPage() {
       <Tabs defaultValue="leads" className="space-y-4">
         <TabsList>
           <TabsTrigger value="leads">Mijn leads</TabsTrigger>
+          <TabsTrigger value="closer">Bij closer</TabsTrigger>
           <TabsTrigger value="scraper">Scraper</TabsTrigger>
           <TabsTrigger value="mail-export">Mail export</TabsTrigger>
         </TabsList>
         <TabsContent value="leads">
           <SELeadsList />
+        </TabsContent>
+        <TabsContent value="closer">
+          <CloserStatusList />
         </TabsContent>
         <TabsContent value="scraper">
           <SELeadScraper />
