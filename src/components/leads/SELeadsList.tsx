@@ -20,6 +20,7 @@ import { DailyActivityBar } from './DailyActivityBar';
 import { AttemptIndicator, type AttemptOutcome } from './AttemptIndicator';
 import { CallbackDialog, NoteDialog, logQuickCall, type QuickLead, type QuickOutcome } from './QuickCallActions';
 import { PhoneCell, WebsiteCell } from './ContactCells';
+import { LeadNoteButton } from './LeadNoteButton';
 import { toast } from 'sonner';
 
 interface Lead {
