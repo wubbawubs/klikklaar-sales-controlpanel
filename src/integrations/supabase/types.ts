@@ -1803,6 +1803,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_lead_to_closer: {
+        Args: {
+          p_lead_assignment_id: string
+          p_notes?: string
+          p_scheduled_at?: string
+        }
+        Returns: string
+      }
       check_missed_eod: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
