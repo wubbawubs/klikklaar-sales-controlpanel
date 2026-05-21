@@ -157,5 +157,22 @@ export async function logQuickCall({
       .eq('id', lead.id);
   }
 
+  // Push lead through to a closer when an appointment is booked
+  if (outcome === 'appointment') {
+    const scheduledAt = plannedDate
+      ? new Date(`${plannedDate}T${plannedTime || '10:00'}:00`).toISOString()
+      : null;
+    const { error: assignErr } = await supabase.rpc('assign_lead_to_closer', {
+      p_lead_assignment_id: lead.id,
+      p_scheduled_at: scheduledAt,
+      p_notes: notes ?? null,
+    });
+    if (assignErr) {
+      toast.error('Doorzetten naar closer mislukt: ' + assignErr.message);
+    } else {
+      toast.success('Lead doorgezet naar closer');
+    }
+  }
+
   return { ok: true, planned: plannedDate || undefined };
 }
