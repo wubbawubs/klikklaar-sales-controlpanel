@@ -43,10 +43,14 @@ function pickHiddenField(payload: any, name: string): string | null {
 async function pickNextCloser(supabase: any): Promise<string | null> {
   const { data: roles } = await supabase
     .from('user_roles')
-    .select('user_id')
-    .eq('role', 'closer');
-  const closerIds: string[] = (roles || []).map((r: any) => r.user_id);
+    .select('user_id, role')
+    .in('role', ['closer', 'admin', 'super_admin']);
+  // Prefer closers; fall back to admins/super_admins if none exist
+  const closers = (roles || []).filter((r: any) => r.role === 'closer').map((r: any) => r.user_id);
+  const admins = (roles || []).filter((r: any) => r.role !== 'closer').map((r: any) => r.user_id);
+  const closerIds: string[] = closers.length ? closers : admins;
   if (closerIds.length === 0) return null;
+
 
   const { data: profiles } = await supabase
     .from('profiles')
