@@ -3,6 +3,15 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/types/database';
 
+const AUTH_BOOT_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  return Promise.race<T>([
+    promise,
+    new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(message)), timeoutMs)),
+  ]);
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -23,11 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRoles = async (userId: string) => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
-    setRoles(data?.map(r => r.role as AppRole) ?? []);
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId),
+        AUTH_BOOT_TIMEOUT_MS,
+        'Rollen laden duurt te lang'
+      );
+      if (error) throw error;
+      setRoles(data?.map(r => r.role as AppRole) ?? []);
+    } catch (error) {
+      console.warn('Kon gebruikersrollen niet laden', error);
+      setRoles([]);
+    }
   };
 
   useEffect(() => {
@@ -44,14 +63,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRoles(session.user.id);
-      }
-      setLoading(false);
-    });
+    withTimeout(
+      supabase.auth.getSession(),
+      AUTH_BOOT_TIMEOUT_MS,
+      'Sessie herstellen duurt te lang'
+    )
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchRoles(session.user.id);
+        }
+      })
+      .catch((error) => {
+        console.warn('Kon sessie niet herstellen', error);
+        setSession(null);
+        setUser(null);
+        setRoles([]);
+        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, []);
