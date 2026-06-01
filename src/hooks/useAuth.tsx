@@ -5,11 +5,16 @@ import type { AppRole } from '@/types/database';
 
 const AUTH_BOOT_TIMEOUT_MS = 8000;
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
-  return Promise.race<T>([
-    promise,
-    new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(message)), timeoutMs)),
-  ]);
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: number | undefined;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<never>((_, reject) => {
+      timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    }),
+  ]).finally(() => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  });
 }
 
 interface AuthContextType {
