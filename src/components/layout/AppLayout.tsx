@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
+import { NotificationBell } from './NotificationBell';
 
 const STORAGE_KEY = 'kk-sidebar-collapsed';
 
@@ -76,7 +77,9 @@ export function AppLayout() {
             </button>
             <span className="text-sm font-semibold text-foreground lg:hidden">Control Center</span>
           </div>
-          <div className="flex items-center gap-1" />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+          </div>
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">

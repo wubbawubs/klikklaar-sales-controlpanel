@@ -16,6 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
+import { notifyUser } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 
 function initials(name: string | null, email: string | null): string {
@@ -32,11 +33,23 @@ const LABEL_COLORS: Record<string, string> = {
   docs:    'bg-gray-500/20 text-gray-600',
 };
 
-function CardMembers({ cardId }: { cardId: string }) {
+function CardMembers({ cardId, boardId, cardTitle }: { cardId: string; boardId: string; cardTitle: string }) {
   const { data: members = [] } = useCardMembers(cardId);
   const { data: team = [] } = useTeamMembers();
   const toggle = useToggleCardMember(cardId);
   const memberIds = new Set(members.map(m => m.user_id));
+
+  const onToggle = (userId: string, add: boolean) => {
+    toggle.mutate({ userId, add });
+    if (add) {
+      notifyUser({
+        userId, type: 'card_assigned',
+        title: 'Je bent getagd op een kaart',
+        body: cardTitle,
+        link: `/boards/${boardId}`,
+      });
+    }
+  };
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -57,7 +70,7 @@ function CardMembers({ cardId }: { cardId: string }) {
           {team.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Geen teamleden</div>}
           {team.map(t => (
             <DropdownMenuItem key={t.user_id} className="gap-2"
-              onClick={() => toggle.mutate({ userId: t.user_id, add: !memberIds.has(t.user_id) })}>
+              onClick={() => onToggle(t.user_id, !memberIds.has(t.user_id))}>
               <span className="h-5 w-5 rounded-full bg-muted text-[9px] font-bold flex items-center justify-center">
                 {initials(t.full_name, t.email)}
               </span>
@@ -154,7 +167,7 @@ function CardDetail({ card, boardId, onClose }: { card: Card; boardId: string; o
           )}
 
           {/* Members (tag people) */}
-          <CardMembers cardId={card.id} />
+          <CardMembers cardId={card.id} boardId={boardId} cardTitle={card.title} />
 
           {/* Due date */}
           <div className="flex items-center gap-2">

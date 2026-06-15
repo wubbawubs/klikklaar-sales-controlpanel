@@ -112,6 +112,45 @@ export function useCreateDeal() {
   });
 }
 
+export function useCreateStage() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async ({ name, color, position }: { name: string; color: string; position: number }) => {
+      const { error } = await supabase.from('pipeline_stages').insert({ org_id: orgId, name, color, position });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['stages', orgId] }); toast.success('Stage toegevoegd'); },
+  });
+}
+
+export function useUpdateStage() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; name?: string; color?: string; position?: number }) => {
+      const { error } = await supabase.from('pipeline_stages').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stages', orgId] }),
+  });
+}
+
+export function useDeleteStage() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { count } = await supabase.from('deals').select('id', { count: 'exact', head: true }).eq('stage_id', id);
+      if ((count ?? 0) > 0) throw new Error(`Er staan nog ${count} deals in deze stage — verplaats ze eerst`);
+      const { error } = await supabase.from('pipeline_stages').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['stages', orgId] }); toast.success('Stage verwijderd'); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Kon stage niet verwijderen'),
+  });
+}
+
 export interface CompanyLite { id: string; name: string }
 
 export function useCompanies() {

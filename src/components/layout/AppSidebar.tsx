@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { to: '/pipeline', icon: KanbanSquare,    label: 'Pipeline' },
   { to: '/contacts', icon: Users,           label: 'Contacten' },
   { to: '/boards',   icon: Layout,          label: 'Boards' },
+  { to: '/growth',   icon: TrendingUp,      label: 'Groeidoelen' },
 ];
 
 const BOTTOM_NAV: NavItem[] = [

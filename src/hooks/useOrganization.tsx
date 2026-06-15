@@ -187,6 +187,16 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       user_id: user.id, organization_id: inserted.id, role: 'owner',
     });
 
+    // Seed a default Pipedrive-style pipeline so the new CRM is usable immediately.
+    await supabase.from('pipeline_stages').insert([
+      { org_id: inserted.id, name: 'Prospect', position: 1, color: '#6B7280' },
+      { org_id: inserted.id, name: 'Gecontacteerd', position: 2, color: '#3B82F6' },
+      { org_id: inserted.id, name: 'Voorstel', position: 3, color: '#F59E0B' },
+      { org_id: inserted.id, name: 'Onderhandeling', position: 4, color: '#EC4899' },
+      { org_id: inserted.id, name: 'Won', position: 5, color: '#10B981' },
+      { org_id: inserted.id, name: 'Verloren', position: 6, color: '#EF4444' },
+    ]);
+
     await load();
     switchTo(inserted.id);
     return inserted;

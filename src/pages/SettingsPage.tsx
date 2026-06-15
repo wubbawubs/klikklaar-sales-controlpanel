@@ -9,7 +9,75 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GripVertical, Trash2, Plus, ChevronUp, ChevronDown } from 'lucide-react';
+import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
+
+const STAGE_COLORS = ['#6B7280', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#10B981', '#EF4444', '#06B6D4'];
+
+function StagesTab() {
+  const { data: stages = [] } = useStages();
+  const createStage = useCreateStage();
+  const updateStage = useUpdateStage();
+  const deleteStage = useDeleteStage();
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState(STAGE_COLORS[0]!);
+
+  const add = () => {
+    if (!newName.trim()) return;
+    const pos = (stages[stages.length - 1]?.position ?? 0) + 1;
+    createStage.mutate({ name: newName.trim(), color: newColor, position: pos }, {
+      onSuccess: () => { setNewName(''); },
+    });
+  };
+
+  // Swap positions with the neighbour to move a stage up/down.
+  const move = (idx: number, dir: -1 | 1) => {
+    const a = stages[idx];
+    const b = stages[idx + dir];
+    if (!a || !b) return;
+    updateStage.mutate({ id: a.id, position: b.position });
+    updateStage.mutate({ id: b.id, position: a.position });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Pipeline stages</CardTitle>
+        <CardDescription className="text-xs">De kolommen van je pipeline. Sleep-volgorde via de pijltjes; kleur en naam zijn aanpasbaar.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {stages.map((s, idx) => (
+          <div key={s.id} className="flex items-center gap-2 rounded-lg border p-2">
+            <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+            <input type="color" value={s.color}
+              onChange={e => updateStage.mutate({ id: s.id, color: e.target.value })}
+              className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent p-0 shrink-0" />
+            <Input defaultValue={s.name}
+              onBlur={e => { if (e.target.value.trim() && e.target.value !== s.name) updateStage.mutate({ id: s.id, name: e.target.value.trim() }); }}
+              className="h-8 text-sm flex-1" />
+            <div className="flex flex-col">
+              <button onClick={() => move(idx, -1)} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronUp className="h-3.5 w-3.5" /></button>
+              <button onClick={() => move(idx, 1)} disabled={idx === stages.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronDown className="h-3.5 w-3.5" /></button>
+            </div>
+            <button onClick={() => deleteStage.mutate(s.id)} className="text-muted-foreground/50 hover:text-destructive shrink-0"><Trash2 className="h-4 w-4" /></button>
+          </div>
+        ))}
+        {stages.length === 0 && <p className="text-xs text-muted-foreground py-2">Nog geen stages. Voeg de eerste toe.</p>}
+
+        <div className="flex items-center gap-2 pt-2 border-t mt-2">
+          <input type="color" value={newColor} onChange={e => setNewColor(e.target.value)}
+            className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent p-0 shrink-0" />
+          <Input placeholder="Nieuwe stage (bv. Audit verstuurd)" value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && add()} className="h-8 text-sm flex-1" />
+          <Button size="sm" className="h-8 gap-1" onClick={add} disabled={!newName.trim() || createStage.isPending}>
+            <Plus className="h-3.5 w-3.5" /> Toevoegen
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 import { Zap, CheckCircle2, XCircle, Clock, Webhook } from 'lucide-react';
 
 const ALL_EVENTS = [
@@ -177,10 +245,12 @@ export default function SettingsPage() {
         <h1 className="text-xl font-semibold">Instellingen</h1>
         <p className="text-sm text-muted-foreground">Beheer webhooks en organisatie-instellingen</p>
       </div>
-      <Tabs defaultValue="webhooks">
+      <Tabs defaultValue="pipeline">
         <TabsList className="mb-4">
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
         </TabsList>
+        <TabsContent value="pipeline"><StagesTab /></TabsContent>
         <TabsContent value="webhooks"><WebhooksTab /></TabsContent>
       </Tabs>
     </div>
