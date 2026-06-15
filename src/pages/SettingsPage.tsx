@@ -9,9 +9,76 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GripVertical, Trash2, Plus, ChevronUp, ChevronDown } from 'lucide-react';
-import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/hooks/usePipeline';
+import { GripVertical, Trash2, Plus, ChevronUp, ChevronDown, Repeat, Coins } from 'lucide-react';
+import {
+  useStages, useCreateStage, useUpdateStage, useDeleteStage,
+  useBillingTypes, useCreateBillingType, useDeleteBillingType,
+} from '@/hooks/usePipeline';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+
+function BillingTypesTab() {
+  const { data: types = [] } = useBillingTypes();
+  const createType = useCreateBillingType();
+  const deleteType = useDeleteBillingType();
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState<'one_time' | 'recurring'>('one_time');
+  const [interval, setInterval] = useState<'month' | 'year'>('month');
+
+  const add = () => {
+    if (!name.trim()) return;
+    const pos = (types[types.length - 1]?.position ?? 0) + 1;
+    createType.mutate(
+      { name: name.trim(), kind, interval: kind === 'recurring' ? interval : null, position: pos },
+      { onSuccess: () => setName('') },
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Tarieftypes</CardTitle>
+        <CardDescription className="text-xs">De betaalvormen voor dit merk — bv. eenmalige fee, maandelijks, plaatsingsfee. Per deal kies je er één.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {types.map(t => (
+          <div key={t.id} className="flex items-center gap-2 rounded-lg border p-2">
+            {t.kind === 'recurring' ? <Repeat className="h-4 w-4 text-primary shrink-0" /> : <Coins className="h-4 w-4 text-muted-foreground shrink-0" />}
+            <span className="text-sm flex-1">{t.name}</span>
+            <Badge variant="outline" className="text-xs">
+              {t.kind === 'recurring' ? `Terugkerend${t.interval === 'month' ? ' /mnd' : t.interval === 'year' ? ' /jr' : ''}` : 'Eenmalig'}
+            </Badge>
+            <button onClick={() => deleteType.mutate(t.id)} className="text-muted-foreground/50 hover:text-destructive shrink-0"><Trash2 className="h-4 w-4" /></button>
+          </div>
+        ))}
+        {types.length === 0 && <p className="text-xs text-muted-foreground py-2">Nog geen tarieftypes.</p>}
+
+        <div className="flex items-center gap-2 pt-2 border-t mt-2">
+          <Input placeholder="Naam (bv. Plaatsingsfee)" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} className="h-8 text-sm flex-1" />
+          <Select value={kind} onValueChange={v => setKind(v as 'one_time' | 'recurring')}>
+            <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="one_time">Eenmalig</SelectItem>
+              <SelectItem value="recurring">Terugkerend</SelectItem>
+            </SelectContent>
+          </Select>
+          {kind === 'recurring' && (
+            <Select value={interval} onValueChange={v => setInterval(v as 'month' | 'year')}>
+              <SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">/mnd</SelectItem>
+                <SelectItem value="year">/jr</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <Button size="sm" className="h-8 gap-1" onClick={add} disabled={!name.trim() || createType.isPending}>
+            <Plus className="h-3.5 w-3.5" /> Toevoegen
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const STAGE_COLORS = ['#6B7280', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#10B981', '#EF4444', '#06B6D4'];
 
@@ -248,9 +315,11 @@ export default function SettingsPage() {
       <Tabs defaultValue="pipeline">
         <TabsList className="mb-4">
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="billing">Tarieven</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
         </TabsList>
         <TabsContent value="pipeline"><StagesTab /></TabsContent>
+        <TabsContent value="billing"><BillingTypesTab /></TabsContent>
         <TabsContent value="webhooks"><WebhooksTab /></TabsContent>
       </Tabs>
     </div>

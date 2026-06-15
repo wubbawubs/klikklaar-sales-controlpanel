@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Plus, Euro, Building2, User, MessageSquare, Phone, Mail, ChevronRight, Linkedin, UserPlus } from 'lucide-react';
-import { useStages, useDeals, useMoveDeal, useCreateDeal, useCreateLead, useCompanies, useAddActivity, useDealActivities, type Deal } from '@/hooks/usePipeline';
+import { useStages, useDeals, useMoveDeal, useCreateDeal, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -102,7 +102,7 @@ function DealCard({ deal, index, onClick }: { deal: Deal; index: number; onClick
             )}
             {deal.value_eur != null && (
               <span className="flex items-center gap-1 ml-auto font-medium text-foreground">
-                <Euro className="h-3 w-3" />{Number(deal.value_eur).toLocaleString('nl')}
+                {formatFee(deal.value_eur, deal.billing_type)}
               </span>
             )}
           </div>
@@ -149,6 +149,8 @@ function LeadDialog({ open, onClose, stages, defaultStageId }: {
 }) {
   const createLead = useCreateLead();
   const { data: companies = [] } = useCompanies();
+  const { data: billingTypes = [] } = useBillingTypes();
+  const [billingTypeId, setBillingTypeId] = useState<string>('');
   const [companyId, setCompanyId] = useState<string>(NEW_COMPANY);
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -161,7 +163,7 @@ function LeadDialog({ open, onClose, stages, defaultStageId }: {
 
   const reset = () => {
     setCompanyId(NEW_COMPANY); setCompanyName(''); setContactName(''); setEmail('');
-    setLinkedin(''); setPhone(''); setTitle(''); setValue(''); setStageId(defaultStageId);
+    setLinkedin(''); setPhone(''); setTitle(''); setValue(''); setStageId(defaultStageId); setBillingTypeId('');
   };
 
   const submit = () => {
@@ -175,6 +177,7 @@ function LeadDialog({ open, onClose, stages, defaultStageId }: {
       contactName, email, linkedin, phone,
       title: title.trim() || companyName.trim() || contactName.trim(),
       valueEur: value ? Number(value) : null,
+      billingTypeId: billingTypeId || null,
       stageId: stageId || defaultStageId,
     }, { onSuccess: () => { reset(); onClose(); } });
   };
@@ -205,9 +208,19 @@ function LeadDialog({ open, onClose, stages, defaultStageId }: {
             <Input placeholder="LinkedIn URL" value={linkedin} onChange={e => setLinkedin(e.target.value)} />
             <Input placeholder="Telefoon" value={phone} onChange={e => setPhone(e.target.value)} />
           </div>
+          <Input placeholder="Deal / titel" value={title} onChange={e => setTitle(e.target.value)} />
           <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="Deal / titel" value={title} onChange={e => setTitle(e.target.value)} />
             <Input placeholder="Waarde (€)" type="number" value={value} onChange={e => setValue(e.target.value)} />
+            <Select value={billingTypeId} onValueChange={setBillingTypeId}>
+              <SelectTrigger><SelectValue placeholder="Tarieftype" /></SelectTrigger>
+              <SelectContent>
+                {billingTypes.map(b => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}{b.kind === 'recurring' && b.interval ? ` (${b.interval === 'month' ? '/mnd' : '/jr'})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">Stage</label>
@@ -347,7 +360,8 @@ export default function PipelinePage() {
                 <SheetTitle>{selectedDeal.title}</SheetTitle>
                 {selectedDeal.value_eur != null && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Euro className="h-3.5 w-3.5" />€{Number(selectedDeal.value_eur).toLocaleString('nl')}
+                    <Euro className="h-3.5 w-3.5" />{formatFee(selectedDeal.value_eur, selectedDeal.billing_type)}
+                    {selectedDeal.billing_type && <span className="text-xs">· {selectedDeal.billing_type.name}</span>}
                   </p>
                 )}
               </SheetHeader>

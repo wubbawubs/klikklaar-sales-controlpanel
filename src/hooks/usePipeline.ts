@@ -9,9 +9,11 @@ export interface Deal {
   id: string; org_id: string; stage_id: string | null;
   title: string; value_eur: number | null;
   company_id: string | null; contact_id: string | null;
+  billing_type_id: string | null;
   assigned_to: string | null; created_at: string; updated_at: string;
   company?: { name: string } | null;
   contact?: { name: string } | null;
+  billing_type?: { name: string; kind: 'one_time' | 'recurring'; interval: 'month' | 'year' | null } | null;
 }
 export interface Activity {
   id: string; deal_id: string; type: string; body: string | null;
@@ -43,7 +45,7 @@ export function useDeals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('*, company:companies(name), contact:contacts(name)')
+        .select('*, company:companies(name), contact:contacts(name), billing_type:billing_types(name, kind, interval)')
         .eq('org_id', orgId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -112,6 +114,61 @@ export function useCreateDeal() {
   });
 }
 
+// ---- Billing / fee types (configurable per label) ----
+export interface BillingType {
+  id: string; org_id: string; name: string;
+  kind: 'one_time' | 'recurring'; interval: 'month' | 'year' | null; position: number;
+}
+
+const INTERVAL_SUFFIX: Record<string, string> = { month: '/mnd', year: '/jr' };
+
+// "€599/mnd" for recurring, "€2.500" for one-time. type may be undefined.
+export function formatFee(value: number | null | undefined, type?: Pick<BillingType, 'kind' | 'interval'> | null): string {
+  if (value == null) return '—';
+  const amount = `€${Number(value).toLocaleString('nl')}`;
+  if (type?.kind === 'recurring' && type.interval) return amount + (INTERVAL_SUFFIX[type.interval] ?? '');
+  return amount;
+}
+
+export function useBillingTypes() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['billing-types', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('billing_types').select('*').eq('org_id', orgId!).order('position');
+      if (error) throw error;
+      return (data ?? []) as BillingType[];
+    },
+  });
+}
+
+export function useCreateBillingType() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async ({ name, kind, interval, position }: { name: string; kind: 'one_time' | 'recurring'; interval: 'month' | 'year' | null; position: number }) => {
+      const { error } = await supabase.from('billing_types').insert({ org_id: orgId, name, kind, interval, position });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing-types', orgId] }); toast.success('Tarieftype toegevoegd'); },
+  });
+}
+
+export function useDeleteBillingType() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('billing_types').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing-types', orgId] }); toast.success('Tarieftype verwijderd'); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+  });
+}
+
 export function useCreateStage() {
   const qc = useQueryClient();
   const orgId = useOrgId();
@@ -177,6 +234,7 @@ export interface NewLead {
   phone?: string;
   title: string;
   valueEur?: number | null;
+  billingTypeId?: string | null;
   stageId: string;
 }
 
@@ -216,6 +274,7 @@ export function useCreateLead() {
           org_id: orgId,
           title: lead.title.trim(),
           value_eur: lead.valueEur ?? null,
+          billing_type_id: lead.billingTypeId ?? null,
           stage_id: lead.stageId,
           company_id: companyId,
           contact_id: contactId,

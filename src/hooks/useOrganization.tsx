@@ -197,6 +197,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       { org_id: inserted.id, name: 'Verloren', position: 6, color: '#EF4444' },
     ]);
 
+    // Seed default fee types so deals can be billed immediately.
+    await supabase.from('billing_types').insert([
+      { org_id: inserted.id, name: 'Eenmalig', kind: 'one_time', interval: null, position: 1 },
+      { org_id: inserted.id, name: 'Maandelijks', kind: 'recurring', interval: 'month', position: 2 },
+      { org_id: inserted.id, name: 'Startfee', kind: 'one_time', interval: null, position: 3 },
+      { org_id: inserted.id, name: 'Plaatsingsfee', kind: 'one_time', interval: null, position: 4 },
+    ]);
+
     await load();
     switchTo(inserted.id);
     return inserted;
