@@ -140,3 +140,104 @@ export function useUpdateCard(boardId: string) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['board', boardId] }); toast.success('Opgeslagen'); },
   });
 }
+
+// ---- Teammates (for tagging) ----
+export interface TeamMember { user_id: string; full_name: string | null; email: string | null }
+
+export function useTeamMembers() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['team-members', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      // org co-members are visible via RLS; list everyone in this org
+      const { data: memberships } = await supabase
+        .from('user_organizations').select('user_id').eq('organization_id', orgId!);
+      const ids = (memberships ?? []).map((m: { user_id: string }) => m.user_id);
+      if (ids.length === 0) return [] as TeamMember[];
+      const { data } = await supabase
+        .from('profiles').select('user_id, full_name, email').in('user_id', ids);
+      return (data ?? []) as TeamMember[];
+    },
+  });
+}
+
+// ---- Card members (tagging people) ----
+export interface CardMember { user_id: string; full_name: string | null; email: string | null }
+
+export function useCardMembers(cardId: string) {
+  return useQuery({
+    queryKey: ['card-members', cardId],
+    enabled: !!cardId,
+    queryFn: async () => {
+      const { data: rows } = await supabase.from('card_members').select('user_id').eq('card_id', cardId);
+      const ids = (rows ?? []).map((r: { user_id: string }) => r.user_id);
+      if (ids.length === 0) return [] as CardMember[];
+      const { data: profs } = await supabase.from('profiles').select('user_id, full_name, email').in('user_id', ids);
+      return (profs ?? []) as CardMember[];
+    },
+  });
+}
+
+export function useToggleCardMember(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, add }: { userId: string; add: boolean }) => {
+      if (add) {
+        const { error } = await supabase.from('card_members').insert({ card_id: cardId, user_id: userId });
+        if (error && !/duplicate/i.test(error.message)) throw error;
+      } else {
+        const { error } = await supabase.from('card_members').delete().eq('card_id', cardId).eq('user_id', userId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['card-members', cardId] }),
+  });
+}
+
+// ---- Card attachments (pictures / files) ----
+export interface CardAttachment { id: string; url: string; name: string | null; mime_type: string | null; created_at: string }
+
+export function useCardAttachments(cardId: string) {
+  return useQuery({
+    queryKey: ['card-attachments', cardId],
+    enabled: !!cardId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('card_attachments').select('id, url, name, mime_type, created_at')
+        .eq('card_id', cardId).order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CardAttachment[];
+    },
+  });
+}
+
+export function useUploadAttachment(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const path = `${cardId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error: upErr } = await supabase.storage.from('card-attachments').upload(path, file, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('card-attachments').getPublicUrl(path);
+      const { error } = await supabase.from('card_attachments').insert({
+        card_id: cardId, url: pub.publicUrl, name: file.name, mime_type: file.type, uploaded_by: user?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['card-attachments', cardId] }); toast.success('Bijlage toegevoegd'); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Upload mislukt'),
+  });
+}
+
+export function useDeleteAttachment(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('card_attachments').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['card-attachments', cardId] }),
+  });
+}

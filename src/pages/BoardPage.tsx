@@ -1,14 +1,28 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { Plus, Calendar, Tag, Pencil, X, Check } from 'lucide-react';
-import { useBoard, useMoveCard, useCreateCard, useCreateList, useUpdateCard, type Card, type BoardList } from '@/hooks/useBoards';
+import { Plus, Calendar, Tag, Pencil, X, Check, Users, Paperclip, Trash2, ImagePlus } from 'lucide-react';
+import {
+  useBoard, useMoveCard, useCreateCard, useCreateList, useUpdateCard,
+  useTeamMembers, useCardMembers, useToggleCardMember,
+  useCardAttachments, useUploadAttachment, useDeleteAttachment,
+  type Card, type BoardList,
+} from '@/hooks/useBoards';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+
+function initials(name: string | null, email: string | null): string {
+  const s = (name || email || '?').trim();
+  const parts = s.split(/\s+/);
+  return (parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : s.slice(0, 2)).toUpperCase();
+}
 
 const LABEL_COLORS: Record<string, string> = {
   bug:     'bg-red-500/20 text-red-600',
@@ -17,6 +31,93 @@ const LABEL_COLORS: Record<string, string> = {
   urgent:  'bg-orange-500/20 text-orange-600',
   docs:    'bg-gray-500/20 text-gray-600',
 };
+
+function CardMembers({ cardId }: { cardId: string }) {
+  const { data: members = [] } = useCardMembers(cardId);
+  const { data: team = [] } = useTeamMembers();
+  const toggle = useToggleCardMember(cardId);
+  const memberIds = new Set(members.map(m => m.user_id));
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+      {members.map(m => (
+        <span key={m.user_id} title={m.full_name || m.email || ''}
+          className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center">
+          {initials(m.full_name, m.email)}
+        </span>
+      ))}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground hover:text-foreground flex items-center justify-center">
+            <Plus className="h-3 w-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52">
+          {team.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Geen teamleden</div>}
+          {team.map(t => (
+            <DropdownMenuItem key={t.user_id} className="gap-2"
+              onClick={() => toggle.mutate({ userId: t.user_id, add: !memberIds.has(t.user_id) })}>
+              <span className="h-5 w-5 rounded-full bg-muted text-[9px] font-bold flex items-center justify-center">
+                {initials(t.full_name, t.email)}
+              </span>
+              <span className="flex-1 truncate text-sm">{t.full_name || t.email}</span>
+              {memberIds.has(t.user_id) && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function CardAttachments({ cardId }: { cardId: string }) {
+  const { data: attachments = [] } = useCardAttachments(cardId);
+  const upload = useUploadAttachment(cardId);
+  const del = useDeleteAttachment(cardId);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const isImage = (a: { mime_type: string | null }) => (a.mime_type ?? '').startsWith('image/');
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <Paperclip className="h-4 w-4" /> Bijlagen
+        </span>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs"
+          onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+          <ImagePlus className="h-3.5 w-3.5" /> {upload.isPending ? 'Uploaden…' : 'Toevoegen'}
+        </Button>
+        <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.currentTarget.value = ''; }} />
+      </div>
+      {attachments.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {attachments.map(a => (
+            <div key={a.id} className="group relative rounded-lg border overflow-hidden bg-muted/30">
+              {isImage(a) ? (
+                <a href={a.url} target="_blank" rel="noopener noreferrer">
+                  <img src={a.url} alt={a.name ?? ''} className="h-20 w-full object-cover" />
+                </a>
+              ) : (
+                <a href={a.url} target="_blank" rel="noopener noreferrer"
+                  className="h-20 flex flex-col items-center justify-center text-xs text-muted-foreground gap-1 p-1">
+                  <Paperclip className="h-4 w-4" />
+                  <span className="truncate w-full text-center">{a.name}</span>
+                </a>
+              )}
+              <button onClick={() => del.mutate(a.id)}
+                className="absolute top-1 right-1 h-5 w-5 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CardDetail({ card, boardId, onClose }: { card: Card; boardId: string; onClose: () => void }) {
   const updateCard = useUpdateCard(boardId);
@@ -29,7 +130,7 @@ function CardDetail({ card, boardId, onClose }: { card: Card; boardId: string; o
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             <Input
@@ -52,6 +153,9 @@ function CardDetail({ card, boardId, onClose }: { card: Card; boardId: string; o
             </div>
           )}
 
+          {/* Members (tag people) */}
+          <CardMembers cardId={card.id} />
+
           {/* Due date */}
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -65,6 +169,9 @@ function CardDetail({ card, boardId, onClose }: { card: Card; boardId: string; o
             onChange={e => setDesc(e.target.value)}
             className="min-h-[100px] text-sm resize-none"
           />
+
+          {/* Attachments (pictures / files) */}
+          <CardAttachments cardId={card.id} />
         </div>
 
         <DialogFooter>

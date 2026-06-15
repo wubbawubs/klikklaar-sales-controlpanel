@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { Plus, Euro, Building2, User, MessageSquare, Phone, Mail, ChevronRight } from 'lucide-react';
-import { useStages, useDeals, useMoveDeal, useCreateDeal, useAddActivity, useDealActivities, type Deal } from '@/hooks/usePipeline';
+import { Plus, Euro, Building2, User, MessageSquare, Phone, Mail, ChevronRight, Linkedin, UserPlus } from 'lucide-react';
+import { useStages, useDeals, useMoveDeal, useCreateDeal, useCreateLead, useCompanies, useAddActivity, useDealActivities, type Deal } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -141,12 +141,100 @@ function NewDealDialog({ stageId, stageName, open, onClose }: { stageId: string;
   );
 }
 
+const NEW_COMPANY = '__new__';
+
+function LeadDialog({ open, onClose, stages, defaultStageId }: {
+  open: boolean; onClose: () => void;
+  stages: { id: string; name: string }[]; defaultStageId: string;
+}) {
+  const createLead = useCreateLead();
+  const { data: companies = [] } = useCompanies();
+  const [companyId, setCompanyId] = useState<string>(NEW_COMPANY);
+  const [companyName, setCompanyName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [email, setEmail] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [phone, setPhone] = useState('');
+  const [title, setTitle] = useState('');
+  const [value, setValue] = useState('');
+  const [stageId, setStageId] = useState(defaultStageId);
+
+  const reset = () => {
+    setCompanyId(NEW_COMPANY); setCompanyName(''); setContactName(''); setEmail('');
+    setLinkedin(''); setPhone(''); setTitle(''); setValue(''); setStageId(defaultStageId);
+  };
+
+  const submit = () => {
+    const isNew = companyId === NEW_COMPANY;
+    if (!title.trim() && !companyName.trim() && !contactName.trim()) {
+      toast.error('Vul minstens bedrijf of dealnaam in'); return;
+    }
+    createLead.mutate({
+      companyId: isNew ? null : companyId,
+      companyName: isNew ? companyName : undefined,
+      contactName, email, linkedin, phone,
+      title: title.trim() || companyName.trim() || contactName.trim(),
+      valueEur: value ? Number(value) : null,
+      stageId: stageId || defaultStageId,
+    }, { onSuccess: () => { reset(); onClose(); } });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Nieuwe lead</DialogTitle></DialogHeader>
+        <div className="grid gap-3 py-1">
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Bedrijf</label>
+            <Select value={companyId} onValueChange={setCompanyId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NEW_COMPANY}>+ Nieuw bedrijf…</SelectItem>
+                {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {companyId === NEW_COMPANY && (
+              <Input placeholder="Bedrijfsnaam" value={companyName} onChange={e => setCompanyName(e.target.value)} autoFocus />
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input placeholder="Contactpersoon" value={contactName} onChange={e => setContactName(e.target.value)} />
+            <Input placeholder="E-mail" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input placeholder="LinkedIn URL" value={linkedin} onChange={e => setLinkedin(e.target.value)} />
+            <Input placeholder="Telefoon" value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input placeholder="Deal / titel" value={title} onChange={e => setTitle(e.target.value)} />
+            <Input placeholder="Waarde (€)" type="number" value={value} onChange={e => setValue(e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Stage</label>
+            <Select value={stageId} onValueChange={setStageId}>
+              <SelectTrigger><SelectValue placeholder="Kies stage" /></SelectTrigger>
+              <SelectContent>
+                {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Annuleren</Button>
+          <Button onClick={submit} disabled={createLead.isPending}>{createLead.isPending ? 'Toevoegen…' : 'Lead toevoegen'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PipelinePage() {
   const { data: stages = [] } = useStages();
   const { data: deals = [] } = useDeals();
   const moveDeal = useMoveDeal();
   const [newDealFor, setNewDealFor] = useState<{ stageId: string; stageName: string } | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [leadOpen, setLeadOpen] = useState(false);
 
   const byStage = (stageId: string) => deals.filter(d => d.stage_id === stageId);
 
@@ -174,6 +262,9 @@ export default function PipelinePage() {
           <h1 className="text-lg font-semibold">Pipeline</h1>
           <p className="text-xs text-muted-foreground">{deals.length} deals · €{deals.reduce((s, d) => s + (Number(d.value_eur) || 0), 0).toLocaleString('nl')} totaal</p>
         </div>
+        <Button size="sm" className="gap-1.5" onClick={() => setLeadOpen(true)} disabled={stages.length === 0}>
+          <UserPlus className="h-4 w-4" /> Lead toevoegen
+        </Button>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
@@ -227,13 +318,23 @@ export default function PipelinePage() {
         </div>
       </DragDropContext>
 
-      {/* New deal dialog */}
+      {/* New deal dialog (quick add per column) */}
       {newDealFor && (
         <NewDealDialog
           stageId={newDealFor.stageId}
           stageName={newDealFor.stageName}
           open={!!newDealFor}
           onClose={() => setNewDealFor(null)}
+        />
+      )}
+
+      {/* Full lead dialog */}
+      {stages.length > 0 && (
+        <LeadDialog
+          open={leadOpen}
+          onClose={() => setLeadOpen(false)}
+          stages={stages}
+          defaultStageId={stages[0]!.id}
         />
       )}
 

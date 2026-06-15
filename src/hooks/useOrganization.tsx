@@ -20,11 +20,18 @@ interface OrganizationContextType {
   loading: boolean;
   switchTo: (orgId: string) => void;
   hasModule: (mod: string) => boolean;
+  reload: () => Promise<void>;
+  createOrganization: (input: { name: string; color?: string }) => Promise<Organization>;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 const LS_KEY = 'kk-active-org';
+const DEFAULT_MODULES = ['dashboard', 'pipeline', 'boards', 'contacts', 'leads', 'forecasting'];
+
+function slugify(name: string): string {
+  return name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'crm';
+}
 
 function detectSubdomain(): string | null {
   if (typeof window === 'undefined') return null;
@@ -151,8 +158,42 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     return current.modules?.includes(mod) ?? false;
   }, [current]);
 
+  const createOrganization = useCallback(async ({ name, color }: { name: string; color?: string }) => {
+    if (!user) throw new Error('Niet ingelogd');
+    let slug = slugify(name);
+    // Insert org; on slug collision retry with a short suffix.
+    let inserted: Organization | null = null;
+    for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
+      const trySlug = attempt === 0 ? slug : `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+      const { data, error } = await supabase
+        .from('organizations')
+        .insert({
+          name: name.trim(),
+          slug: trySlug,
+          primary_color_hex: color ?? '#0F9B7A',
+          accent_color_hex: color ?? '#0F9B7A',
+          modules: DEFAULT_MODULES,
+          active: true,
+        })
+        .select('*')
+        .single();
+      if (!error) { inserted = data as Organization; break; }
+      if (!/duplicate|unique/i.test(error.message)) throw error;
+    }
+    if (!inserted) throw new Error('Kon CRM niet aanmaken (slug bestaat al)');
+
+    // Make the creator an owner member so it persists and resolves.
+    await supabase.from('user_organizations').insert({
+      user_id: user.id, organization_id: inserted.id, role: 'owner',
+    });
+
+    await load();
+    switchTo(inserted.id);
+    return inserted;
+  }, [user, load, switchTo]);
+
   return (
-    <OrganizationContext.Provider value={{ current, available, loading, switchTo, hasModule }}>
+    <OrganizationContext.Provider value={{ current, available, loading, switchTo, hasModule, reload: load, createOrganization }}>
       {children}
     </OrganizationContext.Provider>
   );

@@ -112,6 +112,88 @@ export function useCreateDeal() {
   });
 }
 
+export interface CompanyLite { id: string; name: string }
+
+export function useCompanies() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['companies', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies').select('id, name').eq('org_id', orgId!).order('name');
+      if (error) throw error;
+      return (data ?? []) as CompanyLite[];
+    },
+  });
+}
+
+export interface NewLead {
+  // company: either an existing id, or a new name to create
+  companyId?: string | null;
+  companyName?: string;
+  contactName?: string;
+  email?: string;
+  linkedin?: string;
+  phone?: string;
+  title: string;
+  valueEur?: number | null;
+  stageId: string;
+}
+
+// Creates a lead end-to-end: company (if new) + contact (if given) + deal.
+export function useCreateLead() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async (lead: NewLead) => {
+      let companyId = lead.companyId ?? null;
+
+      if (!companyId && lead.companyName?.trim()) {
+        const { data: company, error: ce } = await supabase
+          .from('companies').insert({ name: lead.companyName.trim(), email: lead.email || null, org_id: orgId })
+          .select('id').single();
+        if (ce) throw ce;
+        companyId = company.id;
+      }
+
+      let contactId: string | null = null;
+      if (lead.contactName?.trim() || lead.email?.trim()) {
+        const { data: contact, error: ke } = await supabase
+          .from('contacts').insert({
+            org_id: orgId,
+            company_id: companyId,
+            name: lead.contactName?.trim() || lead.email?.trim() || 'Onbekend',
+            email: lead.email || null,
+            phone: lead.phone || null,
+            linkedin: lead.linkedin || null,
+          }).select('id').single();
+        if (ke) throw ke;
+        contactId = contact.id;
+      }
+
+      const { data: deal, error: de } = await supabase
+        .from('deals').insert({
+          org_id: orgId,
+          title: lead.title.trim(),
+          value_eur: lead.valueEur ?? null,
+          stage_id: lead.stageId,
+          company_id: companyId,
+          contact_id: contactId,
+        }).select('id').single();
+      if (de) throw de;
+
+      if (orgId) await fireWebhook(orgId, 'deal.created', { deal_id: deal.id, title: lead.title });
+      return deal;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['deals', orgId] });
+      qc.invalidateQueries({ queryKey: ['companies', orgId] });
+      toast.success('Lead toegevoegd');
+    },
+  });
+}
+
 export function useAddActivity() {
   const qc = useQueryClient();
   const orgId = useOrgId();
