@@ -259,7 +259,7 @@ export default function PipelinePage() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <div>
-          <h1 className="text-lg font-semibold">Pipeline</h1>
+          <h1 className="text-xl font-semibold">Pipeline</h1>
           <p className="text-xs text-muted-foreground">{deals.length} deals · €{deals.reduce((s, d) => s + (Number(d.value_eur) || 0), 0).toLocaleString('nl')} totaal</p>
         </div>
         <Button size="sm" className="gap-1.5" onClick={() => setLeadOpen(true)} disabled={stages.length === 0}>

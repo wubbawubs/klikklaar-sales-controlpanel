@@ -158,10 +158,10 @@ export default function UserManagementPage() {
   const availableOrgs = (u: UserWithRoles) => orgs.filter(o => !u.orgs.some(m => m.organization_id === o.id));
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Gebruikersbeheer</h1>
+          <h1 className="text-xl font-semibold">Gebruikersbeheer</h1>
           <p className="text-muted-foreground text-sm mt-1">Beheer gebruikers, rollen en bedrijfstoegang (pipeline)</p>
         </div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>

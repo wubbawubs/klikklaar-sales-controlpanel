@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
 ];
 
 const BOTTOM_NAV: NavItem[] = [
+  { to: '/import',   icon: Upload,   label: 'Importeren', adminOnly: true },
   { to: '/users',    icon: UserCog,  label: 'Gebruikers', adminOnly: true },
   { to: '/settings', icon: Settings, label: 'Instellingen', adminOnly: true },
 ];
