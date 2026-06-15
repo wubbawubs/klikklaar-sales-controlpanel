@@ -1,4 +1,4 @@
-project_id = "gdeeigztmbvdpcgdpzdv"
+project_id = "boxmdblzhuyfontwibdj"
 
 [functions]
   [functions.auth-email-hook]
@@ -18,4 +18,6 @@ project_id = "gdeeigztmbvdpcgdpzdv"
   [functions.calendly-webhook]
     verify_jwt = false
   [functions.closer-reminders]
+    verify_jwt = false
+  [functions.pipeline-summary]
     verify_jwt = false

@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { toast } from 'sonner';
 
-export interface Board { id: string; org_id: string; name: string; description: string | null; color: string; created_at: string }
+export interface Board { id: string; org_id: string; name: string; description: string | null; color: string; created_at: string; company_id: string | null; company?: { name: string } | null }
+export interface Client { id: string; name: string }
 export interface BoardList { id: string; board_id: string; name: string; position: number }
 export interface Card {
   id: string; board_id: string; list_id: string;
@@ -20,10 +21,39 @@ export function useBoards() {
     enabled: !!orgId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('boards').select('*').eq('org_id', orgId!).order('created_at');
+        .from('boards').select('*, company:companies(name)').eq('org_id', orgId!).order('created_at');
       if (error) throw error;
       return (data ?? []) as Board[];
     },
+  });
+}
+
+// Clients = CRM companies, scoped to the current org.
+export function useClients() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['clients', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies').select('id, name').eq('org_id', orgId!).order('name');
+      if (error) throw error;
+      return (data ?? []) as Client[];
+    },
+  });
+}
+
+export function useCreateClient() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase
+        .from('companies').insert({ name, org_id: orgId }).select('id, name').single();
+      if (error) throw error;
+      return data as Client;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); toast.success('Klant toegevoegd'); },
   });
 }
 
@@ -50,9 +80,9 @@ export function useCreateBoard() {
   const qc = useQueryClient();
   const orgId = useOrgId();
   return useMutation({
-    mutationFn: async ({ name, description, color }: { name: string; description?: string; color?: string }) => {
+    mutationFn: async ({ name, description, color, companyId }: { name: string; description?: string; color?: string; companyId?: string | null }) => {
       const { data: board, error: be } = await supabase
-        .from('boards').insert({ name, description, color: color ?? '#3B82F6', org_id: orgId }).select().single();
+        .from('boards').insert({ name, description, color: color ?? '#3B82F6', org_id: orgId, company_id: companyId ?? null }).select().single();
       if (be) throw be;
       // Seed default lists
       await supabase.from('board_lists').insert([
