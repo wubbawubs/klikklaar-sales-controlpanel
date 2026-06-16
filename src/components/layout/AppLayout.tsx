@@ -82,8 +82,12 @@ export function AppLayout() {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
-          <Breadcrumbs />
+        {/* Breadcrumbs get their own padded bar; each page owns its content
+            padding + width, so the kanban/board can run full-bleed. */}
+        <div className="animate-fade-in">
+          <div className="px-4 sm:px-6 lg:px-8 pt-4 empty:hidden">
+            <Breadcrumbs />
+          </div>
           <Outlet />
         </div>
       </main>
