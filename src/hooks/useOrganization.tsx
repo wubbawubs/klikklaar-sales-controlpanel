@@ -22,12 +22,26 @@ interface OrganizationContextType {
   hasModule: (mod: string) => boolean;
   reload: () => Promise<void>;
   createOrganization: (input: { name: string; color?: string }) => Promise<Organization>;
+  /** True when the "Algemeen" group view is active (combine all labels). */
+  isAllView: boolean;
+  /** The real org ids behind the group view (excludes the Algemeen sentinel). */
+  allOrgIds: string[];
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 const LS_KEY = 'kk-active-org';
 const DEFAULT_MODULES = ['dashboard', 'pipeline', 'boards', 'contacts', 'leads', 'forecasting'];
+
+// "Algemeen" — a virtual label that rolls every real label up into one combined
+// dashboard. It is not a row in the database; it's prepended to the switcher
+// when the user has 2+ real labels.
+export const ALL_ORG_ID = '__all__';
+const ALL_ORG: Organization = {
+  id: ALL_ORG_ID, slug: 'algemeen', name: 'Algemeen — alle labels', subdomain: null,
+  logo_url: null, primary_color_hex: null, accent_color_hex: null,
+  modules: DEFAULT_MODULES, active: true,
+};
 
 function slugify(name: string): string {
   return name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'crm';
@@ -55,7 +69,8 @@ const SUBDOMAIN_REDIRECT_KEY = 'kk-org-redirect-attempted';
 function applyTheme(org: Organization | null) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  if (!org) {
+  if (!org || org.id === ALL_ORG_ID) {
+    // Neutral theme for the group view — no single brand colour.
     root.style.removeProperty('--brand-primary');
     root.style.removeProperty('--brand-accent');
     return;
@@ -94,7 +109,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         .filter((o: any) => o && o.active) as Organization[];
     }
 
-    setAvailable(orgs);
+    // Offer the "Algemeen" group view only when there are 2+ real labels to combine.
+    const withAll = orgs.length >= 2 ? [ALL_ORG, ...orgs] : orgs;
+    setAvailable(withAll);
 
     // Resolution priority: subdomain match -> localStorage -> default membership -> first
     const sub = detectSubdomain();
@@ -123,7 +140,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (!active && stored) active = orgs.find(o => o.id === stored) ?? null;
+    if (!active && stored) active = withAll.find(o => o.id === stored) ?? null;
     if (!active && !isAdmin && user) {
       const { data: defMem } = await supabase
         .from('user_organizations')
@@ -210,8 +227,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     return inserted;
   }, [user, load, switchTo]);
 
+  const isAllView = current?.id === ALL_ORG_ID;
+  const allOrgIds = available.filter(o => o.id !== ALL_ORG_ID).map(o => o.id);
+
   return (
-    <OrganizationContext.Provider value={{ current, available, loading, switchTo, hasModule, reload: load, createOrganization }}>
+    <OrganizationContext.Provider value={{ current, available, loading, switchTo, hasModule, reload: load, createOrganization, isAllView, allOrgIds }}>
       {children}
     </OrganizationContext.Provider>
   );

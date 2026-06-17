@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Check, ChevronsUpDown, Building2, Plus } from 'lucide-react';
-import { useOrganization } from '@/hooks/useOrganization';
+import { Check, ChevronsUpDown, Building2, Plus, Layers } from 'lucide-react';
+import { useOrganization, ALL_ORG_ID } from '@/hooks/useOrganization';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
@@ -107,7 +107,11 @@ export function BrandSwitcher({ collapsed }: { collapsed?: boolean }) {
           <DropdownMenuSeparator />
           {available.map(o => (
             <DropdownMenuItem key={o.id} onClick={() => switchTo(o.id)} className="gap-2">
-              {o.logo_url ? (
+              {o.id === ALL_ORG_ID ? (
+                <span className="h-5 w-5 rounded flex items-center justify-center bg-muted text-foreground/70">
+                  <Layers className="h-3.5 w-3.5" />
+                </span>
+              ) : o.logo_url ? (
                 <img src={o.logo_url} alt={o.name} className="h-5 w-5 rounded object-contain" />
               ) : (
                 <span className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold text-white"
