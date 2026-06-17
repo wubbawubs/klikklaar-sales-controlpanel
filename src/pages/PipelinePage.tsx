@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Plus, Euro, Building2, User, MessageSquare, Phone, Mail, ChevronRight, Linkedin, UserPlus } from 'lucide-react';
-import { useStages, useDeals, useMoveDeal, useCreateDeal, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal } from '@/hooks/usePipeline';
+import { useStages, useDeals, useMoveDeal, useCreateDeal, useUpdateDeal, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -142,6 +142,93 @@ function NewDealDialog({ stageId, stageName, open, onClose }: { stageId: string;
 }
 
 const NEW_COMPANY = '__new__';
+const NONE = '__none__';
+
+// Editable deal detail: all fields editable (like the create form) + notes feed.
+function DealSheetBody({ deal, stages, onClose }: {
+  deal: Deal; stages: { id: string; name: string }[]; onClose: () => void;
+}) {
+  const update = useUpdateDeal();
+  const { data: companies = [] } = useCompanies();
+  const { data: billingTypes = [] } = useBillingTypes();
+  const [title, setTitle] = useState(deal.title);
+  const [value, setValue] = useState(deal.value_eur != null ? String(deal.value_eur) : '');
+  const [stageId, setStageId] = useState(deal.stage_id ?? '');
+  const [companyId, setCompanyId] = useState(deal.company_id ?? NONE);
+  const [billingTypeId, setBillingTypeId] = useState(deal.billing_type_id ?? NONE);
+
+  const save = () => {
+    if (!title.trim()) { toast.error('Naam verplicht'); return; }
+    update.mutate({
+      id: deal.id,
+      title: title.trim(),
+      value_eur: value === '' ? null : Number(value),
+      stage_id: stageId || deal.stage_id || undefined,
+      company_id: companyId === NONE ? null : companyId,
+      billing_type_id: billingTypeId === NONE ? null : billingTypeId,
+    }, { onSuccess: onClose });
+  };
+
+  return (
+    <>
+      <SheetHeader className="mb-4"><SheetTitle>Deal bewerken</SheetTitle></SheetHeader>
+      <div className="grid gap-3">
+        <div className="grid gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Titel</label>
+          <Input value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Waarde (€)</label>
+            <Input type="number" value={value} onChange={e => setValue(e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Tarieftype</label>
+            <Select value={billingTypeId} onValueChange={setBillingTypeId}>
+              <SelectTrigger><SelectValue placeholder="Geen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Geen</SelectItem>
+                {billingTypes.map(b => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}{b.kind === 'recurring' && b.interval ? ` (${b.interval === 'month' ? '/mnd' : '/jr'})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Stage</label>
+            <Select value={stageId} onValueChange={setStageId}>
+              <SelectTrigger><SelectValue placeholder="Kies stage" /></SelectTrigger>
+              <SelectContent>
+                {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Bedrijf</label>
+            <Select value={companyId} onValueChange={setCompanyId}>
+              <SelectTrigger><SelectValue placeholder="Geen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Geen</SelectItem>
+                {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button size="sm" className="self-end" onClick={save} disabled={update.isPending}>
+          {update.isPending ? 'Opslaan…' : 'Opslaan'}
+        </Button>
+      </div>
+
+      <div className="border-t my-4" />
+      <h3 className="text-sm font-semibold mb-2">Notities & activiteit</h3>
+      <ActivityFeed dealId={deal.id} />
+    </>
+  );
+}
 
 function LeadDialog({ open, onClose, stages, defaultStageId }: {
   open: boolean; onClose: () => void;
@@ -351,22 +438,16 @@ export default function PipelinePage() {
         />
       )}
 
-      {/* Deal detail sheet */}
+      {/* Deal detail + edit sheet */}
       <Sheet open={!!selectedDeal} onOpenChange={v => !v && setSelectedDeal(null)}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           {selectedDeal && (
-            <>
-              <SheetHeader className="mb-4">
-                <SheetTitle>{selectedDeal.title}</SheetTitle>
-                {selectedDeal.value_eur != null && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Euro className="h-3.5 w-3.5" />{formatFee(selectedDeal.value_eur, selectedDeal.billing_type)}
-                    {selectedDeal.billing_type && <span className="text-xs">· {selectedDeal.billing_type.name}</span>}
-                  </p>
-                )}
-              </SheetHeader>
-              <ActivityFeed dealId={selectedDeal.id} />
-            </>
+            <DealSheetBody
+              key={selectedDeal.id}
+              deal={selectedDeal}
+              stages={stages}
+              onClose={() => setSelectedDeal(null)}
+            />
           )}
         </SheetContent>
       </Sheet>

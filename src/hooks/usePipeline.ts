@@ -114,6 +114,21 @@ export function useCreateDeal() {
   });
 }
 
+// Edit an existing deal's fields (title, value, stage, company, billing type, contact).
+export function useUpdateDeal() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string } & Partial<Pick<Deal,
+      'title' | 'value_eur' | 'stage_id' | 'company_id' | 'contact_id' | 'billing_type_id'>>) => {
+      const { error } = await supabase.from('deals').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['deals', orgId] }); toast.success('Deal bijgewerkt'); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Bijwerken mislukt'),
+  });
+}
+
 // ---- Billing / fee types (configurable per label) ----
 export interface BillingType {
   id: string; org_id: string; name: string;
