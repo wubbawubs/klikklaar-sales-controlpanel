@@ -114,6 +114,52 @@ export function useCreateDeal() {
   });
 }
 
+// ---- Fee lines per deal (multiple amounts/types, no Settings needed) ----
+export interface DealFee {
+  id?: string; deal_id?: string; amount: number;
+  kind: 'one_time' | 'recurring'; interval: 'month' | 'year' | null;
+  label: string | null; position: number;
+}
+
+export function useDealFees(dealId: string) {
+  return useQuery({
+    queryKey: ['deal-fees', dealId],
+    enabled: !!dealId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('deal_fees').select('*').eq('deal_id', dealId).order('position');
+      if (error) throw error;
+      return (data ?? []) as DealFee[];
+    },
+  });
+}
+
+// Replace all fee lines for a deal, and keep deals.value_eur synced to the sum of
+// one-time fees (the headline number the pipeline cards + dashboard still use).
+export function useSaveDealFees() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async ({ dealId, fees }: { dealId: string; fees: DealFee[] }) => {
+      await supabase.from('deal_fees').delete().eq('deal_id', dealId);
+      if (fees.length) {
+        const rows = fees.map((f, i) => ({
+          deal_id: dealId, org_id: orgId, amount: Number(f.amount) || 0,
+          kind: f.kind, interval: f.kind === 'recurring' ? (f.interval || 'month') : null,
+          label: f.label || null, position: i,
+        }));
+        const { error } = await supabase.from('deal_fees').insert(rows);
+        if (error) throw error;
+      }
+      const oneTime = fees.filter(f => f.kind === 'one_time').reduce((s, f) => s + (Number(f.amount) || 0), 0);
+      await supabase.from('deals').update({ value_eur: oneTime || null }).eq('id', dealId);
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['deal-fees', v.dealId] });
+      qc.invalidateQueries({ queryKey: ['deals', orgId] });
+    },
+  });
+}
+
 // Edit an existing deal's fields (title, value, stage, company, billing type, contact).
 export function useUpdateDeal() {
   const qc = useQueryClient();

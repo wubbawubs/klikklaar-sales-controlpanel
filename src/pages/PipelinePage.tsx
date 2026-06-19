@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { Plus, Euro, Building2, User, MessageSquare, Phone, Mail, ChevronRight, Linkedin, UserPlus } from 'lucide-react';
-import { useStages, useDeals, useMoveDeal, useCreateDeal, useUpdateDeal, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal } from '@/hooks/usePipeline';
+import { Plus, Building2, User, MessageSquare, Phone, Mail, ChevronRight, UserPlus, Trash2 } from 'lucide-react';
+import { useStages, useDeals, useMoveDeal, useCreateDeal, useUpdateDeal, useDealFees, useSaveDealFees, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal, type DealFee } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -144,67 +143,64 @@ function NewDealDialog({ stageId, stageName, open, onClose }: { stageId: string;
 const NEW_COMPANY = '__new__';
 const NONE = '__none__';
 
-// Editable deal detail: all fields editable (like the create form) + notes feed.
-function DealSheetBody({ deal, stages, onClose }: {
+// Fee-type options shown in the dropdown, mapped to {kind, interval}.
+const FEE_KINDS = [
+  { value: 'one_time', label: 'Eenmalig', kind: 'one_time' as const, interval: null },
+  { value: 'month', label: 'Per maand', kind: 'recurring' as const, interval: 'month' as const },
+  { value: 'year', label: 'Per jaar', kind: 'recurring' as const, interval: 'year' as const },
+];
+const feeKindValue = (f: DealFee) => (f.kind === 'recurring' ? (f.interval || 'month') : 'one_time');
+
+// Centered popup: edit every field + add any number of fee lines (setup, monthly, …).
+function DealDialogBody({ deal, stages, onClose }: {
   deal: Deal; stages: { id: string; name: string }[]; onClose: () => void;
 }) {
   const update = useUpdateDeal();
+  const saveFees = useSaveDealFees();
   const { data: companies = [] } = useCompanies();
-  const { data: billingTypes = [] } = useBillingTypes();
+  const { data: existingFees = [] } = useDealFees(deal.id);
   const [title, setTitle] = useState(deal.title);
-  const [value, setValue] = useState(deal.value_eur != null ? String(deal.value_eur) : '');
   const [stageId, setStageId] = useState(deal.stage_id ?? '');
   const [companyId, setCompanyId] = useState(deal.company_id ?? NONE);
-  const [billingTypeId, setBillingTypeId] = useState(deal.billing_type_id ?? NONE);
+  const [fees, setFees] = useState<DealFee[]>([]);
+  const [feesInit, setFeesInit] = useState(false);
+
+  useEffect(() => {
+    if (feesInit) return;
+    if (existingFees.length) setFees(existingFees.map(f => ({ ...f })));
+    else if (deal.value_eur) setFees([{ amount: deal.value_eur, kind: 'one_time', interval: null, label: null, position: 0 }]);
+    setFeesInit(true);
+  }, [existingFees, feesInit, deal.value_eur]);
+
+  const addFee = () => setFees(f => [...f, { amount: 0, kind: 'one_time', interval: null, label: null, position: f.length }]);
+  const patchFee = (i: number, patch: Partial<DealFee>) => setFees(f => f.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const removeFee = (i: number) => setFees(f => f.filter((_, j) => j !== i));
+  const setKind = (i: number, v: string) => { const k = FEE_KINDS.find(x => x.value === v)!; patchFee(i, { kind: k.kind, interval: k.interval }); };
 
   const save = () => {
     if (!title.trim()) { toast.error('Naam verplicht'); return; }
     update.mutate({
-      id: deal.id,
-      title: title.trim(),
-      value_eur: value === '' ? null : Number(value),
+      id: deal.id, title: title.trim(),
       stage_id: stageId || deal.stage_id || undefined,
       company_id: companyId === NONE ? null : companyId,
-      billing_type_id: billingTypeId === NONE ? null : billingTypeId,
-    }, { onSuccess: onClose });
+    });
+    saveFees.mutate({ dealId: deal.id, fees }, { onSuccess: onClose });
   };
 
   return (
     <>
-      <SheetHeader className="mb-4"><SheetTitle>Deal bewerken</SheetTitle></SheetHeader>
-      <div className="grid gap-3">
+      <DialogHeader><DialogTitle>Deal bewerken</DialogTitle></DialogHeader>
+      <div className="grid gap-3 py-1">
         <div className="grid gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Titel</label>
           <Input value={title} onChange={e => setTitle(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Waarde (€)</label>
-            <Input type="number" value={value} onChange={e => setValue(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Tarieftype</label>
-            <Select value={billingTypeId} onValueChange={setBillingTypeId}>
-              <SelectTrigger><SelectValue placeholder="Geen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Geen</SelectItem>
-                {billingTypes.map(b => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}{b.kind === 'recurring' && b.interval ? ` (${b.interval === 'month' ? '/mnd' : '/jr'})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">Stage</label>
             <Select value={stageId} onValueChange={setStageId}>
               <SelectTrigger><SelectValue placeholder="Kies stage" /></SelectTrigger>
-              <SelectContent>
-                {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
+              <SelectContent>{stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
@@ -218,12 +214,39 @@ function DealSheetBody({ deal, stages, onClose }: {
             </Select>
           </div>
         </div>
-        <Button size="sm" className="self-end" onClick={save} disabled={update.isPending}>
-          {update.isPending ? 'Opslaan…' : 'Opslaan'}
+
+        {/* Fee lines — add as many as needed, no Settings trip */}
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-muted-foreground">Tarieven</label>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={addFee}>
+              <Plus className="h-3.5 w-3.5" /> Tarief
+            </Button>
+          </div>
+          {fees.length === 0 && (
+            <p className="text-xs text-muted-foreground">Nog geen tarieven. Voeg er een toe — bv. €10.000 eenmalig én €5.000 per maand.</p>
+          )}
+          {fees.map((f, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <Input type="number" className="w-28" placeholder="€" value={f.amount || ''} onChange={e => patchFee(i, { amount: Number(e.target.value) })} />
+              <Select value={feeKindValue(f)} onValueChange={v => setKind(i, v)}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>{FEE_KINDS.map(k => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input className="flex-1" placeholder="Label (optioneel)" value={f.label || ''} onChange={e => patchFee(i, { label: e.target.value })} />
+              <button onClick={() => removeFee(i)} className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Verwijder tarief">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <Button size="sm" className="self-end" onClick={save} disabled={update.isPending || saveFees.isPending}>
+          {update.isPending || saveFees.isPending ? 'Opslaan…' : 'Opslaan'}
         </Button>
       </div>
 
-      <div className="border-t my-4" />
+      <div className="border-t my-3" />
       <h3 className="text-sm font-semibold mb-2">Notities & activiteit</h3>
       <ActivityFeed dealId={deal.id} />
     </>
@@ -438,19 +461,19 @@ export default function PipelinePage() {
         />
       )}
 
-      {/* Deal detail + edit sheet */}
-      <Sheet open={!!selectedDeal} onOpenChange={v => !v && setSelectedDeal(null)}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      {/* Deal detail + edit — centered popup card */}
+      <Dialog open={!!selectedDeal} onOpenChange={v => !v && setSelectedDeal(null)}>
+        <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto">
           {selectedDeal && (
-            <DealSheetBody
+            <DealDialogBody
               key={selectedDeal.id}
               deal={selectedDeal}
               stages={stages}
               onClose={() => setSelectedDeal(null)}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
