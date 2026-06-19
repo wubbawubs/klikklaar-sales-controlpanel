@@ -15,13 +15,14 @@ function useFinance(orgIds: string[]) {
     queryFn: async () => {
       const [st, dl, fe] = await Promise.all([
         supabase.from('pipeline_stages').select('id, name, org_id').in('org_id', orgIds),
-        supabase.from('deals').select('id, org_id, stage_id, won_at').in('org_id', orgIds),
+        supabase.from('deals').select('id, org_id, stage_id, won_at, value_eur').in('org_id', orgIds),
         supabase.from('deal_fees').select('deal_id, org_id, amount, kind, interval').in('org_id', orgIds),
       ]);
       const stages = st.data ?? [], deals = dl.data ?? [], fees = fe.data ?? [];
       const wonStageIds = new Set(stages.filter(s => /won|gewonnen/i.test(s.name ?? '')).map(s => s.id));
       const isWon = (d: { stage_id: string | null; won_at: string | null }) => (d.stage_id && wonStageIds.has(d.stage_id)) || !!d.won_at;
       const wonIds = new Set(deals.filter(isWon).map(d => d.id));
+      const dealsWithFees = new Set(fees.map(f => f.deal_id));
 
       const per = new Map<string, OrgRoll>();
       for (const id of orgIds) per.set(id, { won: 0, oneTime: 0, mrr: 0 });
@@ -32,6 +33,11 @@ function useFinance(orgIds: string[]) {
         const a = Number(f.amount) || 0;
         if (f.kind === 'recurring') r.mrr += f.interval === 'year' ? a / 12 : a;
         else r.oneTime += a;
+      }
+      // Won deals with no fee lines yet → count their headline value as one-time.
+      for (const d of deals) {
+        if (!isWon(d) || dealsWithFees.has(d.id)) continue;
+        const r = per.get(d.org_id); if (r) r.oneTime += Number(d.value_eur) || 0;
       }
       return { per };
     },
