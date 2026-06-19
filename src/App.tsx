@@ -15,6 +15,7 @@ import ContactsPage from "@/pages/ContactsPage";
 import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
+import FinancePage from "@/pages/FinancePage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
         <Route path="/growth" element={<GrowthPage />} />
+        <Route path="/finance" element={<FinancePage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />

@@ -113,15 +113,18 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     const withAll = orgs.length >= 2 ? [ALL_ORG, ...orgs] : orgs;
     setAvailable(withAll);
 
-    // Resolution priority: subdomain match -> localStorage -> default membership -> first
+    // Resolution priority: explicit choice (localStorage) -> subdomain brand ->
+    // default membership -> first. The stored choice MUST win, otherwise switching
+    // labels reverts to the subdomain brand / first org on every auth refresh.
     const sub = detectSubdomain();
     const stored = localStorage.getItem(LS_KEY);
     let active: Organization | null = null;
 
-    if (sub) active = orgs.find(o => o.subdomain === sub) ?? null;
+    if (stored) active = withAll.find(o => o.id === stored) ?? null;
+    if (!active && sub) active = orgs.find(o => o.subdomain === sub) ?? null;
 
-    // Auto-redirect: on production, if user landed on a subdomain they have NO access to,
-    // forward them to their default brand subdomain (one-shot to avoid loops).
+    // Auto-redirect: on production, a non-admin who landed on a subdomain they have
+    // NO access to (and made no explicit choice) is forwarded to their default brand.
     if (!active && sub && isProductionHost() && !isAdmin && orgs.length > 0) {
       const alreadyTried = sessionStorage.getItem(SUBDOMAIN_REDIRECT_KEY);
       if (!alreadyTried) {
@@ -140,7 +143,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (!active && stored) active = withAll.find(o => o.id === stored) ?? null;
     if (!active && !isAdmin && user) {
       const { data: defMem } = await supabase
         .from('user_organizations')
@@ -158,7 +160,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setCurrent(active);
     applyTheme(active);
     setLoading(false);
-  }, [user, isAdmin]);
+    // Key on user id, not the user object: Supabase swaps the user object on every
+    // token refresh, which used to re-run load() and revert the active label.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isAdmin]);
 
   useEffect(() => { load(); }, [load]);
 

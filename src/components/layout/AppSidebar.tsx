@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload, Euro } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,6 +14,7 @@ const NAV: NavItem[] = [
   { to: '/contacts', icon: Users,           label: 'Contacten' },
   { to: '/boards',   icon: Layout,          label: 'Boards' },
   { to: '/growth',   icon: TrendingUp,      label: 'Groeidoelen' },
+  { to: '/finance',  icon: Euro,            label: 'Finance' },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
