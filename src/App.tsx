@@ -19,6 +19,7 @@ import FinancePage from "@/pages/FinancePage";
 import FacturenPage from "@/pages/FacturenPage";
 import OmzetResultaatPage from "@/pages/OmzetResultaatPage";
 import LiquiditeitPage from "@/pages/LiquiditeitPage";
+import ContractenPage from "@/pages/ContractenPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/facturen" element={<FacturenPage />} />
         <Route path="/omzet" element={<OmzetResultaatPage />} />
         <Route path="/liquiditeit" element={<LiquiditeitPage />} />
+        <Route path="/contracten" element={<ContractenPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />
