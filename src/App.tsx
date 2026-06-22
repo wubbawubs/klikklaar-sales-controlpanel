@@ -17,6 +17,7 @@ import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
 import FinancePage from "@/pages/FinancePage";
 import FacturenPage from "@/pages/FacturenPage";
+import OmzetResultaatPage from "@/pages/OmzetResultaatPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/growth" element={<GrowthPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/facturen" element={<FacturenPage />} />
+        <Route path="/omzet" element={<OmzetResultaatPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />
