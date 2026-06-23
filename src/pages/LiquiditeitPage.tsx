@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, Wallet, Landmark } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Plus, Pencil, Trash2, Wallet, Landmark, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useCashPositions, useUpsertCash, useDeleteCash, type CashPosition } from '@/hooks/useCash';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,6 +67,29 @@ function CashDialog({ existing, trigger }: { existing?: CashPosition; trigger: R
   );
 }
 
+function BunqSyncButton() {
+  const qc = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('bunq-sync');
+      if (error) throw error;
+      if (data?.configured === false) { toast.error('bunq is nog niet gekoppeld (API-key ontbreekt).'); return; }
+      if (!data?.ok) { toast.error(`bunq-sync: ${data?.error ?? 'mislukt'}`); return; }
+      toast.success(`bunq gesynct: ${data.synced} rekening(en) bijgewerkt.`);
+      qc.invalidateQueries({ queryKey: ['cash'] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'bunq-sync mislukt');
+    } finally { setSyncing(false); }
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
+      <RefreshCw className={`h-4 w-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />Sync met bunq
+    </Button>
+  );
+}
+
 export default function LiquiditeitPage() {
   const { isAllView, allOrgIds, current, available } = useOrganization();
   const orgIds = isAllView ? allOrgIds : current ? [current.id] : [];
@@ -99,7 +125,10 @@ export default function LiquiditeitPage() {
             Saldo per rekening{isAllView ? ' · alle labels' : current ? ` · ${current.name}` : ''}
           </p>
         </div>
-        <CashDialog trigger={<Button size="sm" disabled={!current}><Plus className="h-4 w-4 mr-1.5" />Nieuw saldo</Button>} />
+        <div className="flex items-center gap-2">
+          <BunqSyncButton />
+          <CashDialog trigger={<Button size="sm" disabled={!current}><Plus className="h-4 w-4 mr-1.5" />Nieuw saldo</Button>} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
