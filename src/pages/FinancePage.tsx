@@ -1,13 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { Euro, TrendingUp, Repeat, Trophy } from 'lucide-react';
+import { Euro, Repeat, Trophy, Wallet, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useCashPositions } from '@/hooks/useCash';
+import { useContracts, monthlyValue } from '@/hooks/useContracts';
+import { useInvoices, displayStatus } from '@/hooks/useInvoices';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const fmt = (v: number) => `€${Math.round(v || 0).toLocaleString('nl')}`;
 
 interface OrgRoll { won: number; oneTime: number; mrr: number }
 
+// Won-deal revenue rollup (one-time fees + recurring) per org.
 function useFinance(orgIds: string[]) {
   return useQuery({
     queryKey: ['finance', [...orgIds].sort()],
@@ -34,7 +38,6 @@ function useFinance(orgIds: string[]) {
         if (f.kind === 'recurring') r.mrr += f.interval === 'year' ? a / 12 : a;
         else r.oneTime += a;
       }
-      // Won deals with no fee lines yet → count their headline value as one-time.
       for (const d of deals) {
         if (!isWon(d) || dealsWithFees.has(d.id)) continue;
         const r = per.get(d.org_id); if (r) r.oneTime += Number(d.value_eur) || 0;
@@ -44,10 +47,27 @@ function useFinance(orgIds: string[]) {
   });
 }
 
+interface StripeSummary { configured: boolean; mrr?: number }
+function useStripeMrr() {
+  return useQuery({
+    queryKey: ['stripe-summary'],
+    queryFn: async (): Promise<StripeSummary> => {
+      const { data, error } = await supabase.functions.invoke('stripe-summary');
+      if (error) throw error;
+      return data as StripeSummary;
+    },
+    staleTime: 60_000,
+  });
+}
+
 export default function FinancePage() {
   const { isAllView, allOrgIds, current, available } = useOrganization();
   const orgIds = isAllView ? allOrgIds : current ? [current.id] : [];
   const { data, isLoading } = useFinance(orgIds);
+  const { data: cash } = useCashPositions(orgIds);
+  const { data: contracts } = useContracts(orgIds);
+  const { data: invoices } = useInvoices(orgIds);
+  const { data: stripe } = useStripeMrr();
   const per = data?.per;
 
   const rows = orgIds
@@ -55,19 +75,28 @@ export default function FinancePage() {
     .sort((a, b) => (b.oneTime + b.mrr * 12) - (a.oneTime + a.mrr * 12));
   const tot = rows.reduce((s, r) => ({ won: s.won + r.won, oneTime: s.oneTime + r.oneTime, mrr: s.mrr + r.mrr }), { won: 0, oneTime: 0, mrr: 0 });
 
+  // Cash = latest snapshot per (org, account); rows arrive newest-first.
+  const seen = new Set<string>();
+  let totalCash = 0;
+  for (const c of cash ?? []) { const k = `${c.org_id}::${c.account}`; if (seen.has(k)) continue; seen.add(k); totalCash += Number(c.balance); }
+
+  const contractMrr = (contracts ?? []).reduce((s, c) => s + monthlyValue(c), 0);
+  const stripeMrr = stripe?.configured ? (stripe.mrr ?? 0) / 100 : 0;
+  const recurring = stripeMrr + contractMrr + tot.mrr;
+  const openInvoices = (invoices ?? []).filter(i => displayStatus(i) !== 'paid').reduce((s, i) => s + Number(i.amount), 0);
+
   const kpis = [
-    { label: 'Gewonnen deals', value: String(tot.won), icon: Trophy },
-    { label: 'Eenmalige omzet', value: fmt(tot.oneTime), icon: Euro },
-    { label: 'MRR', value: fmt(tot.mrr), icon: Repeat },
-    { label: 'ARR', value: fmt(tot.mrr * 12), icon: TrendingUp },
+    { label: 'Liquiditeit', value: fmt(totalCash), icon: Wallet },
+    { label: 'Terugkerend p/m', value: fmt(recurring), icon: Repeat },
+    { label: 'Openstaande facturen', value: fmt(openInvoices), icon: FileText },
+    { label: 'Gewonnen omzet', value: fmt(tot.oneTime), icon: Trophy },
   ];
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Finance</h1>
-        <p className="text-sm text-muted-foreground">Omzet uit gewonnen deals{isAllView ? ' · alle labels' : current ? ` · ${current.name}` : ''}</p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Overzicht{isAllView ? ' · alle labels' : current ? ` · ${current.name}` : ''}
+      </p>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map(k => (
@@ -78,6 +107,22 @@ export default function FinancePage() {
                 <k.icon className="h-4 w-4 text-emerald-500" />
               </div>
               <p className="text-2xl font-bold">{k.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Stripe MRR', value: fmt(stripeMrr) },
+          { label: 'Contracten p/m', value: fmt(contractMrr) },
+          { label: 'ARR (terugkerend)', value: fmt(recurring * 12) },
+          { label: 'Gewonnen deals', value: String(tot.won) },
+        ].map(k => (
+          <Card key={k.label}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">{k.label}</p>
+              <p className="text-xl font-semibold">{k.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -120,7 +165,7 @@ export default function FinancePage() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Omzet komt uit de tarieven op gewonnen deals. Voeg setup + maandbedrag toe op een deal (Pipeline → deal openen → Tarieven) en het telt hier mee.
+        Eén overzicht over alle labels: liquiditeit uit bunq, terugkerende omzet uit Stripe + contracten + gewonnen deals, openstaande facturen en gewonnen omzet. Open een tab hierboven voor de details. Cashflow-prognose volgt als losse tab.
       </p>
     </div>
   );

@@ -36,6 +36,26 @@ async function genKeys() {
   return { publicPem: pem(spki, "PUBLIC KEY"), privatePem: pem(pkcs8, "PRIVATE KEY") };
 }
 
+// bunq requires each call after installation to carry X-Bunq-Client-Signature:
+// the request body signed (RSA-SHA256) with the private key whose public half
+// was registered at installation. GET bodies are empty, so the empty string.
+function pemToDer(pemStr: string): Uint8Array {
+  const b64 = pemStr.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const bin = atob(b64);
+  const der = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) der[i] = bin.charCodeAt(i);
+  return der;
+}
+async function importPriv(pemStr: string): Promise<CryptoKey> {
+  return await crypto.subtle.importKey("pkcs8", pemToDer(pemStr),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+}
+async function signBody(key: CryptoKey, body: string): Promise<string> {
+  const sig = new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(body)));
+  let s = ""; for (const b of sig) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
 function headers(token?: string): Record<string, string> {
   const h: Record<string, string> = {
     "Content-Type": "application/json",
@@ -50,9 +70,14 @@ function headers(token?: string): Record<string, string> {
   return h;
 }
 
-async function call(method: string, path: string, body?: unknown, token?: string): Promise<any> {
+async function call(method: string, path: string, body?: unknown, token?: string, signKey?: CryptoKey): Promise<any> {
+  const bodyStr = body !== undefined ? JSON.stringify(body) : "";
+  const h = headers(token);
+  if (signKey) h["X-Bunq-Client-Signature"] = await signBody(signKey, bodyStr);
   const res = await fetch(`${BASE}${path}`, {
-    method, headers: headers(token), body: body ? JSON.stringify(body) : undefined,
+    method,
+    headers: h,
+    body: method === "GET" ? undefined : (body !== undefined ? bodyStr : undefined),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`bunq ${path} → ${res.status} ${text.slice(0, 300)}`);
@@ -68,35 +93,38 @@ function pickUser(arr: any[]) {
   return null;
 }
 
-async function openSession(): Promise<{ token: string; userId: string }> {
+async function openSession(): Promise<{ token: string; userId: string; signKey: CryptoKey }> {
   const { data: state } = await supabase.from("bunq_state").select("*").eq("id", 1).maybeSingle();
   let installationToken = state?.installation_token;
   let priv = state?.private_key, pub = state?.public_key;
 
   // Installation + device registration happen once and are cached immediately —
   // even before the session call — so a later failure never re-registers a device
-  // or trips bunq's brute-force lock.
-  if (!installationToken || !pub) {
+  // or trips bunq's brute-force lock. Installation itself needs no signature; every
+  // call after it does.
+  if (!installationToken || !pub || !priv) {
     const keys = await genKeys();
     priv = keys.privatePem; pub = keys.publicPem;
+    const newKey = await importPriv(priv);
     const inst = await call("POST", "/v1/installation", { client_public_key: pub });
     installationToken = pick(inst.Response, "Token")?.token;
     if (!installationToken) throw new Error("Geen installation token van bunq.");
     await call("POST", "/v1/device-server",
-      { description: "klikklaar-controlpanel", secret: API_KEY, permitted_ips: ["*"] }, installationToken);
+      { description: "klikklaar-controlpanel", secret: API_KEY, permitted_ips: ["*"] }, installationToken, newKey);
     await supabase.from("bunq_state").upsert({
       id: 1, private_key: priv, public_key: pub, installation_token: installationToken,
       updated_at: new Date().toISOString(),
     });
   }
 
-  const sess = await call("POST", "/v1/session-server", { secret: API_KEY }, installationToken);
+  const signKey = await importPriv(priv);
+  const sess = await call("POST", "/v1/session-server", { secret: API_KEY }, installationToken, signKey);
   const token = pick(sess.Response, "Token")?.token;
   const userId = String(pickUser(sess.Response)?.id ?? "");
   if (!token || !userId) throw new Error("Geen sessie/gebruiker van bunq.");
 
   await supabase.from("bunq_state").update({ user_id: userId, updated_at: new Date().toISOString() }).eq("id", 1);
-  return { token, userId };
+  return { token, userId, signKey };
 }
 
 async function resolveOrgId(): Promise<string | null> {
@@ -111,7 +139,7 @@ Deno.serve(async (req) => {
 
   try {
     const session = await openSession();
-    const accRes = await call("GET", `/v1/user/${session.userId}/monetary-account`, undefined, session.token);
+    const accRes = await call("GET", `/v1/user/${session.userId}/monetary-account`, undefined, session.token, session.signKey);
     const orgId = await resolveOrgId();
     if (!orgId) throw new Error("Geen organisatie gevonden om saldi onder te zetten.");
 

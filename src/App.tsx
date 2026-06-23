@@ -15,6 +15,7 @@ import ContactsPage from "@/pages/ContactsPage";
 import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
+import FinanceLayout from "@/pages/finance/FinanceLayout";
 import FinancePage from "@/pages/FinancePage";
 import FacturenPage from "@/pages/FacturenPage";
 import OmzetResultaatPage from "@/pages/OmzetResultaatPage";
@@ -56,12 +57,14 @@ function AppRoutes() {
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
         <Route path="/growth" element={<GrowthPage />} />
-        <Route path="/finance" element={<FinancePage />} />
-        <Route path="/facturen" element={<FacturenPage />} />
-        <Route path="/omzet" element={<OmzetResultaatPage />} />
-        <Route path="/liquiditeit" element={<LiquiditeitPage />} />
-        <Route path="/contracten" element={<ContractenPage />} />
-        <Route path="/stripe" element={<StripePage />} />
+        <Route path="/finance" element={<FinanceLayout />}>
+          <Route index element={<FinancePage />} />
+          <Route path="facturen" element={<FacturenPage />} />
+          <Route path="omzet" element={<OmzetResultaatPage />} />
+          <Route path="liquiditeit" element={<LiquiditeitPage />} />
+          <Route path="contracten" element={<ContractenPage />} />
+          <Route path="stripe" element={<StripePage />} />
+        </Route>
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><UserManagementPage /></ProtectedRoute>} />
