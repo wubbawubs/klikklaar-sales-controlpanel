@@ -8,6 +8,7 @@ const TABS = [
   { to: '/finance/liquiditeit', label: 'Liquiditeit' },
   { to: '/finance/contracten', label: 'Contracten' },
   { to: '/finance/stripe', label: 'Stripe' },
+  { to: '/finance/prognose', label: 'Prognose' },
 ];
 
 export default function FinanceLayout() {

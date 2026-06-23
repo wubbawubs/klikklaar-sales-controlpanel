@@ -22,6 +22,7 @@ import OmzetResultaatPage from "@/pages/OmzetResultaatPage";
 import LiquiditeitPage from "@/pages/LiquiditeitPage";
 import ContractenPage from "@/pages/ContractenPage";
 import StripePage from "@/pages/StripePage";
+import PrognosePage from "@/pages/PrognosePage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
@@ -64,6 +65,7 @@ function AppRoutes() {
           <Route path="liquiditeit" element={<LiquiditeitPage />} />
           <Route path="contracten" element={<ContractenPage />} />
           <Route path="stripe" element={<StripePage />} />
+          <Route path="prognose" element={<PrognosePage />} />
         </Route>
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
