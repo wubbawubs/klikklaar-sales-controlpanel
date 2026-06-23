@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload, Euro, FileText, LineChart, Wallet, FileSignature } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload, Euro, FileText, LineChart, Wallet, FileSignature, CreditCard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { to: '/omzet',    icon: LineChart,       label: 'Omzet & Resultaat' },
   { to: '/liquiditeit', icon: Wallet,       label: 'Liquiditeit' },
   { to: '/contracten', icon: FileSignature, label: 'Contracten' },
+  { to: '/stripe',   icon: CreditCard,      label: 'Stripe' },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
