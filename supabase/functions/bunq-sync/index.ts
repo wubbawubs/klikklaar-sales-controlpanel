@@ -68,11 +68,14 @@ function pickUser(arr: any[]) {
   return null;
 }
 
-async function openSession(force = false): Promise<{ token: string; userId: string }> {
+async function openSession(): Promise<{ token: string; userId: string }> {
   const { data: state } = await supabase.from("bunq_state").select("*").eq("id", 1).maybeSingle();
-  let installationToken = force ? null : state?.installation_token;
+  let installationToken = state?.installation_token;
   let priv = state?.private_key, pub = state?.public_key;
 
+  // Installation + device registration happen once and are cached immediately —
+  // even before the session call — so a later failure never re-registers a device
+  // or trips bunq's brute-force lock.
   if (!installationToken || !pub) {
     const keys = await genKeys();
     priv = keys.privatePem; pub = keys.publicPem;
@@ -81,6 +84,10 @@ async function openSession(force = false): Promise<{ token: string; userId: stri
     if (!installationToken) throw new Error("Geen installation token van bunq.");
     await call("POST", "/v1/device-server",
       { description: "klikklaar-controlpanel", secret: API_KEY, permitted_ips: ["*"] }, installationToken);
+    await supabase.from("bunq_state").upsert({
+      id: 1, private_key: priv, public_key: pub, installation_token: installationToken,
+      updated_at: new Date().toISOString(),
+    });
   }
 
   const sess = await call("POST", "/v1/session-server", { secret: API_KEY }, installationToken);
@@ -88,10 +95,7 @@ async function openSession(force = false): Promise<{ token: string; userId: stri
   const userId = String(pickUser(sess.Response)?.id ?? "");
   if (!token || !userId) throw new Error("Geen sessie/gebruiker van bunq.");
 
-  await supabase.from("bunq_state").upsert({
-    id: 1, private_key: priv, public_key: pub, installation_token: installationToken,
-    user_id: userId, updated_at: new Date().toISOString(),
-  });
+  await supabase.from("bunq_state").update({ user_id: userId, updated_at: new Date().toISOString() }).eq("id", 1);
   return { token, userId };
 }
 
@@ -106,11 +110,7 @@ Deno.serve(async (req) => {
   if (!API_KEY) return json({ configured: false });
 
   try {
-    // Open a session, retrying once with a fresh handshake if the cached one is stale.
-    let session;
-    try { session = await openSession(false); }
-    catch { session = await openSession(true); }
-
+    const session = await openSession();
     const accRes = await call("GET", `/v1/user/${session.userId}/monetary-account`, undefined, session.token);
     const orgId = await resolveOrgId();
     if (!orgId) throw new Error("Geen organisatie gevonden om saldi onder te zetten.");
