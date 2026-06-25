@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
+import { useOrganization } from '@/hooks/useOrganization';
 import { toast } from 'sonner';
 
 export interface Board { id: string; org_id: string; name: string; description: string | null; color: string; created_at: string; company_id: string | null; company?: { name: string } | null }
@@ -15,13 +16,16 @@ export interface Card {
 }
 
 export function useBoards() {
-  const orgId = useOrgId();
+  const { isAllView, allOrgIds, current } = useOrganization();
+  // Show boards for the selected label, or every label in the "Algemeen" all-view —
+  // so a board never goes missing just because you're on a different label.
+  const orgIds = isAllView ? allOrgIds : current ? [current.id] : [];
   return useQuery({
-    queryKey: ['boards', orgId],
-    enabled: !!orgId,
+    queryKey: ['boards', [...orgIds].sort()],
+    enabled: orgIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('boards').select('*, company:companies(name)').eq('org_id', orgId!).order('created_at');
+        .from('boards').select('*, company:companies(name)').in('org_id', orgIds).order('created_at');
       if (error) throw error;
       return (data ?? []) as Board[];
     },
