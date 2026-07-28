@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Plus, Building2, User, MessageSquare, Phone, Mail, ChevronRight, UserPlus, Trash2 } from 'lucide-react';
-import { useStages, useDeals, useMoveDeal, useCreateDeal, useUpdateDeal, useDealFees, useSaveDealFees, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal, type DealFee } from '@/hooks/usePipeline';
+import { useStages, useDeals, useMoveDeal, useCreateDeal, useUpdateDeal, useDeleteDeal, useDealFees, useSaveDealFees, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal, type DealFee } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -156,6 +157,7 @@ function DealDialogBody({ deal, stages, onClose }: {
   deal: Deal; stages: { id: string; name: string }[]; onClose: () => void;
 }) {
   const update = useUpdateDeal();
+  const deleteDeal = useDeleteDeal();
   const saveFees = useSaveDealFees();
   const { data: companies = [] } = useCompanies();
   const { data: existingFees = [] } = useDealFees(deal.id);
@@ -241,9 +243,35 @@ function DealDialogBody({ deal, stages, onClose }: {
           ))}
         </div>
 
-        <Button size="sm" className="self-end" onClick={save} disabled={update.isPending || saveFees.isPending}>
-          {update.isPending || saveFees.isPending ? 'Opslaan…' : 'Opslaan'}
-        </Button>
+        <div className="flex items-center justify-between">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1.5">
+                <Trash2 className="h-4 w-4" /> Verwijderen
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Deal verwijderen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  "{deal.title}" wordt permanent verwijderd, inclusief tarieven en activiteiten. Gekoppelde facturen blijven bestaan.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteDeal.mutate(deal.id, { onSuccess: onClose })}
+                >
+                  Verwijderen
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button size="sm" onClick={save} disabled={update.isPending || saveFees.isPending}>
+            {update.isPending || saveFees.isPending ? 'Opslaan…' : 'Opslaan'}
+          </Button>
+        </div>
       </div>
 
       <div className="border-t my-3" />

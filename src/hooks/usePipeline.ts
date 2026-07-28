@@ -160,6 +160,20 @@ export function useSaveDealFees() {
   });
 }
 
+// Deletes a deal; fees and activities cascade in the database, invoices keep their row.
+export function useDeleteDeal() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('deals').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['deals', orgId] }); toast.success('Deal verwijderd'); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+  });
+}
+
 // Edit an existing deal's fields (title, value, stage, company, billing type, contact).
 export function useUpdateDeal() {
   const qc = useQueryClient();
