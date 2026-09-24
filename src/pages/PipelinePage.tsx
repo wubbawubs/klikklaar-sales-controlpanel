@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { Plus, Building2, User, MessageSquare, Phone, Mail, ChevronRight, UserPlus, Trash2 } from 'lucide-react';
+import { Plus, Building2, User, MessageSquare, Phone, Mail, ChevronRight, UserPlus, Trash2, Search, X } from 'lucide-react';
 import { useStages, useDeals, useMoveDeal, useCreateDeal, useUpdateDeal, useDeleteDeal, useDealFees, useSaveDealFees, useCreateLead, useCompanies, useBillingTypes, useAddActivity, useDealActivities, formatFee, type Deal, type DealFee } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -386,8 +386,30 @@ export default function PipelinePage() {
   const [newDealFor, setNewDealFor] = useState<{ stageId: string; stageName: string } | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [leadOpen, setLeadOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  const byStage = (stageId: string) => deals.filter(d => d.stage_id === stageId);
+  // "/" focuses the search box (unless already typing somewhere)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(t.tagName) && !t.isContentEditable) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const q = search.trim().toLowerCase();
+  const visibleDeals = q
+    ? deals.filter(d =>
+        [d.title, d.company?.name, d.contact?.name, d.contact?.email, d.contact?.phone]
+          .some(v => v?.toLowerCase().includes(q)))
+    : deals;
+
+  const byStage = (stageId: string) => visibleDeals.filter(d => d.stage_id === stageId);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -411,11 +433,35 @@ export default function PipelinePage() {
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <div>
           <h1 className="text-xl font-semibold">Pipeline</h1>
-          <p className="text-xs text-muted-foreground">{deals.length} deals · €{deals.reduce((s, d) => s + (Number(d.value_eur) || 0), 0).toLocaleString('nl')} totaal</p>
+          <p className="text-xs text-muted-foreground">
+            {q ? `${visibleDeals.length} van ${deals.length}` : deals.length} deals · €{visibleDeals.reduce((s, d) => s + (Number(d.value_eur) || 0), 0).toLocaleString('nl')} totaal
+          </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => setLeadOpen(true)} disabled={stages.length === 0}>
+        <div className="flex items-center gap-2">
+          <div className="relative w-40 sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchRef}
+              placeholder="Zoek deal, bedrijf, contact…"
+              className="h-9 pl-8 pr-8"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Escape' && (setSearch(''), e.currentTarget.blur())}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Zoekopdracht wissen"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={() => setLeadOpen(true)} disabled={stages.length === 0}>
           <UserPlus className="h-4 w-4" /> Lead toevoegen
-        </Button>
+          </Button>
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>

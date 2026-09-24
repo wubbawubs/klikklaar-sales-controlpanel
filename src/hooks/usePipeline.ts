@@ -12,7 +12,7 @@ export interface Deal {
   billing_type_id: string | null;
   assigned_to: string | null; created_at: string; updated_at: string;
   company?: { name: string } | null;
-  contact?: { name: string } | null;
+  contact?: { name: string; email: string | null; phone: string | null } | null;
   billing_type?: { name: string; kind: 'one_time' | 'recurring'; interval: 'month' | 'year' | null } | null;
 }
 export interface Activity {
@@ -45,7 +45,7 @@ export function useDeals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('*, company:companies(name), contact:contacts(name), billing_type:billing_types(name, kind, interval)')
+        .select('*, company:companies(name), contact:contacts(name, email, phone), billing_type:billing_types(name, kind, interval)')
         .eq('org_id', orgId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
