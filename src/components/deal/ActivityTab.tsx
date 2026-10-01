@@ -26,7 +26,7 @@ export function ActivityTab({ deal }: { deal: Deal }) {
     id: a.id, type: a.type, body: a.body ?? '', at: a.created_at,
     sub: scope === 'company' && a.deal_id !== deal.id ? a.deal_title : undefined,
   }));
-  const apptEntries: Entry[] = scope === 'deal' ? appts.map(a => ({
+  const apptEntries: Entry[] = scope === 'deal' ? appts.filter(a => a.status === 'planned' || a.status === 'cancelled').map(a => ({
     id: `appt-${a.id}`, type: 'appointment', at: a.starts_at,
     body: `${a.type === 'call' ? 'Call' : 'Meeting'} ${STATUS[a.status]}: ${a.title} (${fmtWhen(a.starts_at)})`,
   })) : [];
@@ -44,8 +44,8 @@ export function ActivityTab({ deal }: { deal: Deal }) {
         <Select value={type} onValueChange={setType}>
           <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="note">Notitie</SelectItem><SelectItem value="call">Bel</SelectItem>
-            <SelectItem value="email">Email</SelectItem><SelectItem value="meeting">Meeting</SelectItem>
+            <SelectItem value="note">Notitie</SelectItem><SelectItem value="call">Call</SelectItem>
+            <SelectItem value="email">E-mail</SelectItem><SelectItem value="meeting">Meeting</SelectItem>
           </SelectContent>
         </Select>
         <Textarea placeholder="Voeg een notitie toe..." value={note} onChange={e => setNote(e.target.value)} className="text-sm min-h-[60px] flex-1" />

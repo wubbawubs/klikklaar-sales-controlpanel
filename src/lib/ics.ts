@@ -6,6 +6,7 @@ export interface IcsEvent {
 }
 
 const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const noCrlf = (s: string) => s.replace(/[\r\n]+/g, '');
 const utc = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
 export function buildIcs(e: IcsEvent): string {
@@ -21,10 +22,10 @@ export function buildIcs(e: IcsEvent): string {
   ];
   if (e.description) lines.push(`DESCRIPTION:${esc(e.description)}`);
   if (e.location) lines.push(`LOCATION:${esc(e.location)}`);
-  if (e.organizerEmail) lines.push(`ORGANIZER:mailto:${e.organizerEmail}`);
-  if (e.attendeeEmail) lines.push(`ATTENDEE;CN=${esc(e.attendeeName || e.attendeeEmail)};RSVP=TRUE:mailto:${e.attendeeEmail}`);
+  if (e.organizerEmail) lines.push(`ORGANIZER:mailto:${noCrlf(e.organizerEmail)}`);
+  if (e.attendeeEmail) lines.push(`ATTENDEE;CN="${noCrlf((e.attendeeName || e.attendeeEmail).replace(/"/g, ''))}";RSVP=TRUE:mailto:${noCrlf(e.attendeeEmail)}`);
   lines.push('END:VEVENT', 'END:VCALENDAR');
-  return lines.join('\r\n');
+  return lines.join('\r\n') + '\r\n';
 }
 
 export function downloadIcs(e: IcsEvent): void {
@@ -34,5 +35,5 @@ export function downloadIcs(e: IcsEvent): void {
   a.href = url;
   a.download = `${e.title.replace(/[^\w\- ]+/g, '').trim() || 'afspraak'}.ics`;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

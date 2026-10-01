@@ -64,13 +64,13 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('company-documents', 'com
 
 DROP POLICY IF EXISTS "company docs read" ON storage.objects;
 CREATE POLICY "company docs read" ON storage.objects FOR SELECT
-  USING (bucket_id = 'company-documents' AND (storage.foldername(name))[1]::uuid IN
-    (SELECT organization_id FROM public.user_organizations WHERE user_id = auth.uid()));
+  USING (bucket_id = 'company-documents' AND (storage.foldername(name))[1] IN
+    (SELECT organization_id::text FROM public.user_organizations WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "company docs insert" ON storage.objects;
 CREATE POLICY "company docs insert" ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'company-documents' AND (storage.foldername(name))[1]::uuid IN
-    (SELECT organization_id FROM public.user_organizations WHERE user_id = auth.uid()));
+  WITH CHECK (bucket_id = 'company-documents' AND (storage.foldername(name))[1] IN
+    (SELECT organization_id::text FROM public.user_organizations WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "company docs delete" ON storage.objects;
 CREATE POLICY "company docs delete" ON storage.objects FOR DELETE
-  USING (bucket_id = 'company-documents' AND (storage.foldername(name))[1]::uuid IN
-    (SELECT organization_id FROM public.user_organizations WHERE user_id = auth.uid()));
+  USING (bucket_id = 'company-documents' AND (storage.foldername(name))[1] IN
+    (SELECT organization_id::text FROM public.user_organizations WHERE user_id = auth.uid()));

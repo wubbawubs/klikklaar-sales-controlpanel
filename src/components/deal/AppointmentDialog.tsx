@@ -61,7 +61,11 @@ function Form({ onClose, deal, initialType, appointment }: { onClose: () => void
     <>
       <DialogHeader><DialogTitle>{appointment ? 'Afspraak verzetten' : type === 'call' ? 'Call plannen' : 'Meeting plannen'}</DialogTitle></DialogHeader>
       <div className="grid gap-3">
-        <Select value={type} onValueChange={v => setType(v as AppointmentType)}>
+        <Select value={type} onValueChange={v => {
+          const next = v as AppointmentType;
+          if (title === defaultTitle(type, deal)) setTitle(defaultTitle(next, deal));
+          setType(next);
+        }}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="call">📞 Call</SelectItem><SelectItem value="meeting">👥 Meeting</SelectItem></SelectContent>
         </Select>

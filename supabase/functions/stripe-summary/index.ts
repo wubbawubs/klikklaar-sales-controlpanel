@@ -1,7 +1,7 @@
 // Stripe summary API for the control-panel finance module.
 // Pulls live MRR/ARR, balance, recent charges and failed incasso's from Stripe.
-// The Stripe secret stays server-side (STRIPE_SECRET_KEY); the gateway verifies
-// the caller's JWT, so only a logged-in team member can hit this.
+// The Stripe secret stays server-side (STRIPE_SECRET_KEY). Access is admin-only:
+// the handler enforces it via requireAdmin.
 import { requireAdmin } from "../_shared/requireAdmin.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

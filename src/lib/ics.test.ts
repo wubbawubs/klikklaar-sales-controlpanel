@@ -30,8 +30,20 @@ describe('buildIcs', () => {
   it('adds attendee and organizer only when given', () => {
     expect(buildIcs(base)).not.toContain('ATTENDEE');
     const ics = buildIcs({ ...base, attendeeEmail: 'jan@acme.nl', attendeeName: 'Jan', organizerEmail: 'jul@otr.nl', location: 'Teams' });
-    expect(ics).toContain('ATTENDEE;CN=Jan;RSVP=TRUE:mailto:jan@acme.nl');
+    expect(ics).toContain('ATTENDEE;CN="Jan";RSVP=TRUE:mailto:jan@acme.nl');
     expect(ics).toContain('ORGANIZER:mailto:jul@otr.nl');
     expect(ics).toContain('LOCATION:Teams');
+  });
+
+  it('quotes the attendee CN so commas survive', () => {
+    const ics = buildIcs({ ...base, attendeeEmail: 'p@acme.nl', attendeeName: 'Jansen, Piet' });
+    expect(ics).toContain('ATTENDEE;CN="Jansen, Piet";RSVP=TRUE:mailto:p@acme.nl');
+  });
+
+  it('strips CR/LF from emails and ends with CRLF', () => {
+    const ics = buildIcs({ ...base, organizerEmail: 'a@b.nl\r\nX-EVIL:1', attendeeEmail: 'c@d.nl\nBAD:1' });
+    expect(ics).toContain('ORGANIZER:mailto:a@b.nlX-EVIL:1');
+    expect(ics).not.toMatch(/\r\nX-EVIL/);
+    expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true);
   });
 });

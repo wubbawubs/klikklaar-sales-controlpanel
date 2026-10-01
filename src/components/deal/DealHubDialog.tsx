@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Phone, Users } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,7 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
       <div className="flex flex-wrap items-center gap-3 border-b px-5 py-3 pr-12">
         <div className="min-w-0 flex-1">
           <DialogTitle className="text-lg font-semibold truncate">{deal.title}</DialogTitle>
+          <DialogDescription className="sr-only">Details, voorbereiding en activiteit van deze deal</DialogDescription>
           <p className="text-xs text-muted-foreground">{feeSummary(deal, fees)}</p>
         </div>
         <Select value={deal.stage_id ?? ''} onValueChange={changeStage}>
