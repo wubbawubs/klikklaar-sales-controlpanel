@@ -31,13 +31,13 @@ export function AppointmentActions({ appt }: { appt: Appointment }) {
         <PopoverContent className="w-72 space-y-2">
           <Textarea placeholder="Uitkomst (kort)" value={outcome} onChange={e => setOutcome(e.target.value)} className="min-h-[70px]" />
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={() => complete.mutate({ appt, outcome, status: 'no_show' })}>No-show</Button>
-            <Button size="sm" onClick={() => complete.mutate({ appt, outcome, status: 'done' })}>Gedaan</Button>
+            <Button size="sm" variant="outline" disabled={complete.isPending} onClick={() => complete.mutate({ appt, outcome, status: 'no_show' })}>No-show</Button>
+            <Button size="sm" disabled={complete.isPending} onClick={() => complete.mutate({ appt, outcome, status: 'done' })}>Gedaan</Button>
           </div>
         </PopoverContent>
       </Popover>
       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={() => setResched(true)}><CalendarClock className="h-3.5 w-3.5" /> Verzetten</Button>
-      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-destructive" onClick={() => cancel.mutate(appt)}><X className="h-3.5 w-3.5" /> Annuleren</Button>
+      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-destructive" disabled={cancel.isPending} onClick={() => cancel.mutate(appt)}><X className="h-3.5 w-3.5" /> Annuleren</Button>
       <AppointmentDialog open={resched} onClose={() => setResched(false)} deal={null} type={appt.type} appointment={appt} />
     </div>
   );
