@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStages, useMoveDeal, useDealFees, formatFee, type Deal } from '@/hooks/usePipeline';
 import { DealOverviewTab } from './DealOverviewTab';
 import { CompanyPanel } from './CompanyPanel';
+import { PrepIntakeTab } from './PrepIntakeTab';
 
 const feeSummary = (deal: Deal, fees: { amount: number; kind: string; interval: string | null }[]) =>
   fees.length
@@ -70,7 +71,7 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
             <TabsContent value="overview" className="mt-4">
               <DealOverviewTab deal={deal} onSaved={() => toast.success('Opgeslagen')} onDeleted={onClose} />
             </TabsContent>
-            <TabsContent value="prep" className="mt-4"><div className="text-xs text-muted-foreground">Task 6</div></TabsContent>
+            <TabsContent value="prep" className="mt-4"><PrepIntakeTab companyId={deal.company_id} /></TabsContent>
             <TabsContent value="activity" className="mt-4"><div className="text-xs text-muted-foreground">Task 7</div></TabsContent>
           </Tabs>
         </main>
