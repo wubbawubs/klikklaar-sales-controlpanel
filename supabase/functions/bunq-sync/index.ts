@@ -3,6 +3,7 @@
 // cash_positions as today's snapshot. The bunq API key stays server-side
 // (BUNQ_API_KEY secret); handshake state is cached in bunq_state (service-role).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin } from "../_shared/requireAdmin.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -135,6 +136,8 @@ async function resolveOrgId(): Promise<string | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const denied = await requireAdmin(req, cors);
+  if (denied) return denied;
   if (!API_KEY) return json({ configured: false });
 
   try {

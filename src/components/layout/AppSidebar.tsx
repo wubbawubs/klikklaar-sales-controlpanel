@@ -14,8 +14,8 @@ const NAV: NavItem[] = [
   { to: '/contacts', icon: Users,           label: 'Contacten' },
   { to: '/agenda',   icon: CalendarDays,    label: 'Agenda' },
   { to: '/boards',   icon: Layout,          label: 'Boards' },
-  { to: '/growth',   icon: TrendingUp,      label: 'Groeidoelen' },
-  { to: '/finance',  icon: Euro,            label: 'Finance' },
+  { to: '/growth',   icon: TrendingUp,      label: 'Groeidoelen', adminOnly: true },
+  { to: '/finance',  icon: Euro,            label: 'Finance', adminOnly: true },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
@@ -46,7 +46,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
 
         {/* Main nav */}
         <nav className="flex-1 flex flex-col gap-0.5 px-2">
-          {NAV.map(item => (
+          {NAV.filter(i => !i.adminOnly || isAdmin).map(item => (
             <Tooltip key={item.to}>
               <TooltipTrigger asChild>
                 <NavLink

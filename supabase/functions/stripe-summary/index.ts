@@ -2,6 +2,7 @@
 // Pulls live MRR/ARR, balance, recent charges and failed incasso's from Stripe.
 // The Stripe secret stays server-side (STRIPE_SECRET_KEY); the gateway verifies
 // the caller's JWT, so only a logged-in team member can hit this.
+import { requireAdmin } from "../_shared/requireAdmin.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -36,6 +37,8 @@ function toMonthly(unitAmount: number, qty: number, interval: string, count: num
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireAdmin(req, corsHeaders);
+  if (denied) return denied;
   if (!KEY) return json({ configured: false });
 
   try {

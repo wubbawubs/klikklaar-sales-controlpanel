@@ -59,8 +59,8 @@ function AppRoutes() {
         <Route path="/agenda" element={<AgendaPage />} />
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
-        <Route path="/growth" element={<GrowthPage />} />
-        <Route path="/finance" element={<FinanceLayout />}>
+        <Route path="/growth" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><GrowthPage /></ProtectedRoute>} />
+        <Route path="/finance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinanceLayout /></ProtectedRoute>}>
           <Route index element={<FinancePage />} />
           <Route path="facturen" element={<FacturenPage />} />
           <Route path="omzet" element={<OmzetResultaatPage />} />
