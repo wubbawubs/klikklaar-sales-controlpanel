@@ -9,6 +9,9 @@ import { useStages, useMoveDeal, useDealFees, formatFee, type Deal } from '@/hoo
 import { DealOverviewTab } from './DealOverviewTab';
 import { CompanyPanel } from './CompanyPanel';
 import { PrepIntakeTab } from './PrepIntakeTab';
+import { ActivityTab } from './ActivityTab';
+import { AppointmentsPanel } from './AppointmentsPanel';
+import { AppointmentDialog } from './AppointmentDialog';
 
 const feeSummary = (deal: Deal, fees: { amount: number; kind: string; interval: string | null }[]) =>
   fees.length
@@ -72,14 +75,14 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
               <DealOverviewTab deal={deal} onSaved={() => toast.success('Opgeslagen')} onDeleted={onClose} />
             </TabsContent>
             <TabsContent value="prep" className="mt-4"><PrepIntakeTab companyId={deal.company_id} /></TabsContent>
-            <TabsContent value="activity" className="mt-4"><div className="text-xs text-muted-foreground">Task 7</div></TabsContent>
+            <TabsContent value="activity" className="mt-4"><ActivityTab deal={deal} /></TabsContent>
           </Tabs>
         </main>
         <aside className="border-t lg:border-t-0 lg:border-l p-4 lg:overflow-y-auto">
-          <div className="text-xs text-muted-foreground">Agenda (Task 7)</div>
+          <AppointmentsPanel deal={deal} />
         </aside>
       </div>
-      {void planType}
+      <AppointmentDialog open={!!planType} onClose={() => setPlanType(null)} deal={deal} type={planType ?? 'call'} />
     </>
   );
 }
