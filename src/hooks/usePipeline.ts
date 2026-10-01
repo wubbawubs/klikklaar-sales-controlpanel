@@ -95,7 +95,12 @@ export function useMoveDeal() {
         if (toStageName.toLowerCase() === 'verloren') await fireWebhook(orgId, 'deal.lost', { deal_id: dealId });
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['deals', orgId] }),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['deals', orgId] });
+      qc.invalidateQueries({ queryKey: ['activities', v.dealId] });
+      qc.invalidateQueries({ queryKey: ['company-activities'] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Stage wijzigen mislukt'),
   });
 }
 
@@ -169,7 +174,11 @@ export function useDeleteDeal() {
       const { error } = await supabase.from('deals').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['deals', orgId] }); toast.success('Deal verwijderd'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['deals', orgId] });
+      qc.invalidateQueries({ queryKey: ['appointments'] });
+      toast.success('Deal verwijderd');
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
   });
 }
@@ -380,6 +389,7 @@ export function useAddActivity() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['activities', vars.dealId] });
+      qc.invalidateQueries({ queryKey: ['company-activities'] });
       toast.success('Opgeslagen');
     },
   });
