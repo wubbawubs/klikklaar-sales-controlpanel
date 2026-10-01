@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useStages, useMoveDeal, useDealFees, formatFee, type Deal } from '@/hooks/usePipeline';
 import { DealOverviewTab } from './DealOverviewTab';
+import { CompanyPanel } from './CompanyPanel';
 
 const feeSummary = (deal: Deal, fees: { amount: number; kind: string; interval: string | null }[]) =>
   fees.length
@@ -57,7 +58,7 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
       {/* Body: company | tabs | agenda — stacks below lg */}
       <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[280px_1fr_300px]">
         <aside className="border-b lg:border-b-0 lg:border-r p-4 lg:overflow-y-auto">
-          <div className="text-xs text-muted-foreground">Bedrijf (Task 5)</div>
+          <CompanyPanel deal={deal} onOpenDeal={onOpenDeal} />
         </aside>
         <main className="p-4 lg:overflow-y-auto min-w-0">
           <Tabs defaultValue="overview">
@@ -78,7 +79,6 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
         </aside>
       </div>
       {void planType}
-      {void onOpenDeal}
     </>
   );
 }
