@@ -12,6 +12,20 @@ const GROUPS = [
   { key: 'thisWeek', label: 'Deze week' }, { key: 'later', label: 'Later' },
 ] as const;
 
+function AgendaItem({ a, onOpen }: { a: Appointment; onOpen: (dealId: string) => void }) {
+  const Icon = a.type === 'call' ? Phone : Users;
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <button className="text-left w-full" onClick={() => a.deal_id && onOpen(a.deal_id)}>
+        <p className="text-xs text-muted-foreground">{fmtWhen(a.starts_at)} · {a.duration_min} min</p>
+        <p className="text-sm font-medium flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" />{a.title}</p>
+        <p className="text-xs text-muted-foreground">{[a.company?.name, a.deal?.title].filter(Boolean).join(' · ')}</p>
+      </button>
+      <AppointmentActions appt={a} />
+    </div>
+  );
+}
+
 export default function AgendaPage() {
   const { user } = useAuth();
   const { data = [], isLoading } = useAgenda();
@@ -21,20 +35,6 @@ export default function AgendaPage() {
 
   const filtered = data.filter(a => (who === 'all' || a.owner_id === user?.id) && (kind === 'all' || a.type === kind));
   const groups = groupAppointments(filtered, new Date());
-
-  const Item = ({ a }: { a: Appointment }) => {
-    const Icon = a.type === 'call' ? Phone : Users;
-    return (
-      <div className="rounded-lg border bg-card p-3">
-        <button className="text-left w-full" onClick={() => a.deal_id && navigate(`/pipeline?deal=${a.deal_id}`)}>
-          <p className="text-xs text-muted-foreground">{fmtWhen(a.starts_at)} · {a.duration_min} min</p>
-          <p className="text-sm font-medium flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" />{a.title}</p>
-          <p className="text-xs text-muted-foreground">{[a.company?.name, a.deal?.title].filter(Boolean).join(' · ')}</p>
-        </button>
-        <AppointmentActions appt={a} />
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -53,7 +53,7 @@ export default function AgendaPage() {
       {GROUPS.map(g => groups[g.key].length > 0 && (
         <section key={g.key} className="space-y-2">
           <h2 className={`text-xs font-semibold uppercase tracking-wide ${g.key === 'overdue' ? 'text-destructive' : 'text-muted-foreground'}`}>{g.label} ({groups[g.key].length})</h2>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{groups[g.key].map(a => <Item key={a.id} a={a} />)}</div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{groups[g.key].map(a => <AgendaItem key={a.id} a={a} onOpen={id => navigate(`/pipeline?deal=${id}`)} />)}</div>
         </section>
       ))}
     </div>
