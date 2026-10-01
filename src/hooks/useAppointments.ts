@@ -55,6 +55,7 @@ export function useSaveAppointment() {
   const invalidate = useInvalidateAppointments();
   return useMutation({
     mutationFn: async ({ id, ...input }: AppointmentInput) => {
+      if (!orgId) throw new Error('Geen CRM geselecteerd');
       if (id) {
         const { error } = await supabase.from('crm_appointments').update(input).eq('id', id);
         if (error) throw error;
@@ -81,12 +82,14 @@ export function useCompleteAppointment() {
       if (appt.deal_id) {
         const { data: { user } } = await supabase.auth.getUser();
         const label = status === 'no_show' ? 'No-show' : appt.type === 'call' ? 'Call gedaan' : 'Meeting gedaan';
-        await supabase.from('deal_activities').insert({
+        const { error: actErr } = await supabase.from('deal_activities').insert({
           org_id: appt.org_id, deal_id: appt.deal_id, type: appt.type,
           body: outcome ? `${label}: ${outcome}` : label,
           meta: { appointment_id: appt.id }, created_by: user?.id,
         });
+        if (actErr) throw actErr;
         qc.invalidateQueries({ queryKey: ['activities', appt.deal_id] });
+        qc.invalidateQueries({ queryKey: ['company-activities'] });
       }
     },
     onSuccess: () => { invalidate(); toast.success('Afspraak afgerond'); },

@@ -54,6 +54,7 @@ export function useCreateCompanyForDeal() {
   const orgId = useOrgId();
   return useMutation({
     mutationFn: async ({ dealId, name }: { dealId: string; name: string }) => {
+      if (!orgId) throw new Error('Geen CRM geselecteerd');
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase.from('companies')
         .insert({ org_id: orgId, name, created_by: user?.id }).select('id').single();
@@ -139,6 +140,7 @@ export function useSaveCompanyNote() {
         if (error) throw error;
         return;
       }
+      if (!orgId) throw new Error('Geen CRM geselecteerd');
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('company_items').insert({
         org_id: orgId, company_id: companyId, item_type: 'note', category, title, body, created_by: user?.id,
@@ -155,9 +157,10 @@ export function useUploadCompanyDocument() {
   const orgId = useOrgId();
   return useMutation({
     mutationFn: async ({ companyId, category, file }: { companyId: string; category: ItemCategory; file: File }) => {
+      if (!orgId) throw new Error('Geen CRM geselecteerd');
       const invalid = validateDoc(file);
       if (invalid) throw new Error(invalid);
-      const path = companyDocPath(orgId!, companyId, file.name, crypto.randomUUID());
+      const path = companyDocPath(orgId, companyId, file.name, crypto.randomUUID());
       const { error: upErr } = await supabase.storage.from('company-documents').upload(path, file, { upsert: false });
       if (upErr) throw upErr;
       const { data: { user } } = await supabase.auth.getUser();
