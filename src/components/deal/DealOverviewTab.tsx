@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { useUpdateDeal, useDeleteDeal, useDealFees, useSaveDealFees, useCompanies, type Deal, type DealFee } from '@/hooks/usePipeline';
+import { useUpdateDeal, useDeleteDeal, useDealFees, useSaveDealFees, type Deal, type DealFee } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-
-const NONE = '__none__';
 
 // Fee-type options shown in the dropdown, mapped to {kind, interval}.
 const FEE_KINDS = [
@@ -17,17 +15,14 @@ const FEE_KINDS = [
 ];
 const feeKindValue = (f: DealFee) => (f.kind === 'recurring' ? (f.interval || 'month') : 'one_time');
 
-export function DealOverviewTab({ deal, stages, onSaved, onDeleted }: {
-  deal: Deal; stages: { id: string; name: string }[]; onSaved?: () => void; onDeleted: () => void;
+export function DealOverviewTab({ deal, onSaved, onDeleted }: {
+  deal: Deal; onSaved?: () => void; onDeleted: () => void;
 }) {
   const update = useUpdateDeal();
   const deleteDeal = useDeleteDeal();
   const saveFees = useSaveDealFees();
-  const { data: companies = [] } = useCompanies();
   const { data: existingFees = [] } = useDealFees(deal.id);
   const [title, setTitle] = useState(deal.title);
-  const [stageId, setStageId] = useState(deal.stage_id ?? '');
-  const [companyId, setCompanyId] = useState(deal.company_id ?? NONE);
   const [fees, setFees] = useState<DealFee[]>([]);
   const [feesInit, setFeesInit] = useState(false);
 
@@ -45,11 +40,7 @@ export function DealOverviewTab({ deal, stages, onSaved, onDeleted }: {
 
   const save = () => {
     if (!title.trim()) { toast.error('Naam verplicht'); return; }
-    update.mutate({
-      id: deal.id, title: title.trim(),
-      stage_id: stageId || deal.stage_id || undefined,
-      company_id: companyId === NONE ? null : companyId,
-    });
+    update.mutate({ id: deal.id, title: title.trim() });
     saveFees.mutate({ dealId: deal.id, fees }, { onSuccess: onSaved });
   };
 
@@ -59,25 +50,6 @@ export function DealOverviewTab({ deal, stages, onSaved, onDeleted }: {
         <div className="grid gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Titel</label>
           <Input value={title} onChange={e => setTitle(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Stage</label>
-            <Select value={stageId} onValueChange={setStageId}>
-              <SelectTrigger><SelectValue placeholder="Kies stage" /></SelectTrigger>
-              <SelectContent>{stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Bedrijf</label>
-            <Select value={companyId} onValueChange={setCompanyId}>
-              <SelectTrigger><SelectValue placeholder="Geen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Geen</SelectItem>
-                {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Fee lines — add as many as needed, no Settings trip */}

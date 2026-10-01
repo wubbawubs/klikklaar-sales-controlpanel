@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Phone, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useStages, useMoveDeal, useDealFees, formatFee, type Deal } from '@/hooks/usePipeline';
@@ -66,7 +67,7 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
               <TabsTrigger value="activity">Activiteit</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="mt-4">
-              <DealOverviewTab deal={deal} stages={stages} onDeleted={onClose} />
+              <DealOverviewTab deal={deal} onSaved={() => toast.success('Opgeslagen')} onDeleted={onClose} />
             </TabsContent>
             <TabsContent value="prep" className="mt-4"><div className="text-xs text-muted-foreground">Task 6</div></TabsContent>
             <TabsContent value="activity" className="mt-4"><div className="text-xs text-muted-foreground">Task 7</div></TabsContent>

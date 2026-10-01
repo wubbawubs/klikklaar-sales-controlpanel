@@ -185,7 +185,7 @@ export default function PipelinePage() {
   const openDeal = (id: string) => setSearchParams(p => { p.set('deal', id); return p; });
   const closeDeal = () => setSearchParams(p => { p.delete('deal'); return p; });
   const [newDealFor, setNewDealFor] = useState<{ stageId: string; stageName: string } | null>(null);
-    const [leadOpen, setLeadOpen] = useState(false);
+  const [leadOpen, setLeadOpen] = useState(false);
   const [search, setSearch] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
