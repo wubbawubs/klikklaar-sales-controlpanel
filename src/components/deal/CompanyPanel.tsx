@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Building2, Globe, MapPin, Phone, Mail, Tag, Pencil, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanies, useUpdateDeal, type Deal } from '@/hooks/usePipeline';
@@ -20,7 +21,7 @@ const Row = ({ icon: Icon, children }: { icon: any; children: React.ReactNode })
   <p className="flex items-center gap-2 text-sm py-0.5 min-w-0"><Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" /><span className="truncate">{children}</span></p>
 );
 
-function LinkCompany({ deal }: { deal: Deal }) {
+function LinkCompany({ deal, onDone }: { deal: Deal; onDone?: () => void }) {
   const { data: companies = [] } = useCompanies();
   const update = useUpdateDeal();
   const create = useCreateCompanyForDeal();
@@ -28,13 +29,13 @@ function LinkCompany({ deal }: { deal: Deal }) {
   return (
     <div className="rounded-lg border border-dashed p-3 space-y-2">
       <p className="text-sm font-medium">Koppel een bedrijf</p>
-      <Select onValueChange={v => update.mutate({ id: deal.id, company_id: v })}>
+      <Select onValueChange={v => update.mutate({ id: deal.id, company_id: v }, { onSuccess: onDone })}>
         <SelectTrigger className="h-8"><SelectValue placeholder="Kies bestaand bedrijf" /></SelectTrigger>
         <SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
       </Select>
       <div className="flex gap-2">
         <Input className="h-8" placeholder="Of nieuw bedrijf…" value={name} onChange={e => setName(e.target.value)} />
-        <Button size="sm" disabled={!name.trim() || create.isPending} onClick={() => create.mutate({ dealId: deal.id, name: name.trim() })}>+</Button>
+        <Button size="sm" disabled={!name.trim() || create.isPending} onClick={() => create.mutate({ dealId: deal.id, name: name.trim() }, { onSuccess: onDone })}>+</Button>
       </div>
     </div>
   );
@@ -116,11 +117,34 @@ export function CompanyPanel({ deal, onOpenDeal }: { deal: Deal; onOpenDeal: (id
   const { data: contact } = useContact(deal.contact_id);
   const { data: companyDeals = [] } = useCompanyDeals(deal.company_id);
   const others = companyDeals.filter(d => d.id !== deal.id);
+  const updateDeal = useUpdateDeal();
+  const [relinking, setRelinking] = useState(false);
+
+  const companyActions = deal.company_id ? (
+    <div className="flex items-center gap-1">
+      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setRelinking(r => !r)}>{relinking ? 'Annuleren' : 'Wijzig'}</Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive">Ontkoppel</Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bedrijf ontkoppelen?</AlertDialogTitle>
+            <AlertDialogDescription>De deal blijft bestaan, maar is daarna niet meer aan dit bedrijf gekoppeld.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { updateDeal.mutate({ id: deal.id, company_id: null }); setRelinking(false); }}>Ontkoppel</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  ) : undefined;
 
   return (
     <>
-      <Section title="Bedrijf">
-        {!deal.company_id ? <LinkCompany deal={deal} /> : company ? <CompanyCard key={company.id} company={company} /> : null}
+      <Section title="Bedrijf" action={companyActions}>
+        {!deal.company_id || relinking ? <LinkCompany deal={deal} onDone={() => setRelinking(false)} /> : company ? <CompanyCard key={company.id} company={company} /> : null}
       </Section>
       <Section title="Contactpersoon">
         {contact ? <ContactCard key={contact.id} contact={contact} /> : <p className="text-xs text-muted-foreground">Geen contactpersoon</p>}
