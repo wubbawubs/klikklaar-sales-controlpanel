@@ -8,11 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAgenda, type Appointment } from '@/hooks/useAppointments';
 import { DealHubDialog } from '@/components/deal/DealHubDialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-function DealCard({ deal, index, onClick }: { deal: Deal; index: number; onClick: () => void }) {
+function DealCard({ deal, index, onClick, next }: { deal: Deal; index: number; onClick: () => void; next?: Appointment }) {
   return (
     <Draggable draggableId={deal.id} index={index}>
       {(provided, snapshot) => (
@@ -27,6 +28,11 @@ function DealCard({ deal, index, onClick }: { deal: Deal; index: number; onClick
           )}
         >
           <p className="text-sm font-medium leading-tight mb-1.5">{deal.title}</p>
+          {next && (
+            <p className={cn('text-[11px] mb-1', new Date(next.starts_at) < new Date() ? 'text-destructive' : 'text-primary')}>
+              {next.type === 'call' ? '📞' : '👥'} {new Date(next.starts_at).toLocaleString('nl', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
           <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
             {deal.company?.name && (
               <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{deal.company.name}</span>
@@ -178,6 +184,9 @@ function LeadDialog({ open, onClose, stages, defaultStageId }: {
 export default function PipelinePage() {
   const { data: stages = [] } = useStages();
   const { data: deals = [] } = useDeals();
+  const { data: agenda = [] } = useAgenda();
+  const nextByDeal = new Map<string, Appointment>();
+  for (const a of agenda) if (a.deal_id && !nextByDeal.has(a.deal_id)) nextByDeal.set(a.deal_id, a); // agenda is sorted by starts_at
   const moveDeal = useMoveDeal();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get('deal');
@@ -297,7 +306,7 @@ export default function PipelinePage() {
                       )}
                     >
                       {stageDeals.map((deal, i) => (
-                        <DealCard key={deal.id} deal={deal} index={i} onClick={() => openDeal(deal.id)} />
+                        <DealCard key={deal.id} deal={deal} index={i} onClick={() => openDeal(deal.id)} next={nextByDeal.get(deal.id)} />
                       ))}
                       {provided.placeholder}
                     </div>

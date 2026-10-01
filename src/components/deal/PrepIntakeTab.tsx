@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useCompanyItems, useSaveCompanyNote, useUploadCompanyDocument, useDeleteCompanyItem, openCompanyDocument, type CompanyItem, type ItemCategory } from '@/hooks/useCompanyHub';
 import { cn } from '@/lib/utils';
 
@@ -46,7 +47,10 @@ function DocUploader({ companyId, onDone }: { companyId: string; onDone: () => v
   const input = useRef<HTMLInputElement>(null);
   const send = (files: FileList | null) => {
     const file = files?.[0];
-    if (file) upload.mutate({ companyId, category, file }, { onSuccess: onDone });
+    if (file && !upload.isPending) {
+      upload.mutate({ companyId, category, file }, { onSuccess: onDone });
+      if (input.current) input.current.value = '';
+    }
   };
   return (
     <div className="rounded-lg border p-3 space-y-2">
@@ -86,7 +90,28 @@ function ItemRow({ item, onEdit }: { item: CompanyItem; onEdit: () => void }) {
           <p className="text-xs text-muted-foreground">{fmtDate(item.created_at)}{isDoc && ` · ${fmtSize(item.size_bytes)}`}</p>
         </div>
         {!isDoc && <button onClick={onEdit} className="text-muted-foreground hover:text-foreground" aria-label="Bewerken"><Pencil className="h-3.5 w-3.5" /></button>}
-        <button onClick={() => del.mutate(item)} className="text-muted-foreground hover:text-destructive" aria-label="Verwijderen"><Trash2 className="h-3.5 w-3.5" /></button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button className="text-muted-foreground hover:text-destructive" aria-label="Verwijderen"><Trash2 className="h-3.5 w-3.5" /></button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Verwijderen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                "{item.title || item.file_name}" wordt definitief verwijderd.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuleren</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => del.mutate(item)}
+              >
+                Verwijderen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       {!isDoc && (
         <p className={cn('text-sm whitespace-pre-wrap mt-2 text-foreground/90', !open && 'line-clamp-3')} onClick={() => setOpen(o => !o)}>{item.body}</p>
