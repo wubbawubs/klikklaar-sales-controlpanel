@@ -392,5 +392,7 @@ export function useAddActivity() {
       qc.invalidateQueries({ queryKey: ['company-activities'] });
       toast.success('Opgeslagen');
     },
+    // Never fail silently: a lost note is worse than an error the user can retry.
+    onError: (e) => toast.error(`Notitie niet opgeslagen: ${e instanceof Error ? e.message : 'onbekende fout'}`),
   });
 }

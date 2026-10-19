@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, Phone, Mail, User, ChevronRight, CalendarClock } from 'lucide-react';
+import { MessageSquare, Phone, Mail, User, ChevronRight, CalendarClock, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,10 +8,12 @@ import { useDealActivities, useAddActivity, type Deal } from '@/hooks/usePipelin
 import { useDealAppointments, useCompanyActivities } from '@/hooks/useAppointments';
 import { fmtWhen } from './AppointmentsPanel';
 
-const ICONS: Record<string, any> = { note: MessageSquare, call: Phone, email: Mail, meeting: User, stage_change: ChevronRight, appointment: CalendarClock };
+const ICONS: Record<string, LucideIcon> = { note: MessageSquare, call: Phone, email: Mail, meeting: User, stage_change: ChevronRight, appointment: CalendarClock };
 const STATUS: Record<string, string> = { planned: 'gepland', done: 'gedaan', cancelled: 'geannuleerd', no_show: 'no-show' };
 
 interface Entry { id: string; type: string; body: string; at: string; sub?: string }
+// Shape shared by deal activities and company-wide activities (the latter carry the deal title).
+interface ActivityRow { id: string; type: string; body: string | null; created_at: string; deal_id?: string; deal_title?: string }
 
 export function ActivityTab({ deal }: { deal: Deal }) {
   const [scope, setScope] = useState<'deal' | 'company'>('deal');
@@ -22,7 +24,7 @@ export function ActivityTab({ deal }: { deal: Deal }) {
   const [note, setNote] = useState('');
   const [type, setType] = useState('note');
 
-  const acts: Entry[] = (scope === 'company' ? companyActs : dealActs).map((a: any) => ({
+  const acts: Entry[] = ((scope === 'company' ? companyActs : dealActs) as ActivityRow[]).map(a => ({
     id: a.id, type: a.type, body: a.body ?? '', at: a.created_at,
     sub: scope === 'company' && a.deal_id !== deal.id ? a.deal_title : undefined,
   }));
@@ -34,8 +36,8 @@ export function ActivityTab({ deal }: { deal: Deal }) {
 
   const submit = () => {
     if (!note.trim()) return;
-    add.mutate({ dealId: deal.id, type, body: note.trim() });
-    setNote('');
+    // Only clear the field once the note is actually stored; on failure the text stays so it can be retried.
+    add.mutate({ dealId: deal.id, type, body: note.trim() }, { onSuccess: () => setNote('') });
   };
 
   return (
