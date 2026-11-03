@@ -4,6 +4,10 @@ import { useOrgId } from '@/hooks/useOrgId';
 import { fireWebhook } from '@/lib/webhooks';
 import type { ProposalKind, ProposalPayload } from '@/lib/meetingProposals';
 
+// The meeting tables and RPC are not in the generated Supabase types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
+
 export type ImportStatus = 'analyzing' | 'ready' | 'failed';
 export type ProposalStatus = 'open' | 'applied' | 'dismissed' | 'failed';
 
@@ -31,7 +35,7 @@ export function useMeetingImports() {
     queryKey: ['meeting-imports', orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase.from('meeting_imports' as any)
+      const { data, error } = await db.from('meeting_imports')
         .select('id, org_id, title, meeting_date, status, error, created_at, analyzed_at, proposals:meeting_proposals(status)')
         .eq('org_id', orgId!).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
@@ -45,7 +49,7 @@ export function useMeetingImport(id: string | undefined) {
     queryKey: ['meeting-import', id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('meeting_imports' as any).select('*').eq('id', id!).maybeSingle();
+      const { data, error } = await db.from('meeting_imports').select('*').eq('id', id!).maybeSingle();
       if (error) throw error;
       return data as unknown as MeetingImport | null;
     },
@@ -58,7 +62,7 @@ export function useMeetingProposals(importId: string | undefined, enabled = true
     queryKey: ['meeting-proposals', importId],
     enabled: !!importId && enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.from('meeting_proposals' as any)
+      const { data, error } = await db.from('meeting_proposals')
         .select('*').eq('import_id', importId!).order('position');
       if (error) throw error;
       return (data ?? []) as unknown as MeetingProposal[];
@@ -77,7 +81,7 @@ export function useCreateMeetingImport() {
   return useMutation({
     mutationFn: async (input: { transcript: string; meeting_date: string; title: string | null }) => {
       if (!orgId) throw new Error('Kies eerst één organisatie');
-      const { data, error } = await supabase.from('meeting_imports' as any)
+      const { data, error } = await db.from('meeting_imports')
         .insert({ org_id: orgId, transcript: input.transcript, meeting_date: input.meeting_date, title: input.title || null })
         .select('id').single();
       if (error) throw error;
@@ -86,7 +90,7 @@ export function useCreateMeetingImport() {
         await startAnalysis(id);
       } catch (e) {
         // Keep the transcript; mark it failed so the user can retry from the review page.
-        await supabase.from('meeting_imports' as any).update({ status: 'failed', error: (e as Error).message }).eq('id', id);
+        await db.from('meeting_imports').update({ status: 'failed', error: (e as Error).message }).eq('id', id);
       }
       return id;
     },
@@ -113,7 +117,7 @@ export function useApplyProposal() {
       proposal: MeetingProposal; draft: ProposalDraft;
       expected?: { stage_id: string | null; value_eur: number | null; assigned_to: string | null } | null;
     }) => {
-      const { data, error } = await supabase.rpc('apply_meeting_proposal' as any, {
+      const { data, error } = await db.rpc('apply_meeting_proposal', {
         p_proposal_id: proposal.id,
         p_input: { company_id: draft.company_id, deal_id: draft.deal_id, payload: draft.payload, confirm_closed: draft.confirm_closed, expected: expected ?? null },
       });
@@ -139,7 +143,7 @@ export function useSetProposalStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ proposal, status }: { proposal: MeetingProposal; status: 'open' | 'dismissed' }) => {
-      const { error } = await supabase.from('meeting_proposals' as any)
+      const { error } = await db.from('meeting_proposals')
         .update({ status, error: null }).eq('id', proposal.id).neq('status', 'applied');
       if (error) throw error;
     },

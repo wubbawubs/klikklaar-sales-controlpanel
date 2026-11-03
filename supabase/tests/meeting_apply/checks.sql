@@ -25,6 +25,9 @@ INSERT INTO meeting_proposals (id, org_id, import_id, position, kind, company_la
   ('60000000-0000-0000-0000-00000000000e', '10000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 4, 'appointment', 'Jansen', '{"date":"2026-11-07","time":null,"user_id":"00000000-0000-0000-0000-00000000000a"}', NULL, 'belt vrijdag'),
   ('60000000-0000-0000-0000-00000000000f', '10000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 5, 'new_deal', 'Nieuw BV', '{"company_name":"Nieuw BV","deal_title":"SEO","stage_id":"20000000-0000-0000-0000-000000000004","contact_name":"Piet"}', NULL, 'nieuwe klant');
 
+-- Proposals with an analysis snapshot always carry the deal it belongs to.
+UPDATE meeting_proposals SET deal_id = '40000000-0000-0000-0000-000000000001' WHERE id = '60000000-0000-0000-0000-00000000000b';
+UPDATE meeting_proposals SET deal_id = '40000000-0000-0000-0000-000000000002' WHERE id = '60000000-0000-0000-0000-00000000000c';
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a"}', false);
 
@@ -71,6 +74,13 @@ BEGIN
   r := apply_meeting_proposal('60000000-0000-0000-0000-00000000000e', jsonb_build_object('deal_id', deal2, 'payload', '{"date":"2026-11-07","time":"10:30","user_id":"00000000-0000-0000-0000-00000000000a"}'::jsonb));
   IF NOT (r->>'ok')::boolean THEN RAISE EXCEPTION '(e) apply failed: %', r; END IF;
   IF NOT EXISTS (SELECT 1 FROM crm_appointments WHERE deal_id = deal2::uuid AND starts_at = '2026-11-07 09:30:00+00') THEN RAISE EXCEPTION '(e) wrong time'; END IF;
+
+  -- (h) user picked another deal than the AI: stored snapshot (for deal1) must not be used for deal2
+  UPDATE meeting_proposals SET deal_id = deal1::uuid, expected = '{"stage_id":"20000000-0000-0000-0000-000000000006","value_eur":2500,"assigned_to":null}'
+    WHERE id = '60000000-0000-0000-0000-00000000000c';
+  r := apply_meeting_proposal('60000000-0000-0000-0000-00000000000c', jsonb_build_object('deal_id', deal2, 'payload', '{"stage_id":"20000000-0000-0000-0000-000000000005"}'::jsonb,
+    'expected', jsonb_build_object('stage_id', '20000000-0000-0000-0000-000000000004')));
+  IF NOT (r->>'ok')::boolean THEN RAISE EXCEPTION '(h) user-picked deal failed: %', r; END IF;
 
   -- (f) applying twice
   r := apply_meeting_proposal('60000000-0000-0000-0000-00000000000a', jsonb_build_object('deal_id', deal1, 'payload', '{"body":"nog eens"}'::jsonb));

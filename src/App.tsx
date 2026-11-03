@@ -13,6 +13,8 @@ import DashboardPage from "@/pages/DashboardPage";
 import PipelinePage from "@/pages/PipelinePage";
 import ContactsPage from "@/pages/ContactsPage";
 import AgendaPage from "@/pages/AgendaPage";
+import MeetingsPage from "@/pages/MeetingsPage";
+import MeetingReviewPage from "@/pages/MeetingReviewPage";
 import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
@@ -57,6 +59,8 @@ function AppRoutes() {
         <Route path="/pipeline" element={<PipelinePage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/agenda" element={<AgendaPage />} />
+        <Route path="/meetings" element={<MeetingsPage />} />
+        <Route path="/meetings/:id" element={<MeetingReviewPage />} />
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
         <Route path="/growth" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><GrowthPage /></ProtectedRoute>} />

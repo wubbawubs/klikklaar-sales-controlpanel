@@ -104,6 +104,10 @@ Deno.serve(async (req) => {
   if (!LOVABLE_API_KEY) return json({ error: "AI is niet geconfigureerd" }, 500);
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Re-analysing after something was applied would propose the same changes again.
+  const { count: applied } = await admin.from("meeting_proposals")
+    .select("id", { count: "exact", head: true }).eq("import_id", imp.id).eq("status", "applied");
+  if ((applied ?? 0) > 0) return json({ error: "Er zijn al voorstellen toegepast; opnieuw analyseren kan dan niet meer" }, 409);
   await admin.from("meeting_imports").update({ status: "analyzing", error: null }).eq("id", imp.id);
   await admin.from("meeting_proposals").delete().eq("import_id", imp.id).neq("status", "applied");
 

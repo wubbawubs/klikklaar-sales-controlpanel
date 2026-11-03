@@ -105,7 +105,9 @@ BEGIN
       v_before := to_jsonb(v_deal);
 
       -- Stale check on the field this kind changes.
-      v_exp := coalesce(v_prop.expected, p_input->'expected');
+      -- The analysis snapshot only applies to the deal the AI picked; for a deal chosen by the user, use what the screen showed.
+      v_exp := CASE WHEN v_prop.deal_id IS NOT DISTINCT FROM v_deal.id AND v_prop.expected IS NOT NULL
+                    THEN v_prop.expected ELSE p_input->'expected' END;
       IF v_exp IS NOT NULL AND (
            (v_prop.kind IN ('stage','won','lost') AND v_deal.stage_id IS DISTINCT FROM nullif(v_exp->>'stage_id','')::uuid)
         OR (v_prop.kind = 'value' AND v_deal.value_eur IS DISTINCT FROM nullif(v_exp->>'value_eur','')::numeric)
