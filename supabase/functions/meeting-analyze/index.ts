@@ -1,0 +1,185 @@
+// Reads a pasted meeting transcript and stores AI-proposed CRM changes. Nothing in the CRM changes here:
+// proposals are applied one by one by the user via the apply_meeting_proposal RPC.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildSnapshot, normalizeProposals, snapshotPrompt, PROPOSAL_KINDS, type AiItem } from "../_shared/meetingNormalize.ts";
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+const MODEL = "google/gemini-2.5-pro";
+const AI_TIMEOUT_MS = 140_000;
+const WEEKDAYS = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+
+const nullable = (type: string) => ({ type: [type, "null"] });
+const TOOL = {
+  type: "function",
+  function: {
+    name: "propose_crm_changes",
+    description: "Stel CRM-wijzigingen voor op basis van het transcript",
+    parameters: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              kind: { type: "string", enum: PROPOSAL_KINDS },
+              quote: { type: "string" },
+              company_ref: nullable("string"),
+              candidate_company_refs: { type: "array", items: { type: "string" } },
+              company_name: nullable("string"),
+              deal_ref: nullable("string"),
+              stage_ref: nullable("string"),
+              lost_reason: nullable("string"),
+              body: nullable("string"),
+              value_eur: nullable("number"),
+              user_ref: nullable("string"),
+              date: nullable("string"),
+              appointment_type: { type: ["string", "null"], enum: ["call", "meeting", null] },
+              title: nullable("string"),
+              deal_title: nullable("string"),
+              contact_name: nullable("string"),
+            },
+            required: ["kind", "quote"],
+          },
+        },
+      },
+      required: ["items"],
+    },
+  },
+};
+
+function systemPrompt(meetingDate: string): string {
+  const weekday = WEEKDAYS[new Date(`${meetingDate}T12:00:00Z`).getUTCDay()];
+  return `Je verwerkt het transcript van een wekelijkse sales-update-meeting van een Nederlands SEO-bureau.
+Doel: stel per besproken klant/deal de CRM-wijzigingen voor die in de meeting zijn genoemd. Een mens controleert alles daarna.
+
+Soorten (kind):
+- stage: deal gaat naar een andere fase (stage_ref)
+- won: deal is gewonnen / getekend
+- lost: deal is verloren of afgehaakt (lost_reason als die genoemd wordt)
+- note: relevante info voor de tijdlijn van de deal (body, kort en zakelijk, in het Nederlands)
+- value: nieuw bedrag voor de deal (value_eur, alleen als er een concreet bedrag is genoemd)
+- owner: iemand anders neemt de deal over (user_ref)
+- appointment: concrete opvolgactie met een dag (date als YYYY-MM-DD, appointment_type call of meeting, user_ref wie het doet, title kort)
+- new_deal: klant die NIET in de bedrijvenlijst staat (company_name, deal_title, stage_ref, contact_name, value_eur, body)
+
+Regels — heel belangrijk:
+- Stel alleen voor wat expliciet gezegd wordt. Verzin nooit bedragen, datums, fases of personen. Laat een veld null als het niet genoemd is.
+- Gebruik alleen refs uit de lijsten hieronder. Weet je niet zeker welk bedrijf bedoeld wordt? Zet company_ref op null en geef candidate_company_refs met de mogelijke bedrijven.
+- Heeft een bedrijf meerdere deals en is niet duidelijk welke? Zet deal_ref op null.
+- De meeting was op ${weekday} ${meetingDate}. Reken relatieve dagen ("vrijdag", "morgen", "volgende week dinsdag") vanaf die datum, en altijd de eerstvolgende keer na de meetingdag. Geen concrete dag (bijv. "binnenkort", "begin volgende week")? Dan wordt het een note, geen appointment.
+- Een klant die niet in de bedrijvenlijst staat → new_deal, niet een ander bedrijf kiezen.
+- quote: een kort letterlijk stukje uit het transcript waar het voorstel op gebaseerd is.
+- Eén item per wijziging. Fase + notitie voor dezelfde deal = twee items.
+- Negeer small talk, interne zaken en dingen die niet over een klant gaan.`;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const auth = req.headers.get("Authorization") ?? "";
+  const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return json({ error: "Niet ingelogd" }, 401);
+
+  const { import_id } = await req.json().catch(() => ({}));
+  if (!import_id) return json({ error: "import_id ontbreekt" }, 400);
+
+  // RLS on the user client is the access check: only org members can see the import.
+  const { data: imp } = await userClient.from("meeting_imports")
+    .select("id, org_id, meeting_date, transcript").eq("id", import_id).maybeSingle();
+  if (!imp) return json({ error: "Meeting niet gevonden" }, 404);
+
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) return json({ error: "AI is niet geconfigureerd" }, 500);
+
+  const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  await admin.from("meeting_imports").update({ status: "analyzing", error: null }).eq("id", imp.id);
+  await admin.from("meeting_proposals").delete().eq("import_id", imp.id).neq("status", "applied");
+
+  const fail = (error: string) => admin.from("meeting_imports").update({ status: "failed", error }).eq("id", imp.id);
+
+  const run = async () => {
+    try {
+      // PostgREST caps responses (1000 rows by default), so page through big tables.
+      const fetchAll = async (table: string, cols: string, orgCol = "org_id") => {
+        const out: Record<string, unknown>[] = [];
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await admin.from(table).select(cols).eq(orgCol, imp.org_id).order("id").range(from, from + 999);
+          if (error) throw new Error(error.message);
+          out.push(...(data ?? []));
+          if (!data || data.length < 1000) return { data: out };
+        }
+      };
+      const [companies, deals, stages, members] = await Promise.all([
+        fetchAll("companies", "id, name"),
+        fetchAll("deals", "id, title, company_id, stage_id, value_eur, assigned_to"),
+        fetchAll("pipeline_stages", "id, name, position"),
+        fetchAll("user_organizations", "user_id", "organization_id"),
+      ]);
+      const ids = (members.data ?? []).map((m: { user_id: string }) => m.user_id);
+      const { data: profiles } = ids.length
+        ? await admin.from("profiles").select("user_id, full_name, email").in("user_id", ids)
+        : { data: [] };
+
+      const snap = buildSnapshot({
+        companies: companies.data as never,
+        deals: (deals.data ?? []).map((d: Record<string, unknown>) => ({ ...d, value_eur: d.value_eur == null ? null : Number(d.value_eur) })) as never,
+        stages: stages.data as never,
+        members: (profiles ?? []).map((p: { user_id: string; full_name: string | null; email: string | null }) =>
+          ({ user_id: p.user_id, name: p.full_name || p.email || "Onbekend" })),
+      });
+
+      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            { role: "system", content: systemPrompt(imp.meeting_date) },
+            { role: "user", content: `${snapshotPrompt(snap)}\n\n=== TRANSCRIPT ===\n${imp.transcript}` },
+          ],
+          tools: [TOOL],
+          tool_choice: { type: "function", function: { name: "propose_crm_changes" } },
+        }),
+      });
+
+      if (!aiRes.ok) {
+        console.error("AI Gateway error", aiRes.status, await aiRes.text());
+        if (aiRes.status === 429) return void await fail("AI is even overbelast, probeer het over een minuut opnieuw");
+        if (aiRes.status === 402) return void await fail("AI-tegoed is op");
+        return void await fail(`Analyse mislukt: AI gaf foutcode ${aiRes.status}`);
+      }
+      const data = await aiRes.json();
+      const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+      if (!args) return void await fail("Analyse mislukt: AI gaf geen bruikbaar antwoord");
+      const parsed = typeof args === "string" ? JSON.parse(args) : args;
+      const items: AiItem[] = Array.isArray(parsed?.items) ? parsed.items : [];
+
+      const rows = normalizeProposals(items, snap, imp.meeting_date).map(r => ({ ...r, org_id: imp.org_id, import_id: imp.id }));
+      if (rows.length) {
+        const { error } = await admin.from("meeting_proposals").insert(rows);
+        if (error) throw new Error(error.message);
+      }
+      await admin.from("meeting_imports").update({ status: "ready", analyzed_at: new Date().toISOString(), error: null }).eq("id", imp.id);
+    } catch (e) {
+      console.error("meeting-analyze failed", e);
+      const timedOut = e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError");
+      await fail(timedOut ? "Analyse duurde te lang — probeer het opnieuw" : `Analyse mislukt: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  EdgeRuntime.waitUntil(run());
+  return json({ ok: true }, 202);
+});
