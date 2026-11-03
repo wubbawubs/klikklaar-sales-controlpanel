@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { KIND_LABEL, CONFIRM_CLOSED, describeProposal, proposalBlockers, stageKind, type ProposalPayload } from '@/lib/meetingProposals';
+import { KIND_LABEL, CONFIRM_CLOSED, describeProposal, filterCompanies, proposalBlockers, stageKind, type ProposalPayload } from '@/lib/meetingProposals';
 import type { MeetingProposal, ProposalDraft } from '@/hooks/useMeetings';
 
 export interface CardDeal { id: string; title: string; company_id: string | null; stage_id: string | null; value_eur: number | null; assigned_to: string | null }
@@ -37,32 +37,30 @@ function CompanyPicker({ value, candidates, companies, onChange }: {
   value: string | null; candidates: string[]; companies: { id: string; name: string }[]; onChange: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const byId = new Map(companies.map(c => [c.id, c]));
-  const suggested = candidates.map(id => byId.get(id)).filter(Boolean) as { id: string; name: string }[];
-  const rest = companies.filter(c => !candidates.includes(c.id));
-  const pick = (id: string) => { onChange(id); setOpen(false); };
+  const [query, setQuery] = useState('');
+  const current = value ? companies.find(c => c.id === value) : undefined;
+  const shown = filterCompanies(companies, query, candidates);
+  const pick = (id: string) => { onChange(id); setOpen(false); setQuery(''); };
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="justify-between w-full sm:w-64 font-normal">
-          <span className="truncate">{value ? byId.get(value)?.name ?? 'Onbekend' : 'Kies klant…'}</span>
+          <span className="truncate">{current ? current.name : 'Kies klant…'}</span>
           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 w-72" align="start">
-        <Command>
-          <CommandInput placeholder="Zoek klant…" />
+        {/* Filtering is ours (whole list); cmdk would only filter what is rendered. */}
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Zoek klant…" value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>Geen klant gevonden</CommandEmpty>
-            {suggested.length > 0 && (
-              <CommandGroup heading="Mogelijk bedoeld">
-                {suggested.map(c => <CommandItem key={c.id} value={`s-${c.name}-${c.id}`} onSelect={() => pick(c.id)}>{c.name}</CommandItem>)}
-              </CommandGroup>
-            )}
-            <CommandGroup heading="Alle klanten">
-              {rest.slice(0, 300).map(c => (
-                <CommandItem key={c.id} value={`${c.name}-${c.id}`} onSelect={() => pick(c.id)}>
-                  <Check className={cn('h-3.5 w-3.5 mr-1', value === c.id ? 'opacity-100' : 'opacity-0')} />{c.name}
+            <CommandGroup>
+              {shown.map(c => (
+                <CommandItem key={c.id} value={c.id} onSelect={() => pick(c.id)}>
+                  <Check className={cn('h-3.5 w-3.5 mr-1', value === c.id ? 'opacity-100' : 'opacity-0')} />
+                  {c.name}
+                  {candidates.includes(c.id) && <span className="ml-auto text-[10px] text-muted-foreground">mogelijk bedoeld</span>}
                 </CommandItem>
               ))}
             </CommandGroup>

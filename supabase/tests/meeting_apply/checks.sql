@@ -102,3 +102,38 @@ EXCEPTION WHEN others THEN
 END $$;
 RESET ROLE;
 SELECT 'ALL CHECKS PASSED' AS result;
+
+-- Claiming an import for (re-)analysis: only one run at a time, never after something was applied.
+DO $$ DECLARE r text; BEGIN
+  INSERT INTO meeting_imports (id, org_id, transcript) VALUES ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'y');
+  IF (SELECT status FROM meeting_imports WHERE id = '50000000-0000-0000-0000-000000000002') <> 'queued' THEN RAISE EXCEPTION '(i) new import not queued'; END IF;
+  r := claim_meeting_import('50000000-0000-0000-0000-000000000002');
+  IF r <> 'ok' THEN RAISE EXCEPTION '(i) first claim: %', r; END IF;
+  r := claim_meeting_import('50000000-0000-0000-0000-000000000002');
+  IF r <> 'busy' THEN RAISE EXCEPTION '(i) second claim should be busy: %', r; END IF;
+  UPDATE meeting_imports SET started_at = now() - interval '6 minutes' WHERE id = '50000000-0000-0000-0000-000000000002';
+  r := claim_meeting_import('50000000-0000-0000-0000-000000000002');
+  IF r <> 'ok' THEN RAISE EXCEPTION '(i) stuck run should be reclaimable: %', r; END IF;
+  -- (j) import 1 has applied proposals
+  r := claim_meeting_import('50000000-0000-0000-0000-000000000001');
+  IF r <> 'applied' THEN RAISE EXCEPTION '(j) expected applied: %', r; END IF;
+  IF (SELECT status FROM meeting_imports WHERE id = '50000000-0000-0000-0000-000000000001') <> 'ready' THEN RAISE EXCEPTION '(j) status changed'; END IF;
+END $$;
+
+-- (k) no applying while the import is being re-analysed
+INSERT INTO meeting_proposals (id, org_id, import_id, position, kind, company_label, payload, quote) VALUES
+  ('60000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002', 0, 'note', 'Jansen', '{"body":"x"}', 'x');
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a"}', false);
+DO $$ DECLARE r jsonb; BEGIN
+  r := apply_meeting_proposal('60000000-0000-0000-0000-000000000010', jsonb_build_object('deal_id', '40000000-0000-0000-0000-000000000002', 'payload', '{"body":"x"}'::jsonb));
+  IF (r->>'ok')::boolean OR r->>'error' NOT LIKE '%geanalyseerd%' THEN RAISE EXCEPTION '(k) expected busy error: %', r; END IF;
+END $$;
+-- claim is server-only
+DO $$ BEGIN
+  PERFORM claim_meeting_import('50000000-0000-0000-0000-000000000002');
+  RAISE EXCEPTION '(l) authenticated user could claim';
+EXCEPTION WHEN insufficient_privilege THEN NULL;
+END $$;
+RESET ROLE;
+SELECT 'CLAIM CHECKS PASSED' AS result;

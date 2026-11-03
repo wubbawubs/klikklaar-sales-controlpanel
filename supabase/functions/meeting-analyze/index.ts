@@ -104,12 +104,12 @@ Deno.serve(async (req) => {
   if (!LOVABLE_API_KEY) return json({ error: "AI is niet geconfigureerd" }, 500);
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  // Re-analysing after something was applied would propose the same changes again.
-  const { count: applied } = await admin.from("meeting_proposals")
-    .select("id", { count: "exact", head: true }).eq("import_id", imp.id).eq("status", "applied");
-  if ((applied ?? 0) > 0) return json({ error: "Er zijn al voorstellen toegepast; opnieuw analyseren kan dan niet meer" }, 409);
-  await admin.from("meeting_imports").update({ status: "analyzing", error: null }).eq("id", imp.id);
-  await admin.from("meeting_proposals").delete().eq("import_id", imp.id).neq("status", "applied");
+  // One run at a time, and never after something was applied (would propose the same changes again).
+  const { data: claim, error: claimError } = await admin.rpc("claim_meeting_import", { p_import_id: imp.id });
+  if (claimError) return json({ error: `Analyse kon niet starten: ${claimError.message}` }, 500);
+  if (claim === "applied") return json({ error: "Er zijn al voorstellen toegepast; opnieuw analyseren kan dan niet meer" }, 409);
+  if (claim === "busy") return json({ error: "Deze meeting wordt al geanalyseerd" }, 409);
+  if (claim !== "ok") return json({ error: "Meeting niet gevonden" }, 404);
 
   const fail = (error: string) => admin.from("meeting_imports").update({ status: "failed", error }).eq("id", imp.id);
 

@@ -7,13 +7,13 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProposalCard } from '@/components/meeting/ProposalCard';
-import { useDeals, useStages, useCompanies } from '@/hooks/usePipeline';
+import { useDeals, useStages } from '@/hooks/usePipeline';
 import { useTeamMembers } from '@/hooks/useBoards';
 import {
-  useApplyProposal, useMeetingImport, useMeetingProposals, useReanalyze, useSetProposalStatus,
+  useAllCompanies, useApplyProposal, useMeetingImport, useMeetingProposals, useReanalyze, useSetProposalStatus,
   type MeetingProposal, type ProposalDraft,
 } from '@/hooks/useMeetings';
-import { groupByCompany, proposalBlockers } from '@/lib/meetingProposals';
+import { groupByCompany, isStuck, proposalBlockers } from '@/lib/meetingProposals';
 
 const draftFrom = (p: MeetingProposal): ProposalDraft => ({ company_id: p.company_id, deal_id: p.deal_id, payload: p.payload ?? {}, confirm_closed: false });
 
@@ -24,7 +24,7 @@ export default function MeetingReviewPage() {
   const { data: proposals = [] } = useMeetingProposals(id, ready);
   const { data: deals = [] } = useDeals();
   const { data: stages = [] } = useStages();
-  const { data: companies = [] } = useCompanies();
+  const { data: companies = [] } = useAllCompanies();
   const { data: team = [] } = useTeamMembers();
   const apply = useApplyProposal();
   const setStatus = useSetProposalStatus();
@@ -101,15 +101,15 @@ export default function MeetingReviewPage() {
         <p className="text-sm text-muted-foreground">{format(new Date(`${imp.meeting_date}T12:00:00`), 'EEEE d MMMM yyyy', { locale: nl })}</p>
       </div>
 
-      {imp.status === 'analyzing' && (
+      {(imp.status === 'analyzing' || imp.status === 'queued') && !isStuck(imp) && (
         <div className="rounded-lg border p-6 flex items-center gap-3 text-sm">
           <Loader2 className="h-5 w-5 animate-spin" />AI leest het transcript… dit duurt meestal 1–2 minuten. Je kunt deze pagina open laten.
         </div>
       )}
 
-      {imp.status === 'failed' && (
+      {(imp.status === 'failed' || isStuck(imp)) && (
         <div className="rounded-lg border border-destructive/50 p-4 space-y-2">
-          <p className="text-sm text-destructive">{imp.error || 'Analyse mislukt'}</p>
+          <p className="text-sm text-destructive">{imp.status === 'failed' ? imp.error || 'Analyse mislukt' : 'De analyse lijkt vastgelopen.'}</p>
           <Button size="sm" onClick={() => reanalyze.mutate(imp.id, { onError: e => toast.error((e as Error).message) })} disabled={reanalyze.isPending}>
             Opnieuw analyseren
           </Button>

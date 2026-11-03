@@ -8,12 +8,12 @@ import type { ProposalKind, ProposalPayload } from '@/lib/meetingProposals';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
-export type ImportStatus = 'analyzing' | 'ready' | 'failed';
+export type ImportStatus = 'queued' | 'analyzing' | 'ready' | 'failed';
 export type ProposalStatus = 'open' | 'applied' | 'dismissed' | 'failed';
 
 export interface MeetingImport {
   id: string; org_id: string; title: string | null; meeting_date: string;
-  status: ImportStatus; error: string | null; created_at: string; analyzed_at: string | null;
+  status: ImportStatus; error: string | null; created_at: string; started_at: string | null; analyzed_at: string | null;
   transcript?: string;
 }
 
@@ -36,7 +36,7 @@ export function useMeetingImports() {
     enabled: !!orgId,
     queryFn: async () => {
       const { data, error } = await db.from('meeting_imports')
-        .select('id, org_id, title, meeting_date, status, error, created_at, analyzed_at, proposals:meeting_proposals(status)')
+        .select('id, org_id, title, meeting_date, status, error, created_at, started_at, analyzed_at, proposals:meeting_proposals(status)')
         .eq('org_id', orgId!).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       return (data ?? []) as unknown as (MeetingImport & { proposals: { status: ProposalStatus }[] })[];
@@ -53,7 +53,10 @@ export function useMeetingImport(id: string | undefined) {
       if (error) throw error;
       return data as unknown as MeetingImport | null;
     },
-    refetchInterval: q => ((q.state.data as MeetingImport | null | undefined)?.status === 'analyzing' ? 3000 : false),
+    refetchInterval: q => {
+      const st = (q.state.data as MeetingImport | null | undefined)?.status;
+      return st === 'analyzing' || st === 'queued' ? 3000 : false;
+    },
   });
 }
 
@@ -72,7 +75,11 @@ export function useMeetingProposals(importId: string | undefined, enabled = true
 
 async function startAnalysis(importId: string) {
   const { error } = await supabase.functions.invoke('meeting-analyze', { body: { import_id: importId } });
-  if (error) throw new Error(`Analyse kon niet starten: ${error.message}`);
+  if (error) {
+    // Show the function's own Dutch message instead of the generic "non-2xx" text.
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? `Analyse kon niet starten: ${error.message}`);
+  }
 }
 
 export function useCreateMeetingImport() {
@@ -132,6 +139,7 @@ export function useApplyProposal() {
       qc.invalidateQueries({ queryKey: ['meeting-imports'] });
       qc.invalidateQueries({ queryKey: ['deals'] });
       qc.invalidateQueries({ queryKey: ['companies'] });
+      qc.invalidateQueries({ queryKey: ['companies-all'] });
       qc.invalidateQueries({ queryKey: ['activities'] });
       qc.invalidateQueries({ queryKey: ['company-activities'] });
       qc.invalidateQueries({ queryKey: ['appointments'] });
@@ -148,5 +156,23 @@ export function useSetProposalStatus() {
       if (error) throw error;
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['meeting-proposals', v.proposal.import_id] }),
+  });
+}
+
+/** Every company of the org (paged past the 1000-row API cap), for the client picker. */
+export function useAllCompanies() {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['companies-all', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const out: { id: string; name: string }[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await db.from('companies').select('id, name').eq('org_id', orgId!).order('name').range(from, from + 999);
+        if (error) throw error;
+        out.push(...(data ?? []));
+        if (!data || data.length < 1000) return out;
+      }
+    },
   });
 }

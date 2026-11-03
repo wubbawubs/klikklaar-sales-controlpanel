@@ -7,8 +7,9 @@ CREATE TABLE IF NOT EXISTS public.meeting_imports (
   title text,
   meeting_date date NOT NULL DEFAULT current_date,
   transcript text NOT NULL,
-  status text NOT NULL DEFAULT 'analyzing' CHECK (status IN ('analyzing','ready','failed')),
+  status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','analyzing','ready','failed')),
   error text,
+  started_at timestamptz,
   analyzed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -93,6 +94,9 @@ BEGIN
   END IF;
 
   SELECT * INTO v_imp FROM meeting_imports WHERE id = v_prop.import_id;
+  IF v_imp.status <> 'ready' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'Deze meeting wordt opnieuw geanalyseerd — wacht tot dat klaar is');
+  END IF;
   v_suffix := ' (uit sales-meeting ' || to_char(v_imp.meeting_date, 'DD-MM-YYYY') || ')';
   v_meta := jsonb_build_object('source', 'meeting', 'meeting_import_id', v_prop.import_id, 'proposal_id', v_prop.id);
 
@@ -262,3 +266,31 @@ $$;
 
 REVOKE ALL ON FUNCTION public.apply_meeting_proposal(uuid, jsonb) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.apply_meeting_proposal(uuid, jsonb) TO authenticated;
+
+-- Claims an import for (re-)analysis. Server-only (edge function with service role).
+-- One run at a time; a run that has been 'analyzing' for over 5 minutes is considered dead and may be reclaimed.
+-- Never re-analyses once something was applied, so applied changes are not proposed twice.
+CREATE OR REPLACE FUNCTION public.claim_meeting_import(p_import_id uuid)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE v_id uuid;
+BEGIN
+  UPDATE meeting_imports SET status = 'analyzing', error = NULL, started_at = now()
+  WHERE id = p_import_id
+    AND (status IN ('queued','failed','ready') OR (status = 'analyzing' AND started_at < now() - interval '5 minutes'))
+    AND NOT EXISTS (SELECT 1 FROM meeting_proposals WHERE import_id = p_import_id AND status = 'applied')
+  RETURNING id INTO v_id;
+  IF v_id IS NOT NULL THEN
+    DELETE FROM meeting_proposals WHERE import_id = p_import_id;
+    RETURN 'ok';
+  END IF;
+  IF EXISTS (SELECT 1 FROM meeting_proposals WHERE import_id = p_import_id AND status = 'applied') THEN RETURN 'applied'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM meeting_imports WHERE id = p_import_id) THEN RETURN 'not_found'; END IF;
+  RETURN 'busy';
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.claim_meeting_import(uuid) FROM public, anon, authenticated;

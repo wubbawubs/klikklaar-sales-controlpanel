@@ -76,3 +76,19 @@ export function groupByCompany<T extends { company_label: string }>(rows: T[]): 
   }
   return [...groups].map(([label, items]) => ({ label, items }));
 }
+
+const STUCK_AFTER_MS = 5 * 60 * 1000;
+
+/** A run that has been queued/analyzing for over 5 minutes died (the server allows reclaiming it then). */
+export function isStuck(imp: { status: string; started_at: string | null; created_at: string }, now = new Date()): boolean {
+  if (imp.status !== 'queued' && imp.status !== 'analyzing') return false;
+  return now.getTime() - new Date(imp.started_at ?? imp.created_at).getTime() > STUCK_AFTER_MS;
+}
+
+/** Company search for the picker: searches every company, candidates first, at most `limit` results. */
+export function filterCompanies<T extends { id: string; name: string }>(companies: T[], query: string, candidates: string[], limit = 50): T[] {
+  const q = query.trim().toLowerCase();
+  const hits = q ? companies.filter(c => c.name.toLowerCase().includes(q)) : companies;
+  const first = hits.filter(c => candidates.includes(c.id));
+  return [...first, ...hits.filter(c => !candidates.includes(c.id))].slice(0, limit);
+}

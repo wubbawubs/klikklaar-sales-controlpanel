@@ -54,9 +54,38 @@ describe('normalizeProposals', () => {
     expect(row.expected).toBeNull();
   });
 
-  it('drops a deal that belongs to another company', () => {
+  it('leaves company and deal unbound when they conflict', () => {
     const [row] = normalizeProposals([item({ company_ref: ref('company', 'co3'), deal_ref: ref('deal', 'de1') })], snap, '2026-11-03');
+    expect(row.company_id).toBeNull();
     expect(row.deal_id).toBeNull();
+    expect(row.candidates).toEqual(['co3', 'co1']);
+  });
+
+  it('does not bind via a deal when the AI listed candidates', () => {
+    const [row] = normalizeProposals([item({ deal_ref: ref('deal', 'de1'), candidate_company_refs: [ref('company', 'co1'), ref('company', 'co2')] })], snap, '2026-11-03');
+    expect(row.company_id).toBeNull();
+    expect(row.deal_id).toBeNull();
+    expect(row.candidates).toEqual(['co1', 'co2']);
+  });
+
+  it('does not bind when the company ref is invented, even with a valid deal', () => {
+    const [row] = normalizeProposals([item({ company_ref: 'c999', deal_ref: ref('deal', 'de1') })], snap, '2026-11-03');
+    expect(row.company_id).toBeNull();
+    expect(row.deal_id).toBeNull();
+  });
+
+  it('nulls an invented deal ref', () => {
+    const [row] = normalizeProposals([item({ company_ref: ref('company', 'co3'), deal_ref: 'd999' })], snap, '2026-11-03');
+    expect(row.company_id).toBe('co3');
+    expect(row.deal_id).toBeNull();
+  });
+
+  it('keeps a company unbound when another company has the same name', () => {
+    const dup = buildSnapshot({ ...snap, companies: [...snap.companies, { id: 'co4', name: 'bakkerij  jansen' }] });
+    const [row] = normalizeProposals([item({ company_ref: dup.refOf.company.co1 })], dup, '2026-11-03');
+    expect(row.company_id).toBeNull();
+    expect(row.deal_id).toBeNull();
+    expect(row.candidates).toEqual(['co1', 'co4']);
   });
 
   it('nulls unknown refs', () => {
@@ -72,8 +101,8 @@ describe('normalizeProposals', () => {
 
   it('nulls appointment dates before the meeting', () => {
     const appt = (date: string) => item({ kind: 'appointment', company_ref: ref('company', 'co1'), date });
-    const rows = normalizeProposals([appt('2026-11-06'), appt('2026-11-05'), appt('2026-13-01')], snap, '2026-11-06');
-    expect(rows.map(r => r.payload.date)).toEqual(['2026-11-06', null, null]);
+    const rows = normalizeProposals([appt('2026-11-13'), appt('2026-11-06'), appt('2026-11-05'), appt('2026-13-01')], snap, '2026-11-06');
+    expect(rows.map(r => r.payload.date)).toEqual(['2026-11-13', null, null, null]);
     for (const r of rows) {
       expect(r.payload.time).toBeNull();
       expect(r.payload.user_id).toBe('user-a');

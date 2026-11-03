@@ -94,6 +94,9 @@ export function normalizeProposals(ai: AiItem[], s: Snapshot, meetingDate: strin
   const companyById = new Map(s.companies.map(c => [c.id, c]));
   const dealById = new Map(s.deals.map(d => [d.id, d]));
   const stageById = new Map(s.stages.map(st => [st.id, st]));
+  const nameKey = (n: string) => n.trim().toLowerCase().replace(/\s+/g, ' ');
+  const sameName = new Map<string, string[]>();
+  for (const c of s.companies) sameName.set(nameKey(c.name), [...(sameName.get(nameKey(c.name)) ?? []), c.id]);
   const isOpen = (d: SnapDeal) => !stageKind(d.stage_id ? stageById.get(d.stage_id)?.name : null);
 
   return ai.map((raw, position) => {
@@ -101,18 +104,37 @@ export function normalizeProposals(ai: AiItem[], s: Snapshot, meetingDate: strin
     let kind: ProposalKind = PROPOSAL_KINDS.includes(raw.kind) ? raw.kind : 'note';
     const unknownKind = kind !== raw.kind;
 
-    const companyId = raw.company_ref ? s.idOf.company[raw.company_ref] ?? null : null;
+    // Bind to a company/deal only when nothing about the reference is doubtful; otherwise the user chooses.
+    let companyId = raw.company_ref ? s.idOf.company[raw.company_ref] ?? null : null;
+    const companyInvented = !!raw.company_ref && !companyId;
     let dealId = raw.deal_ref ? s.idOf.deal[raw.deal_ref] ?? null : null;
-    if (dealId && companyId && dealById.get(dealId)?.company_id !== companyId) dealId = null;
-    if (!dealId && companyId && kind !== 'new_deal') {
-      const open = s.deals.filter(d => d.company_id === companyId && isOpen(d));
-      if (open.length === 1) dealId = open[0].id;
+    let candidates = (raw.candidate_company_refs ?? []).map(r => s.idOf.company[r]).filter((id): id is string => !!id);
+    if (kind !== 'new_deal') {
+      const dealCompany = dealId ? dealById.get(dealId)?.company_id ?? null : null;
+      if (companyId && dealId && dealCompany !== companyId) {
+        candidates = [companyId, ...(dealCompany ? [dealCompany] : [])];
+        companyId = null;
+      } else if (!companyId && dealId && !companyInvented && candidates.length === 0) {
+        companyId = dealCompany;
+      }
+      if (companyId && candidates.some(c => c !== companyId)) {
+        candidates = [companyId, ...candidates.filter(c => c !== companyId)];
+        companyId = null;
+      }
+      if (companyId) {
+        const twins = sameName.get(nameKey(companyById.get(companyId)!.name)) ?? [];
+        if (twins.length > 1) { candidates = twins; companyId = null; }
+      }
+      if (!companyId) dealId = null;
+      if (!dealId && companyId) {
+        const open = s.deals.filter(d => d.company_id === companyId && isOpen(d));
+        if (open.length === 1) dealId = open[0].id;
+      }
     }
     const deal = dealId ? dealById.get(dealId) : undefined;
-    const resolvedCompanyId = companyId ?? (kind !== 'new_deal' ? deal?.company_id ?? null : null);
-
-    const candidates = resolvedCompanyId ? [] : (raw.candidate_company_refs ?? [])
-      .map(r => s.idOf.company[r]).filter((id): id is string => !!id);
+    const resolvedCompanyId = companyId;
+    if (resolvedCompanyId) candidates = [];
+    candidates = [...new Set(candidates)];
 
     const stageId = raw.stage_ref ? s.idOf.stage[raw.stage_ref] ?? null : null;
     const userId = raw.user_ref ? s.idOf.user[raw.user_ref] ?? null : null;
@@ -127,7 +149,7 @@ export function normalizeProposals(ai: AiItem[], s: Snapshot, meetingDate: strin
       case 'owner': payload.user_id = userId; break;
       case 'note': payload.body = unknownKind ? quote : text(raw.body) ?? quote; break;
       case 'appointment':
-        payload.date = isRealDate(raw.date) && raw.date >= meetingDate ? raw.date : null;
+        payload.date = isRealDate(raw.date) && raw.date > meetingDate ? raw.date : null; // same-day is almost always a misread weekday
         payload.time = null;
         payload.appointment_type = raw.appointment_type === 'meeting' ? 'meeting' : 'call';
         payload.user_id = userId ?? deal?.assigned_to ?? null;

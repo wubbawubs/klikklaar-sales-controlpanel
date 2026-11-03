@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useOrgId } from '@/hooks/useOrgId';
 import { useCreateMeetingImport, useMeetingImports, type ImportStatus } from '@/hooks/useMeetings';
 
-const IMPORT_STATUS_LABEL: Record<ImportStatus, string> = { analyzing: 'Bezig met analyseren', ready: 'Klaar', failed: 'Mislukt' };
+const IMPORT_STATUS_LABEL: Record<ImportStatus, string> = { queued: 'Bezig met analyseren', analyzing: 'Bezig met analyseren', ready: 'Klaar', failed: 'Mislukt' };
 
 export default function MeetingsPage() {
   const orgId = useOrgId();
