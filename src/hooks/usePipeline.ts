@@ -5,16 +5,16 @@ import { fireWebhook } from '@/lib/webhooks';
 import { toast } from 'sonner';
 import { outcomeEvent } from '@/lib/stages';
 import { errorMessage } from '@/lib/errors';
-import type { Stage, StageType } from '@/lib/crmTypes';
+import type { Stage, StageType, DealCrm } from '@/lib/crmTypes';
 
 export type { Stage, StageType };
 
 // funnel_id / stage_type are not in the generated Supabase types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
-export interface Deal {
+export interface Deal extends DealCrm {
   id: string; org_id: string; stage_id: string | null;
-  title: string; value_eur: number | null;
+  title: string;
   company_id: string | null; contact_id: string | null;
   billing_type_id: string | null;
   assigned_to: string | null; created_at: string; updated_at: string;

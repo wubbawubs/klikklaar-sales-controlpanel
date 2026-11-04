@@ -23,6 +23,18 @@ export interface CrmField {
   archived_at: string | null; created_at: string; updated_at: string;
 }
 
+/** CRM columns on deals (plan 1 migrations); Deal in usePipeline extends this. */
+export interface DealCrm {
+  value_eur: number | null;
+  value_min_eur?: number | null; value_max_eur?: number | null;
+  win_chance?: number | null; priority?: string | null; country?: string | null;
+  planned_start?: string | null; lead_source?: string | null; category?: string | null;
+  description?: string | null;
+  custom?: Record<string, unknown> | null;
+  billing_type_id?: string | null;
+  funnel_id?: string | null;
+}
+
 export type TrashEntity = 'deals' | 'companies' | 'contacts' | 'deal_activities' | 'crm_appointments' | 'company_items';
 
 export interface TrashItem {
