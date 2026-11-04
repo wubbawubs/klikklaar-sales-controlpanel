@@ -363,6 +363,223 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ===== Task 4: field storage, contacts on several deals =====
+-- builtin_fields: every funnel has the 9 built-ins; only amount + billing_type enabled
+DO $$ DECLARE v_f uuid; v_keys text; v_on text; BEGIN
+  SELECT id INTO v_f FROM funnels WHERE org_id='10000000-0000-0000-0000-00000000000a';
+  SELECT string_agg(key, ',' ORDER BY key) INTO v_keys FROM crm_fields
+    WHERE funnel_id = v_f AND builtin AND entity = 'deal' AND org_id='10000000-0000-0000-0000-00000000000a';
+  SELECT string_agg(key, ',' ORDER BY key) INTO v_on FROM crm_fields WHERE funnel_id = v_f AND builtin AND enabled;
+  IF v_keys IS DISTINCT FROM 'amount,billing_type,category,country,description,lead_source,planned_start,priority,win_chance' THEN
+    RAISE EXCEPTION 'check builtin_fields: org L funnel built-ins are %', v_keys;
+  END IF;
+  IF v_on IS DISTINCT FROM 'amount,billing_type' THEN RAISE EXCEPTION 'check builtin_fields: enabled built-ins are %', v_on; END IF;
+  IF EXISTS (SELECT 1 FROM funnels f WHERE (SELECT count(*) FROM crm_fields c WHERE c.funnel_id = f.id AND c.builtin) <> 9) THEN
+    RAISE EXCEPTION 'check builtin_fields: a funnel lacks its 9 built-ins';
+  END IF;
+  IF (SELECT label FROM crm_fields WHERE funnel_id = v_f AND key = 'amount') <> 'Bedrag'
+     OR (SELECT type FROM crm_fields WHERE funnel_id = v_f AND key = 'amount') <> 'money' THEN
+    RAISE EXCEPTION 'check builtin_fields: amount label/type';
+  END IF;
+END $$;
+
+-- builtin_on_new_funnel + field constraints (rolled back)
+DO $$ DECLARE v_f uuid; ok boolean; BEGIN
+  BEGIN
+    INSERT INTO funnels (org_id, name) VALUES ('10000000-0000-0000-0000-00000000000c', 'Tweede funnel') RETURNING id INTO v_f;
+    IF (SELECT count(*) FROM crm_fields WHERE funnel_id = v_f AND builtin) <> 9 THEN RAISE EXCEPTION 'check builtin_on_new_funnel: no built-ins'; END IF;
+    -- deal field needs a funnel; company field must not have one; same key twice in a funnel is rejected
+    ok := false;
+    BEGIN INSERT INTO crm_fields (org_id, entity, key, label, type) VALUES ('10000000-0000-0000-0000-00000000000c','deal','x','X','text');
+    EXCEPTION WHEN check_violation THEN ok := true; END;
+    IF NOT ok THEN RAISE EXCEPTION 'check crm_fields: deal field without funnel accepted'; END IF;
+    ok := false;
+    BEGIN INSERT INTO crm_fields (org_id, entity, funnel_id, key, label, type) VALUES ('10000000-0000-0000-0000-00000000000c','company',v_f,'x','X','text');
+    EXCEPTION WHEN check_violation THEN ok := true; END;
+    IF NOT ok THEN RAISE EXCEPTION 'check crm_fields: company field with funnel accepted'; END IF;
+    INSERT INTO crm_fields (org_id, entity, key, label, type) VALUES ('10000000-0000-0000-0000-00000000000c','company','x','X','text');
+    ok := false;
+    BEGIN INSERT INTO crm_fields (org_id, entity, key, label, type) VALUES ('10000000-0000-0000-0000-00000000000c','company','x','X2','text');
+    EXCEPTION WHEN unique_violation THEN ok := true; END;
+    IF NOT ok THEN RAISE EXCEPTION 'check crm_fields: duplicate company key accepted'; END IF;
+    -- a deal field's funnel must belong to the field's org
+    ok := false;
+    BEGIN INSERT INTO crm_fields (org_id, entity, funnel_id, key, label, type) VALUES ('10000000-0000-0000-0000-00000000000a','deal',v_f,'y','Y','text');
+    EXCEPTION WHEN others THEN IF SQLERRM LIKE '%Funnel hoort niet bij deze organisatie%' THEN ok := true; ELSE RAISE; END IF; END;
+    IF NOT ok THEN RAISE EXCEPTION 'check crm_fields: foreign funnel accepted'; END IF;
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
+  IF (SELECT count(*) FROM funnels) <> 2 THEN RAISE EXCEPTION 'check builtin_on_new_funnel: fixtures changed'; END IF;
+END $$;
+
+-- crm_fields RLS: member reads own org's fields, cannot write; org admin can
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE ok boolean := false; BEGIN
+  IF (SELECT count(*) FROM crm_fields) <> 9 OR EXISTS (SELECT 1 FROM crm_fields WHERE org_id <> '10000000-0000-0000-0000-00000000000a') THEN
+    RAISE EXCEPTION 'check crm_fields_rls: member must see only org L fields';
+  END IF;
+  BEGIN
+    INSERT INTO crm_fields (org_id, entity, key, label, type) VALUES ('10000000-0000-0000-0000-00000000000a','company','m','M','text');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check crm_fields_rls: member could create a field'; END IF;
+  UPDATE crm_fields SET enabled = true WHERE key = 'priority';
+  IF FOUND THEN RAISE EXCEPTION 'check crm_fields_rls: member could update a field'; END IF;
+END $$;
+ROLLBACK;
+BEGIN;
+UPDATE user_organizations SET role = 'admin'
+  WHERE user_id='00000000-0000-0000-0000-0000000000a2' AND organization_id='10000000-0000-0000-0000-00000000000a';
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE ok boolean := false; BEGIN
+  INSERT INTO crm_fields (org_id, entity, key, label, type, options)
+    VALUES ('10000000-0000-0000-0000-00000000000a','contact','segment','Segment','choice','[{"id":"o1","label":"A","position":0,"archived":false}]');
+  UPDATE crm_fields SET enabled = true WHERE key = 'priority';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check crm_fields_rls: org admin could not enable a built-in'; END IF;
+  BEGIN
+    UPDATE crm_fields SET key = 'prio2' WHERE key = 'priority';
+  EXCEPTION WHEN others THEN IF SQLERRM LIKE '%Ingebouwd veld%' THEN ok := true; ELSE RAISE; END IF;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check crm_fields_rls: built-in key could be renamed'; END IF;
+END $$;
+ROLLBACK;
+
+-- primary_contact: one primary deal_contacts row per deal with a contact_id
+DO $$ BEGIN
+  IF (SELECT count(*) FROM deal_contacts) <> (SELECT count(*) FROM deals WHERE contact_id IS NOT NULL)
+     OR (SELECT count(*) FROM deal_contacts) <> 2
+     OR EXISTS (SELECT 1 FROM deals d WHERE d.contact_id IS NOT NULL AND NOT EXISTS (
+                  SELECT 1 FROM deal_contacts dc WHERE dc.deal_id = d.id AND dc.contact_id = d.contact_id AND dc.is_primary AND dc.org_id = d.org_id)) THEN
+    RAISE EXCEPTION 'check primary_contact: deal_contacts % vs deals with contact %',
+      (SELECT count(*) FROM deal_contacts), (SELECT count(*) FROM deals WHERE contact_id IS NOT NULL);
+  END IF;
+END $$;
+
+-- contact_sync: both directions, no recursion, one primary per deal (rolled back)
+DO $$ DECLARE ok boolean; BEGIN
+  BEGIN
+    -- old screen: set contact on d2 -> primary row appears
+    UPDATE deals SET contact_id = '31000000-0000-0000-0000-0000000000a1' WHERE id = '40000000-0000-0000-0000-0000000000a2';
+    IF NOT EXISTS (SELECT 1 FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a2'
+                   AND contact_id='31000000-0000-0000-0000-0000000000a1' AND is_primary) THEN
+      RAISE EXCEPTION 'check contact_sync: deals.contact_id did not create primary row';
+    END IF;
+    -- same contact on a second deal (contacts on several deals)
+    IF (SELECT count(*) FROM deal_contacts WHERE contact_id='31000000-0000-0000-0000-0000000000a1') <> 2 THEN
+      RAISE EXCEPTION 'check contact_sync: contact not on two deals';
+    END IF;
+    -- old screen: change contact -> new primary, old one kept as non-primary
+    UPDATE deals SET contact_id = '31000000-0000-0000-0000-0000000000a3' WHERE id = '40000000-0000-0000-0000-0000000000a2';
+    IF (SELECT contact_id FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a2' AND is_primary) <> '31000000-0000-0000-0000-0000000000a3'
+       OR (SELECT count(*) FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a2') <> 2 THEN
+      RAISE EXCEPTION 'check contact_sync: change of deals.contact_id not mirrored';
+    END IF;
+    -- new code: make a1 primary via deal_contacts -> deals.contact_id follows, a3 demoted
+    UPDATE deal_contacts SET is_primary = true WHERE deal_id='40000000-0000-0000-0000-0000000000a2' AND contact_id='31000000-0000-0000-0000-0000000000a1';
+    IF (SELECT contact_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000a2') <> '31000000-0000-0000-0000-0000000000a1'
+       OR (SELECT count(*) FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a2' AND is_primary) <> 1 THEN
+      RAISE EXCEPTION 'check contact_sync: is_primary not mirrored into deals.contact_id';
+    END IF;
+    -- new code: insert a new primary contact on d1 (org_id filled from the deal)
+    INSERT INTO deal_contacts (deal_id, contact_id, role, is_primary) VALUES
+      ('40000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a2','Beslisser', true);
+    IF (SELECT contact_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') <> '31000000-0000-0000-0000-0000000000a2'
+       OR (SELECT count(*) FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a1' AND is_primary) <> 1 THEN
+      RAISE EXCEPTION 'check contact_sync: inserted primary not mirrored';
+    END IF;
+    -- deleting the primary row clears deals.contact_id
+    DELETE FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a1' AND is_primary;
+    IF (SELECT contact_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') IS NOT NULL THEN
+      RAISE EXCEPTION 'check contact_sync: deleting primary did not clear deals.contact_id';
+    END IF;
+    -- old screen clears contact -> primary demoted, link kept
+    UPDATE deals SET contact_id = NULL WHERE id = '40000000-0000-0000-0000-0000000000a2';
+    IF EXISTS (SELECT 1 FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a2' AND is_primary)
+       OR (SELECT count(*) FROM deal_contacts WHERE deal_id='40000000-0000-0000-0000-0000000000a2') <> 2 THEN
+      RAISE EXCEPTION 'check contact_sync: clearing deals.contact_id not mirrored';
+    END IF;
+    -- new deal with contact gets its primary row
+    INSERT INTO deals (org_id, contact_id, title) VALUES ('10000000-0000-0000-0000-00000000000a','31000000-0000-0000-0000-0000000000a3','met contact');
+    IF NOT EXISTS (SELECT 1 FROM deal_contacts dc JOIN deals d ON d.id = dc.deal_id WHERE d.title='met contact' AND dc.is_primary
+                   AND dc.contact_id='31000000-0000-0000-0000-0000000000a3') THEN
+      RAISE EXCEPTION 'check contact_sync: new deal has no primary row';
+    END IF;
+    -- org mismatch: org C deal + org L contact, or explicit wrong org_id
+    ok := false;
+    BEGIN INSERT INTO deal_contacts (deal_id, contact_id) VALUES ('40000000-0000-0000-0000-0000000000c1','31000000-0000-0000-0000-0000000000a1');
+    EXCEPTION WHEN others THEN IF SQLERRM LIKE '%hoort niet bij de organisatie van de deal%' THEN ok := true; ELSE RAISE; END IF; END;
+    IF NOT ok THEN RAISE EXCEPTION 'check deal_contacts_org: cross-org contact accepted'; END IF;
+    ok := false;
+    BEGIN INSERT INTO deal_contacts (deal_id, contact_id, org_id) VALUES
+      ('40000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-00000000000c');
+    EXCEPTION WHEN others THEN IF SQLERRM LIKE '%hoort niet bij de organisatie van de deal%' THEN ok := true; ELSE RAISE; END IF; END;
+    IF NOT ok THEN RAISE EXCEPTION 'check deal_contacts_org: wrong org_id accepted'; END IF;
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
+  IF (SELECT count(*) FROM deal_contacts) <> 2 OR (SELECT count(*) FROM deals) <> 7
+     OR (SELECT contact_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') <> '31000000-0000-0000-0000-0000000000a1' THEN
+    RAISE EXCEPTION 'check contact_sync: fixtures changed';
+  END IF;
+END $$;
+
+-- deal_contacts RLS: member sees/writes own org only
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM deal_contacts) <> 2 THEN RAISE EXCEPTION 'check deal_contacts_rls: member sees % rows', (SELECT count(*) FROM deal_contacts); END IF;
+  INSERT INTO deal_contacts (deal_id, contact_id, role) VALUES ('40000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a3','Gebruiker');
+  IF (SELECT contact_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') <> '31000000-0000-0000-0000-0000000000a1' THEN
+    RAISE EXCEPTION 'check deal_contacts_rls: non-primary insert changed deals.contact_id';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- range_check + win_chance bounds
+DO $$ DECLARE ok boolean := false; BEGIN
+  BEGIN
+    INSERT INTO deals (org_id, title, value_min_eur, value_max_eur) VALUES ('10000000-0000-0000-0000-00000000000a','range',10,5);
+  EXCEPTION WHEN check_violation THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check range_check: min > max accepted'; END IF;
+  ok := false;
+  BEGIN
+    INSERT INTO deals (org_id, title, win_chance) VALUES ('10000000-0000-0000-0000-00000000000a','kans',101);
+  EXCEPTION WHEN check_violation THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check range_check: win_chance 101 accepted'; END IF;
+  IF (SELECT count(*) FROM deals) <> 7 THEN RAISE EXCEPTION 'check range_check: fixtures changed'; END IF;
+END $$;
+
+-- counts_unchanged_2: integrity counts still the fixture totals (the migration itself asserts before = after);
+-- existing deal/contact/company rows untouched (contact_id, updated_at vs. backup)
+DO $$ BEGIN
+  IF crm_integrity_counts('10000000-0000-0000-0000-00000000000a') <> '{"deals":5,"deals_value_sum":11500,"deals_won":0,"deals_lost":1,
+       "companies":2,"contacts":3,"deal_activities":4,"crm_appointments":2,"deal_fees":2,"deal_fees_sum":450,"company_items":1,"stages":4}'::jsonb
+     OR (crm_integrity_counts('10000000-0000-0000-0000-00000000000c') - 'stages') <> '{"deals":2,"deals_value_sum":2000,"deals_won":0,"deals_lost":0,
+       "companies":0,"contacts":0,"deal_activities":0,"crm_appointments":0,"deal_fees":0,"deal_fees_sum":0,"company_items":0}'::jsonb THEN
+    RAISE EXCEPTION 'check counts_unchanged_2: % / %', crm_integrity_counts('10000000-0000-0000-0000-00000000000a'),
+      crm_integrity_counts('10000000-0000-0000-0000-00000000000c');
+  END IF;
+  IF EXISTS (SELECT 1 FROM crm_backup_20261104.deals b JOIN deals d USING (id)
+             WHERE (b.contact_id, b.value_eur, b.updated_at) IS DISTINCT FROM (d.contact_id, d.value_eur, d.updated_at))
+     OR EXISTS (SELECT 1 FROM crm_backup_20261104.contacts b JOIN contacts c USING (id) WHERE b.updated_at IS DISTINCT FROM c.updated_at)
+     OR EXISTS (SELECT 1 FROM crm_backup_20261104.companies b JOIN companies c USING (id) WHERE b.updated_at IS DISTINCT FROM c.updated_at) THEN
+    RAISE EXCEPTION 'check counts_unchanged_2: existing rows changed';
+  END IF;
+  IF EXISTS (SELECT 1 FROM deals WHERE custom <> '{}' OR value_min_eur IS NOT NULL OR win_chance IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM contacts WHERE custom <> '{}') OR EXISTS (SELECT 1 FROM companies WHERE custom <> '{}') THEN
+    RAISE EXCEPTION 'check counts_unchanged_2: new columns not at their defaults';
+  END IF;
+END $$;
+
 -- (later tasks append checks here)
 
 DO $$ BEGIN RAISE NOTICE 'CRM FOUNDATION CHECKS PASSED'; END $$;
