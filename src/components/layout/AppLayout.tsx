@@ -4,6 +4,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationBell } from './NotificationBell';
+import { OrgAccent } from './OrgAccent';
 
 const STORAGE_KEY = 'kk-sidebar-collapsed';
 
@@ -35,7 +36,8 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="app-backdrop flex h-screen">
+      <OrgAccent />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
