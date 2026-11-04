@@ -27,34 +27,37 @@ export interface Activity {
   meta: Record<string, unknown> | null; created_by: string | null; created_at: string;
 }
 
-export function useStages() {
+export function useStages(funnelId?: string | null) {
   const orgId = useOrgId();
   return useQuery({
-    queryKey: ['stages', orgId],
+    queryKey: ['stages', orgId, funnelId ?? null],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await db
+      let q = db
         .from('pipeline_stages')
         .select('id, org_id, name, position, color, funnel_id, stage_type')
-        .eq('org_id', orgId!)
-        .order('position');
+        .eq('org_id', orgId!);
+      if (funnelId) q = q.eq('funnel_id', funnelId);
+      const { data, error } = await q.order('position');
       if (error) throw error;
       return (data ?? []) as Stage[];
     },
   });
 }
 
-export function useDeals() {
+export function useDeals(funnelId?: string | null) {
   const orgId = useOrgId();
   return useQuery({
-    queryKey: ['deals', orgId],
+    queryKey: ['deals', orgId, funnelId ?? null],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // '*' includes the CRM columns (amounts, win_chance, custom, funnel_id, ...).
+      let q = db
         .from('deals')
         .select('*, company:companies(name), contact:contacts(name, email, phone), billing_type:billing_types(name, kind, interval)')
-        .eq('org_id', orgId!)
-        .order('created_at', { ascending: false });
+        .eq('org_id', orgId!);
+      if (funnelId) q = q.eq('funnel_id', funnelId);
+      const { data, error } = await q.order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Deal[];
     },
@@ -204,8 +207,10 @@ export function useUpdateDeal() {
   const orgId = useOrgId();
   return useMutation({
     mutationFn: async ({ id, ...patch }: { id: string } & Partial<Pick<Deal,
-      'title' | 'value_eur' | 'stage_id' | 'company_id' | 'contact_id' | 'billing_type_id'>>) => {
-      const { error } = await supabase.from('deals').update(patch).eq('id', id);
+      'title' | 'value_eur' | 'value_min_eur' | 'value_max_eur' | 'win_chance' | 'priority' | 'country'
+      | 'planned_start' | 'lead_source' | 'category' | 'description' | 'custom'
+      | 'stage_id' | 'company_id' | 'contact_id' | 'billing_type_id'>>) => {
+      const { error } = await db.from('deals').update(patch).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['deals', orgId] }); toast.success('Deal bijgewerkt'); },
