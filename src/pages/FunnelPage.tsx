@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { LayoutGrid, List, Plus, Search, X } from 'lucide-react';
 import { useFunnel, useFunnelFields, useFunnels } from '@/hooks/useFunnels';
@@ -9,11 +9,29 @@ import { useOrganization } from '@/hooks/useOrganization';
 import { DealPanel } from '@/components/deal/DealPanel';
 import { FunnelBoard } from '@/components/funnel/FunnelBoard';
 import { KpiTiles } from '@/components/funnel/KpiTiles';
+import { FunnelTable } from '@/components/funnel/FunnelTable';
 import { LeadDialog, NewDealDialog } from '@/components/funnel/DealDialogs';
 import { cn } from '@/lib/utils';
 import PipelinePage from './PipelinePage';
 
 type View = 'board' | 'list';
+
+// The chosen view is remembered per funnel; storage may be unavailable (private mode), so never throw.
+const viewKey = (funnelId: string) => `kk-funnel-view:${funnelId}`;
+function readView(funnelId: string): View {
+  try {
+    return localStorage.getItem(viewKey(funnelId)) === 'list' ? 'list' : 'board';
+  } catch {
+    return 'board';
+  }
+}
+function writeView(funnelId: string, view: View) {
+  try {
+    localStorage.setItem(viewKey(funnelId), view);
+  } catch {
+    /* ignore */
+  }
+}
 
 function Spinner() {
   return (
@@ -78,7 +96,9 @@ export default function FunnelPage() {
   const openDeal = (id: string) => setSearchParams(p => { p.set('deal', id); return p; });
   const closeDeal = () => setSearchParams(p => { p.delete('deal'); return p; });
 
-  const [view, setView] = useState<View>('board');
+  const [view, setViewState] = useState<View>(() => readView(funnelId));
+  useEffect(() => { setViewState(readView(funnelId)); }, [funnelId]);
+  const setView = (v: View) => { setViewState(v); writeView(funnelId, v); };
   const [newDealFor, setNewDealFor] = useState<Stage | null>(null);
   const [leadOpen, setLeadOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -104,7 +124,7 @@ export default function FunnelPage() {
   }, [agenda]);
 
   const names = useMemo(() => new Map(team.map(t => [t.user_id, t.full_name || t.email || null])), [team]);
-  const ownerName = (id: string | null) => (id ? names.get(id) ?? null : null);
+  const ownerName = useCallback((id: string | null) => (id ? names.get(id) ?? null : null), [names]);
 
   const sortedStages = useMemo(() => [...stages].sort((a, b) => a.position - b.position), [stages]);
 
@@ -174,6 +194,15 @@ export default function FunnelPage() {
         <div className="glass p-8 text-center text-sm text-muted-foreground">
           Deze funnel heeft nog geen fases. Voeg ze toe via Instellingen.
         </div>
+      ) : view === 'list' ? (
+        <FunnelTable
+          deals={visibleDeals}
+          stages={sortedStages}
+          funnel={funnel}
+          fields={fields}
+          ownerName={ownerName}
+          onOpenDeal={openDeal}
+        />
       ) : (
         <FunnelBoard
           stages={sortedStages}
