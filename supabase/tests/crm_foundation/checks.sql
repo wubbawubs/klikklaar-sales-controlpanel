@@ -1559,6 +1559,67 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- tasks_contact_trash (20261105000002): trashing a contact takes its live tasks into the same batch; crm_restore
+-- brings contact + tasks back (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title, contact_id, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Bel Lars','31000000-0000-0000-0000-0000000000a3',NULL),
+ ('50000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','Mail Lars','31000000-0000-0000-0000-0000000000a3','40000000-0000-0000-0000-0000000000a1'),
+ ('50000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-00000000000a','Andere taak',NULL,NULL);
+DELETE FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3';
+RESET ROLE;
+DO $$ DECLARE v_b uuid; v_n int; BEGIN
+  SELECT delete_batch INTO v_b FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3' AND deleted_at IS NOT NULL;
+  IF v_b IS NULL THEN RAISE EXCEPTION 'check tasks_contact_trash: contact not trashed'; END IF;
+  IF (SELECT count(*) FROM crm_tasks WHERE delete_batch = v_b AND deleted_at IS NOT NULL
+        AND id IN ('50000000-0000-0000-0000-0000000000a1','50000000-0000-0000-0000-0000000000a2')) IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check tasks_contact_trash: contact tasks not in the contact batch';
+  END IF;
+  IF EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a3' AND deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks_contact_trash: unrelated task trashed';
+  END IF;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true);
+  v_n := crm_restore(v_b);
+  IF v_n IS DISTINCT FROM 3 OR EXISTS (SELECT 1 FROM crm_tasks WHERE deleted_at IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM contacts WHERE deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks_contact_trash: restore incomplete (% rows)', v_n;
+  END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_contact_deal_trap (20261105000002): contact trashed first, then the deal of the same task: restoring the
+-- deal no longer fails on the task (it sits in the contact batch); restoring the contact then brings it back (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title, contact_id, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Val','31000000-0000-0000-0000-0000000000a3','40000000-0000-0000-0000-0000000000a1');
+DELETE FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3';
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+RESET ROLE;
+DO $$ DECLARE v_deal uuid; v_contact uuid; v_err text; BEGIN
+  SELECT delete_batch INTO v_deal FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+  SELECT delete_batch INTO v_contact FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3';
+  IF (SELECT delete_batch FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1') IS DISTINCT FROM v_contact THEN
+    RAISE EXCEPTION 'check tasks_contact_deal_trap: task not in the contact batch';
+  END IF;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true);
+  BEGIN PERFORM crm_restore(v_deal);
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS NOT NULL THEN RAISE EXCEPTION 'check tasks_contact_deal_trap: deal restore failed: %', v_err; END IF;
+  IF EXISTS (SELECT 1 FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1' AND deleted_at IS NOT NULL)
+     OR NOT EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1' AND deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks_contact_deal_trap: deal restore state wrong';
+  END IF;
+  PERFORM crm_restore(v_contact);
+  IF EXISTS (SELECT 1 FROM crm_tasks WHERE deleted_at IS NOT NULL) OR EXISTS (SELECT 1 FROM contacts WHERE deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks_contact_deal_trap: contact restore incomplete';
+  END IF;
+END $$;
+ROLLBACK;
+
 -- (later tasks append checks here)
 
 DO $$ BEGIN RAISE NOTICE 'CRM FOUNDATION CHECKS PASSED'; END $$;
