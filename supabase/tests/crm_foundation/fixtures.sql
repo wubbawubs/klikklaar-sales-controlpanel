@@ -1,0 +1,79 @@
+-- Fixtures on the LIVE schema. Fixed ids:
+--  orgs:   L (Klikklaar-like) 10000000-0000-0000-0000-00000000000a ; C (client) 10000000-0000-0000-0000-00000000000c
+--  users:  u_admin  ...0000000000a1 (user_roles super_admin) ; u_member ...0000000000a2 (user_organizations, org L only)
+--  org L stages: Prospect(1) 20..a1, Voorstel(2) 20..a2, Won(3) 20..a3, Verloren(4) 20..a4
+--  org C stages: Lead(1) 20..c1, Offerte(2) 20..c2, "Deal gewonnen"(3) 20..c3
+--  billing type (org L): 70..a1 'Maandelijks' recurring/month
+--  companies L: 30..a1 Bakkerij Jansen, 30..a2 Cafe De Hoek ; contacts L: 31..a1 (Jansen), 31..a2 (De Hoek), 31..a3 (no company)
+-- Org L deals (5): d1 ...a1 Prospect 1000 ; d2 ...a2 Won, won_at NULL 3000 ; d3 ...a3 Verloren 500 ;
+--                  d4 ...a4 stage_id NULL 2000 ; d5 ...a5 Voorstel + billing_type + 2 fees 5000   => org L: 5 deals, value sum 11500
+-- Org C deals (2): ...c1 Lead 800, ...c2 "Deal gewonnen" 1200                                      => org C: 2 deals, value sum 2000
+-- deal_fees: 2 (both on d5), amount sum 450 (100 one_time + 350 recurring/month)
+-- deal_activities: 4 (all org L) ; crm_appointments: 2 (org L) ; company_items: 1 (org L) ; total deals 7
+-- Deal ids: 40000000-0000-0000-0000-0000000000XX with XX as above (a1..a5, c1, c2)
+
+-- The local image's auth.uid() only reads the legacy GUC request.jwt.claim.sub; hosted Supabase also reads
+-- request.jwt.claims (JSON). Mirror the hosted behaviour so checks can log in via set_config('request.jwt.claims', ...).
+CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $f$
+  SELECT coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
+                  (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'))::uuid
+$f$;
+
+INSERT INTO auth.users (id, email, aud, role, instance_id) VALUES
+ ('00000000-0000-0000-0000-0000000000a1','admin@test.local','authenticated','authenticated','00000000-0000-0000-0000-000000000000'),
+ ('00000000-0000-0000-0000-0000000000a2','member@test.local','authenticated','authenticated','00000000-0000-0000-0000-000000000000');
+
+INSERT INTO organizations (id, slug, name) VALUES
+ ('10000000-0000-0000-0000-00000000000a','klikklaar','Klikklaar'),
+ ('10000000-0000-0000-0000-00000000000c','client','Client BV');
+
+INSERT INTO user_roles (user_id, role) VALUES ('00000000-0000-0000-0000-0000000000a1','super_admin');
+INSERT INTO user_organizations (user_id, organization_id, is_default) VALUES
+ ('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a', true);
+
+INSERT INTO pipeline_stages (id, org_id, name, position) VALUES
+ ('20000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Prospect',1),
+ ('20000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','Voorstel',2),
+ ('20000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-00000000000a','Won',3),
+ ('20000000-0000-0000-0000-0000000000a4','10000000-0000-0000-0000-00000000000a','Verloren',4),
+ ('20000000-0000-0000-0000-0000000000c1','10000000-0000-0000-0000-00000000000c','Lead',1),
+ ('20000000-0000-0000-0000-0000000000c2','10000000-0000-0000-0000-00000000000c','Offerte',2),
+ ('20000000-0000-0000-0000-0000000000c3','10000000-0000-0000-0000-00000000000c','Deal gewonnen',3);
+
+INSERT INTO billing_types (id, org_id, name, kind, interval) VALUES
+ ('70000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Maandelijks','recurring','month');
+
+INSERT INTO companies (id, org_id, name) VALUES
+ ('30000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Bakkerij Jansen'),
+ ('30000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','Cafe De Hoek');
+
+INSERT INTO contacts (id, org_id, company_id, name) VALUES
+ ('31000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a1','Jan Jansen'),
+ ('31000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2','Els de Hoek'),
+ ('31000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-00000000000a',NULL,'Losse Lars');
+
+INSERT INTO deals (id, org_id, company_id, contact_id, stage_id, title, value_eur, assigned_to, won_at, lost_at, billing_type_id, created_by) VALUES
+ ('40000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a1','20000000-0000-0000-0000-0000000000a1','Website Jansen',1000,'00000000-0000-0000-0000-0000000000a2',NULL,NULL,NULL,'00000000-0000-0000-0000-0000000000a1'),
+ ('40000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a1',NULL,'20000000-0000-0000-0000-0000000000a3','SEO Jansen (won, no won_at)',3000,'00000000-0000-0000-0000-0000000000a2',NULL,NULL,NULL,'00000000-0000-0000-0000-0000000000a1'),
+ ('40000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2',NULL,'20000000-0000-0000-0000-0000000000a4','Cafe verloren',500,NULL,NULL,'2026-10-01T10:00:00Z',NULL,'00000000-0000-0000-0000-0000000000a1'),
+ ('40000000-0000-0000-0000-0000000000a4','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2',NULL,NULL,'Deal zonder stage',2000,NULL,NULL,NULL,NULL,'00000000-0000-0000-0000-0000000000a1'),
+ ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2','31000000-0000-0000-0000-0000000000a2','20000000-0000-0000-0000-0000000000a2','Cafe voorstel met fees',5000,'00000000-0000-0000-0000-0000000000a1',NULL,NULL,'70000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000a1'),
+ ('40000000-0000-0000-0000-0000000000c1','10000000-0000-0000-0000-00000000000c',NULL,NULL,'20000000-0000-0000-0000-0000000000c1','Client lead',800,NULL,NULL,NULL,NULL,NULL),
+ ('40000000-0000-0000-0000-0000000000c2','10000000-0000-0000-0000-00000000000c',NULL,NULL,'20000000-0000-0000-0000-0000000000c3','Client gewonnen',1200,NULL,NULL,NULL,NULL,NULL);
+
+INSERT INTO deal_fees (deal_id, org_id, amount, kind, interval, label, position) VALUES
+ ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a',100,'one_time',NULL,'Opstart',0),
+ ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a',350,'recurring','month','Onderhoud',1);
+
+INSERT INTO deal_activities (org_id, deal_id, type, body, created_by) VALUES
+ ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a1','note','Eerste notitie','00000000-0000-0000-0000-0000000000a1'),
+ ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a1','call','Gebeld','00000000-0000-0000-0000-0000000000a2'),
+ ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a2','stage_change','Naar Won','00000000-0000-0000-0000-0000000000a1'),
+ ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a5','meeting','Intake','00000000-0000-0000-0000-0000000000a1');
+
+INSERT INTO crm_appointments (org_id, deal_id, company_id, owner_id, type, title, starts_at) VALUES
+ ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a1','30000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000a2','call','Belafspraak','2026-11-10T09:00:00Z'),
+ ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a5','30000000-0000-0000-0000-0000000000a2','00000000-0000-0000-0000-0000000000a1','meeting','Voorstel bespreken','2026-11-12T13:00:00Z');
+
+INSERT INTO company_items (org_id, company_id, item_type, title, body, created_by) VALUES
+ ('10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a1','note','Voorbereiding','Notitie','00000000-0000-0000-0000-0000000000a1');

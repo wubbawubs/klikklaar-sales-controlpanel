@@ -26,3 +26,5 @@ dist-ssr
 # local env
 .env
 .env.local
+supabase/tests/crm_foundation/.live_schema.sql
+supabase/tests/crm_foundation/.schema_load.log
