@@ -43,7 +43,7 @@ export default function TrashPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Prullenbak</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Prullenbak</h1>
         <p className="text-sm text-muted-foreground">
           Verwijderde bedrijven, deals, contacten, activiteiten, afspraken en documenten. Terugzetten herstelt alles wat tegelijk is verwijderd.
         </p>

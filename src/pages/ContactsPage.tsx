@@ -70,7 +70,7 @@ export default function ContactsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Contacten</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Contacten</h1>
         <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1.5" />Nieuw contact</Button>
       </div>
 

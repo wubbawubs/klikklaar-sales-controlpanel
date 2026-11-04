@@ -39,7 +39,7 @@ export default function AgendaPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Agenda</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
         <div className="flex gap-2">
           <ToggleGroup type="single" size="sm" value={who} onValueChange={v => v && setWho(v as any)}>
             <ToggleGroupItem value="mine">Mijn</ToggleGroupItem><ToggleGroupItem value="all">Iedereen</ToggleGroupItem>

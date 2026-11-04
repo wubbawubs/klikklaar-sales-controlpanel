@@ -13,6 +13,7 @@ export interface Organization {
   accent_color_hex: string | null;
   modules: string[];
   active: boolean;
+  kind?: 'label' | 'client';
 }
 
 interface OrganizationContextType {
@@ -36,12 +37,13 @@ const DEFAULT_MODULES = ['dashboard', 'pipeline', 'boards', 'contacts', 'leads',
 
 // "Algemeen" — a virtual label that rolls every real label up into one combined
 // dashboard. It is not a row in the database; it's prepended to the switcher
-// when the user has 2+ real labels.
+// when the user has 2+ real labels (kind='label'; client orgs are excluded).
+const isLabel = (o: Organization) => (o.kind ?? 'label') === 'label';
 export const ALL_ORG_ID = '__all__';
 const ALL_ORG: Organization = {
-  id: ALL_ORG_ID, slug: 'algemeen', name: 'Algemeen — alle labels', subdomain: null,
+  id: ALL_ORG_ID, slug: 'algemeen', name: 'Algemeen (eigen labels)', subdomain: null,
   logo_url: null, primary_color_hex: null, accent_color_hex: null,
-  modules: DEFAULT_MODULES, active: true,
+  modules: DEFAULT_MODULES, active: true, kind: 'label',
 };
 
 function slugify(name: string): string {
@@ -110,8 +112,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         .filter((o: any) => o && o.active) as Organization[];
     }
 
-    // Offer the "Algemeen" group view only when there are 2+ real labels to combine.
-    const withAll = orgs.length >= 2 ? [ALL_ORG, ...orgs] : orgs;
+    // Offer the "Algemeen" group view only when there are 2+ own labels to combine.
+    const labelCount = orgs.filter(isLabel).length;
+    const withAll = labelCount >= 2 ? [ALL_ORG, ...orgs] : orgs;
     setAvailable(withAll);
 
     // Resolution priority: explicit choice (localStorage) -> subdomain brand ->
@@ -242,7 +245,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   }, [user, load, switchTo]);
 
   const isAllView = current?.id === ALL_ORG_ID;
-  const allOrgIds = available.filter(o => o.id !== ALL_ORG_ID).map(o => o.id);
+  const allOrgIds = available.filter(o => o.id !== ALL_ORG_ID && isLabel(o)).map(o => o.id);
 
   return (
     <OrganizationContext.Provider value={{ current, available, loading, switchTo, hasModule, reload: load, createOrganization, isAllView, allOrgIds }}>

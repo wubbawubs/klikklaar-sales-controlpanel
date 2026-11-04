@@ -326,7 +326,7 @@ export default function SettingsPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold">Instellingen</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Instellingen</h1>
         <p className="text-sm text-muted-foreground">Beheer webhooks en organisatie-instellingen</p>
       </div>
       <Tabs defaultValue="pipeline">

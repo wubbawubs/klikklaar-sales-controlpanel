@@ -34,7 +34,7 @@ export default function MeetingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-xl font-semibold">Meeting verwerken</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Meeting verwerken</h1>
         <p className="text-sm text-muted-foreground">
           Plak het transcript van de sales-meeting. De AI stelt per klant wijzigingen voor; jij bepaalt wat er in het CRM komt.
         </p>

@@ -114,7 +114,7 @@ function GroupDashboard({ orgIds, orgs }: { orgIds: string[]; orgs: Organization
       <div className="flex items-center gap-2">
         <Layers className="h-5 w-5 text-muted-foreground" />
         <div>
-          <h1 className="text-xl font-semibold">Algemeen — alle labels</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Algemeen (eigen labels)</h1>
           <p className="text-sm text-muted-foreground">Gecombineerd overzicht over {orgIds.length} labels</p>
         </div>
       </div>
@@ -192,7 +192,7 @@ function SingleDashboard() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Overzicht van je pipeline en boards</p>
       </div>
 
