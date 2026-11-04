@@ -5,6 +5,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanies, useUpdateDeal, type Deal } from '@/hooks/usePipeline';
+import { useTasks } from '@/hooks/useTasks';
+import { sortTasks } from '@/lib/tasks';
+import { TaskRow, TaskQuickAdd } from '@/components/tasks';
 import { useCompany, useUpdateCompany, useCreateCompanyForDeal, useContact, useUpdateContact, useCompanyDeals, type Company, type Contact } from '@/hooks/useCompanyHub';
 
 const Section = ({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) => (
@@ -112,6 +115,20 @@ function ContactCard({ contact }: { contact: Contact }) {
   );
 }
 
+function CompanyTasks({ companyId }: { companyId: string }) {
+  const { data: tasks = [] } = useTasks({ companyId });
+  return (
+    <Section title="Taken">
+      <div className="space-y-2">
+        <TaskQuickAdd defaults={{ companyId }} />
+        {tasks.length === 0
+          ? <p className="text-xs text-muted-foreground">Geen open taken voor dit bedrijf</p>
+          : <ul className="space-y-1">{sortTasks(tasks).map(t => <li key={t.id}><TaskRow task={t} hideLinks={['company']} /></li>)}</ul>}
+      </div>
+    </Section>
+  );
+}
+
 export function CompanyPanel({ deal, onOpenDeal }: { deal: Deal; onOpenDeal: (id: string) => void }) {
   const { data: company } = useCompany(deal.company_id);
   const { data: contact } = useContact(deal.contact_id);
@@ -149,6 +166,7 @@ export function CompanyPanel({ deal, onOpenDeal }: { deal: Deal; onOpenDeal: (id
       <Section title="Contactpersoon">
         {contact ? <ContactCard key={contact.id} contact={contact} /> : <p className="text-xs text-muted-foreground">Geen contactpersoon</p>}
       </Section>
+      {deal.company_id && <CompanyTasks companyId={deal.company_id} />}
       {others.length > 0 && (
         <Section title="Andere deals">
           <ul className="space-y-1">

@@ -1,7 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { CompanyPanel } from './CompanyPanel';
+
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
+vi.mock('@/hooks/useBoards', () => ({ useTeamMembers: () => ({ data: [] }) }));
+vi.mock('@/hooks/useTasks', () => ({
+  useTasks: () => ({ data: [] }),
+  useUpdateTask: () => ({ mutate: vi.fn() }),
+  useCreateTask: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteTask: () => ({ mutate: vi.fn() }),
+  useTaskLinkOptions: () => ({ deals: [], companies: [], contacts: [] }),
+}));
 
 vi.mock('@/hooks/useOrgId', () => ({ useOrgId: () => 'org1' }));
 vi.mock('@/integrations/supabase/client', () => ({
@@ -23,9 +34,10 @@ describe('CompanyPanel', () => {
   });
 
   it('offers Wijzig and Ontkoppel when a company is linked', () => {
-    render(<QueryClientProvider client={new QueryClient()}><CompanyPanel deal={{ ...deal, company_id: 'c1' }} onOpenDeal={() => {}} /></QueryClientProvider>);
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><CompanyPanel deal={{ ...deal, company_id: 'c1' }} onOpenDeal={() => {}} /></MemoryRouter></QueryClientProvider>);
     expect(screen.getByText('Acme')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Wijzig' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ontkoppel' })).toBeInTheDocument();
+    expect(screen.getByText('Taken')).toBeInTheDocument();
   });
 });

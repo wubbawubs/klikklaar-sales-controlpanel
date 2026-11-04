@@ -25,6 +25,8 @@ import { AppointmentsPanel } from './AppointmentsPanel';
 import { AppointmentDialog } from './AppointmentDialog';
 import { CompanyPanel } from './CompanyPanel';
 import { PrepIntakeTab } from './PrepIntakeTab';
+import { DealTasksTab } from './DealTasksTab';
+import { useTasks } from '@/hooks/useTasks';
 
 // CRM columns are not in the generated Supabase types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +49,7 @@ function useDeal(dealId: string | null) {
 }
 
 const TABS = [
-  ['overview', 'Overzicht'], ['activity', 'Activiteit'], ['appointments', 'Afspraken'],
+  ['overview', 'Overzicht'], ['tasks', 'Taken'], ['activity', 'Activiteit'], ['appointments', 'Afspraken'],
   ['company', 'Bedrijf'], ['prep', 'Voorbereiding'], ['history', 'Historie'],
 ] as const;
 
@@ -117,6 +119,8 @@ function PanelBody({ deal, funnelId, onClose, onOpenDeal }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [planType, setPlanType] = useState<'call' | 'meeting' | null>(null);
   useEffect(() => setTitle(deal.title), [deal.title]);
+
+  const { data: openTasks = [] } = useTasks({ dealId: deal.id });
 
   const amount = funnel ? formatAmount(deal, funnel) : null;
 
@@ -197,7 +201,7 @@ function PanelBody({ deal, funnelId, onClose, onOpenDeal }: {
             {TABS.map(([v, label]) => (
               <TabsTrigger key={v} value={v}
                 className="h-7 shrink-0 rounded-full px-3 text-[13px] font-medium text-[#4a5563] data-[state=active]:bg-white data-[state=active]:text-[#1b2430] data-[state=active]:shadow-[0_1px_3px_rgba(27,36,48,0.12)] dark:text-muted-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground">
-                {label}
+                {label}{v === 'tasks' && openTasks.length > 0 && <span className="ml-1.5 tabular-nums text-muted-foreground">{openTasks.length}</span>}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -212,6 +216,7 @@ function PanelBody({ deal, funnelId, onClose, onOpenDeal }: {
             </Card>
             <Card><DealContacts deal={deal} /></Card>
           </TabsContent>
+          <TabsContent value="tasks" className="mt-0"><Card><DealTasksTab dealId={deal.id} companyId={deal.company_id} /></Card></TabsContent>
           <TabsContent value="activity" className="mt-0"><Card><ActivityTab deal={deal} /></Card></TabsContent>
           <TabsContent value="appointments" className="mt-0 space-y-3">
             <div className="flex flex-wrap gap-2">
