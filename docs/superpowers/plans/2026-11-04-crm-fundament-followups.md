@@ -54,3 +54,10 @@ Written down when plan 1 was finished (4 Nov 2026), so these decisions and open 
 - Task 5: carry to Task 6: crm_history.entity holds table names (deals/companies/contacts...) — Task 6 RPCs must map; purge must overwrite/skip full-row delete history written by the capture trigger; deal_contacts record_id = deal_id.
 - Task 6: carry to Task 8: useDeleteCompanyItem must not remove the storage file on (soft) delete — only purge may; useDeleteStage guard should rely on the new DB guard error; restoring a deal while its company is still trashed shows an orphaned deal (UI hint).
 - Task 6: carry to Task 8: useDeleteStage should surface the DB error message ('Deze fase heeft nog deals (ook in de prullenbak)'); trash page restore can raise 'Dit item staat in de prullenbak' when parent batch still trashed — show that message.
+
+## After local CLI test (4 Nov 2026)
+- Fixed: the Supabase CLI does not wrap migration files in a transaction — migrations now have explicit BEGIN;/COMMIT; and the harnesses apply files without `psql -1` (commit e91a22c).
+- Fixed: function-level `SET crm.purge` is not allowed for the non-superuser `postgres` role on Supabase — crm_purge now uses transaction-local set_config (commit e91a22c, reviewed: approved).
+- To do (minor): COMMENT ON FUNCTION crm_purge in migration 5 still says "(function-level SET)" — reword.
+- To do (minor): add harness checks `purge_no_function_level_guc` (no public function has a proconfig entry LIKE 'crm.%') and `purge_resets_guc` (as org admin: purge succeeds, crm.purge is not 'on' afterwards, a following DELETE in the same transaction is still soft) — the harness runs as superuser and missed this bug class.
+- To check (ops): confirm in the Supabase dashboard that the production API exposes only the public schema (not pg_catalog).
