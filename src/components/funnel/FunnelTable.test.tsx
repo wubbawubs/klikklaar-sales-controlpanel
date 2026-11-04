@@ -30,7 +30,8 @@ describe('FunnelTable', () => {
 
   it('sorts by Winkans with empty values last, cycling asc, desc, none', () => {
     renderTable();
-    const th = screen.getByRole('columnheader', { name: /Winkans/ });
+    // getByRole with a name computes accessible names for the whole table (slow in jsdom).
+    const th = screen.getByText('Winkans').closest('th') as HTMLElement;
     const btn = within(th).getByRole('button');
     expect(th).toHaveAttribute('aria-sort', 'none');
 

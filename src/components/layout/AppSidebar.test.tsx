@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 
+// getByRole('link', { name }) computes accessible names for every link and is very slow in jsdom;
+// look the funnel link up by its text instead.
+const funnelLink = (name: string) => screen.getByText(name).closest('a');
+
 let isAllView = false;
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ signOut: vi.fn(), isAdmin: true }) }));
 vi.mock('@/hooks/useTheme', () => ({ useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }) }));
@@ -21,19 +25,19 @@ describe('AppSidebar', () => {
   it('lists funnels linking to /pipeline/<id>', () => {
     isAllView = false;
     renderAt('/');
-    expect(screen.getByRole('link', { name: /Projecten/ })).toHaveAttribute('href', '/pipeline/f1');
-    expect(screen.getByRole('link', { name: /Partnerschappen/ })).toHaveAttribute('href', '/pipeline/f2');
+    expect(funnelLink('Projecten')).toHaveAttribute('href', '/pipeline/f1');
+    expect(funnelLink('Partnerschappen')).toHaveAttribute('href', '/pipeline/f2');
   });
   it('marks the active funnel with aria-current', () => {
     isAllView = false;
     renderAt('/pipeline/f2');
-    expect(screen.getByRole('link', { name: /Partnerschappen/ })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: /Projecten/ })).not.toHaveAttribute('aria-current');
+    expect(funnelLink('Partnerschappen')).toHaveAttribute('aria-current', 'page');
+    expect(funnelLink('Projecten')).not.toHaveAttribute('aria-current');
   });
   it('hides the Funnels group in the group view', () => {
     isAllView = true;
     renderAt('/');
     expect(screen.queryByText('Funnels')).toBeNull();
-    expect(screen.queryByRole('link', { name: /Projecten/ })).toBeNull();
+    expect(screen.queryByText('Projecten')).toBeNull();
   });
 });
