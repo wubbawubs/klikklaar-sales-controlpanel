@@ -180,6 +180,7 @@ BEGIN
     RAISE EXCEPTION 'Contact hoort niet bij de organisatie van de deal';
   END IF;
   IF NEW.is_primary THEN
+    PERFORM 1 FROM public.deals WHERE id = NEW.deal_id FOR UPDATE;   -- serialize concurrent primary changes per deal
     UPDATE public.deal_contacts SET is_primary = false
     WHERE deal_id = NEW.deal_id AND is_primary AND contact_id <> NEW.contact_id;
   END IF;
@@ -232,18 +233,21 @@ CREATE TRIGGER deals_sync_primary_contact AFTER INSERT OR UPDATE OF contact_id O
   FOR EACH ROW EXECUTE FUNCTION public.deals_sync_primary_contact();
 
 -- 4. Backfill --------------------------------------------------------------------------------------
--- Fail loudly (nothing applied) if a deal points at a contact of another org: the org rule above would reject it.
+-- Legacy deals whose contact_id points at another org's contact get no deal_contacts row (the org rule above
+-- rejects such links); their deals.contact_id is left untouched and they are listed in the migration report.
 DO $$ DECLARE v text; BEGIN
-  SELECT string_agg(d.id::text, ', ') INTO v
+  SELECT string_agg(d.id::text, ', ' ORDER BY d.id) INTO v
   FROM public.deals d JOIN public.contacts c ON c.id = d.contact_id WHERE c.org_id <> d.org_id;
   IF v IS NOT NULL THEN
-    RAISE EXCEPTION 'Deals met een contact uit een andere organisatie (eerst handmatig oplossen): %', v;
+    RAISE NOTICE 'Overgeslagen (contact uit andere organisatie), deals.contact_id ongemoeid: %', v;
   END IF;
 END $$;
 
 -- Rows equal deals.contact_id, so deal_contacts_sync_deal leaves deals untouched (updated_at too).
 INSERT INTO public.deal_contacts (deal_id, contact_id, org_id, is_primary)
-SELECT d.id, d.contact_id, d.org_id, true FROM public.deals d WHERE d.contact_id IS NOT NULL;
+SELECT d.id, d.contact_id, d.org_id, true FROM public.deals d
+WHERE d.contact_id IS NOT NULL
+  AND EXISTS (SELECT 1 FROM public.contacts c WHERE c.id = d.contact_id AND c.org_id = d.org_id);
 
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT id FROM public.funnels LOOP PERFORM public.crm_seed_builtin_fields(r.id); END LOOP;
@@ -260,8 +264,9 @@ DO $$ DECLARE r record; v_after jsonb; BEGIN
   IF (SELECT count(*) FROM public.organizations) <> (SELECT count(*) FROM _crm_counts_before_fields) THEN
     RAISE EXCEPTION 'Integriteitscontrole mislukt: aantal organisaties veranderd';
   END IF;
-  IF (SELECT count(*) FROM public.deal_contacts) <> (SELECT count(*) FROM public.deals WHERE contact_id IS NOT NULL)
-     OR EXISTS (SELECT 1 FROM public.deals d WHERE d.contact_id IS NOT NULL AND NOT EXISTS (
+  IF (SELECT count(*) FROM public.deal_contacts) <> (SELECT count(*) FROM public.deals d
+                                                     JOIN public.contacts c ON c.id = d.contact_id AND c.org_id = d.org_id)
+     OR EXISTS (SELECT 1 FROM public.deals d JOIN public.contacts c ON c.id = d.contact_id AND c.org_id = d.org_id WHERE NOT EXISTS (
                   SELECT 1 FROM public.deal_contacts dc WHERE dc.deal_id = d.id AND dc.contact_id = d.contact_id AND dc.is_primary)) THEN
     RAISE EXCEPTION 'Integriteitscontrole mislukt: deal_contacts wijkt af van deals.contact_id';
   END IF;

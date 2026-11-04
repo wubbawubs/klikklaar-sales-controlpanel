@@ -4,7 +4,7 @@
 --   SET LOCAL ROLE authenticated;  (inside a transaction; RESET ROLE afterwards)
 
 DO $$ BEGIN
-  IF (SELECT count(*) FROM deals) <> 7 THEN RAISE EXCEPTION 'check fixtures: expected 7 deals'; END IF;
+  IF (SELECT count(*) FROM deals) <> 8 THEN RAISE EXCEPTION 'check fixtures: expected 8 deals'; END IF;
   IF (SELECT coalesce(sum(value_eur),0) FROM deals WHERE org_id='10000000-0000-0000-0000-00000000000a') <> 11500 THEN RAISE EXCEPTION 'check fixtures: org L value sum'; END IF;
 END $$;
 
@@ -76,7 +76,7 @@ DO $$ DECLARE l jsonb; c jsonb; BEGIN
      OR (l->>'deal_fees')::int <> 2 OR (l->>'deal_fees_sum')::numeric <> 450 OR (l->>'company_items')::int <> 1 OR (l->>'stages')::int <> 4 THEN
     RAISE EXCEPTION 'check counts_unchanged: org L counts %', l;
   END IF;
-  IF (c->>'deals')::int <> 2 OR (c->>'deals_value_sum')::numeric <> 2000 OR (c->>'deals_won')::int <> 0 OR (c->>'deals_lost')::int <> 0
+  IF (c->>'deals')::int <> 3 OR (c->>'deals_value_sum')::numeric <> 2000 OR (c->>'deals_won')::int <> 0 OR (c->>'deals_lost')::int <> 0
      OR (c->>'stages')::int <> 5 THEN
     RAISE EXCEPTION 'check counts_unchanged: org C counts %', c;
   END IF;
@@ -98,7 +98,7 @@ END $$;
 
 -- backup_exists
 DO $$ BEGIN
-  IF (SELECT count(*) FROM crm_backup_20261104.deals) <> 7 THEN RAISE EXCEPTION 'check backup_exists: deals backup rows'; END IF;
+  IF (SELECT count(*) FROM crm_backup_20261104.deals) <> 8 THEN RAISE EXCEPTION 'check backup_exists: deals backup rows'; END IF;
   IF (SELECT count(*) FROM crm_backup_20261104.pipeline_stages) <> 7 OR (SELECT count(*) FROM crm_backup_20261104.deal_fees) <> 2
      OR (SELECT count(*) FROM crm_backup_20261104.companies) <> 2 OR (SELECT count(*) FROM crm_backup_20261104.contacts) <> 3
      OR (SELECT count(*) FROM crm_backup_20261104.deal_activities) <> 4 OR (SELECT count(*) FROM crm_backup_20261104.crm_appointments) <> 2
@@ -141,7 +141,7 @@ DO $$ DECLARE ok boolean := false; v_f uuid; BEGIN
   EXCEPTION WHEN others THEN
     IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
   END;
-  IF (SELECT count(*) FROM deals) <> 7 THEN RAISE EXCEPTION 'check stage_funnel_match: fixtures changed'; END IF;
+  IF (SELECT count(*) FROM deals) <> 8 THEN RAISE EXCEPTION 'check stage_funnel_match: fixtures changed'; END IF;
 END $$;
 
 -- seed_default_stages creates a funnel and typed stages (rolled back)
@@ -260,7 +260,7 @@ DO $$ DECLARE d deals%ROWTYPE; v_first timestamptz; BEGIN
   EXCEPTION WHEN others THEN
     IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
   END;
-  IF (SELECT count(*) FROM deals) <> 7
+  IF (SELECT count(*) FROM deals) <> 8
      OR (SELECT won_at FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') IS NOT NULL
      OR (SELECT won_at FROM deals WHERE id='40000000-0000-0000-0000-0000000000a2') IS NOT NULL THEN
     RAISE EXCEPTION 'check drag: fixtures changed';
@@ -451,13 +451,31 @@ ROLLBACK;
 
 -- primary_contact: one primary deal_contacts row per deal with a contact_id
 DO $$ BEGIN
-  IF (SELECT count(*) FROM deal_contacts) <> (SELECT count(*) FROM deals WHERE contact_id IS NOT NULL)
+  IF (SELECT count(*) FROM deal_contacts) <> (SELECT count(*) FROM deals d JOIN contacts c ON c.id = d.contact_id AND c.org_id = d.org_id)
      OR (SELECT count(*) FROM deal_contacts) <> 2
-     OR EXISTS (SELECT 1 FROM deals d WHERE d.contact_id IS NOT NULL AND NOT EXISTS (
+     OR EXISTS (SELECT 1 FROM deals d JOIN contacts c ON c.id = d.contact_id AND c.org_id = d.org_id WHERE NOT EXISTS (
                   SELECT 1 FROM deal_contacts dc WHERE dc.deal_id = d.id AND dc.contact_id = d.contact_id AND dc.is_primary AND dc.org_id = d.org_id)) THEN
     RAISE EXCEPTION 'check primary_contact: deal_contacts % vs deals with contact %',
       (SELECT count(*) FROM deal_contacts), (SELECT count(*) FROM deals WHERE contact_id IS NOT NULL);
   END IF;
+END $$;
+
+-- legacy_cross_org_contact: deal c3 (org C) points at org L's contact a1. The migration completed, skipped its
+-- deal_contacts row and left deals.contact_id as it was; an unrelated update of that deal still works.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM deal_contacts WHERE deal_id = '40000000-0000-0000-0000-0000000000c3') THEN
+    RAISE EXCEPTION 'check legacy_cross_org_contact: deal_contacts row created for cross-org link';
+  END IF;
+  IF (SELECT contact_id FROM deals WHERE id = '40000000-0000-0000-0000-0000000000c3') IS DISTINCT FROM '31000000-0000-0000-0000-0000000000a1'::uuid
+     OR (SELECT contact_id FROM crm_backup_20261104.deals WHERE id = '40000000-0000-0000-0000-0000000000c3') IS DISTINCT FROM '31000000-0000-0000-0000-0000000000a1'::uuid THEN
+    RAISE EXCEPTION 'check legacy_cross_org_contact: deals.contact_id changed';
+  END IF;
+  BEGIN
+    UPDATE deals SET title = 'hernoemd' WHERE id = '40000000-0000-0000-0000-0000000000c3';
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
 END $$;
 
 -- contact_sync: both directions, no recursion, one primary per deal (rolled back)
@@ -523,7 +541,7 @@ DO $$ DECLARE ok boolean; BEGIN
   EXCEPTION WHEN others THEN
     IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
   END;
-  IF (SELECT count(*) FROM deal_contacts) <> 2 OR (SELECT count(*) FROM deals) <> 7
+  IF (SELECT count(*) FROM deal_contacts) <> 2 OR (SELECT count(*) FROM deals) <> 8
      OR (SELECT contact_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') <> '31000000-0000-0000-0000-0000000000a1' THEN
     RAISE EXCEPTION 'check contact_sync: fixtures changed';
   END IF;
@@ -555,7 +573,7 @@ DO $$ DECLARE ok boolean := false; BEGIN
   EXCEPTION WHEN check_violation THEN ok := true;
   END;
   IF NOT ok THEN RAISE EXCEPTION 'check range_check: win_chance 101 accepted'; END IF;
-  IF (SELECT count(*) FROM deals) <> 7 THEN RAISE EXCEPTION 'check range_check: fixtures changed'; END IF;
+  IF (SELECT count(*) FROM deals) <> 8 THEN RAISE EXCEPTION 'check range_check: fixtures changed'; END IF;
 END $$;
 
 -- counts_unchanged_2: integrity counts still the fixture totals (the migration itself asserts before = after);
@@ -563,7 +581,7 @@ END $$;
 DO $$ BEGIN
   IF crm_integrity_counts('10000000-0000-0000-0000-00000000000a') <> '{"deals":5,"deals_value_sum":11500,"deals_won":0,"deals_lost":1,
        "companies":2,"contacts":3,"deal_activities":4,"crm_appointments":2,"deal_fees":2,"deal_fees_sum":450,"company_items":1,"stages":4}'::jsonb
-     OR (crm_integrity_counts('10000000-0000-0000-0000-00000000000c') - 'stages') <> '{"deals":2,"deals_value_sum":2000,"deals_won":0,"deals_lost":0,
+     OR (crm_integrity_counts('10000000-0000-0000-0000-00000000000c') - 'stages') <> '{"deals":3,"deals_value_sum":2000,"deals_won":0,"deals_lost":0,
        "companies":0,"contacts":0,"deal_activities":0,"crm_appointments":0,"deal_fees":0,"deal_fees_sum":0,"company_items":0}'::jsonb THEN
     RAISE EXCEPTION 'check counts_unchanged_2: % / %', crm_integrity_counts('10000000-0000-0000-0000-00000000000a'),
       crm_integrity_counts('10000000-0000-0000-0000-00000000000c');

@@ -7,10 +7,11 @@
 --  companies L: 30..a1 Bakkerij Jansen, 30..a2 Cafe De Hoek ; contacts L: 31..a1 (Jansen), 31..a2 (De Hoek), 31..a3 (no company)
 -- Org L deals (5): d1 ...a1 Prospect 1000 ; d2 ...a2 Won, won_at NULL 3000 ; d3 ...a3 Verloren 500 ;
 --                  d4 ...a4 stage_id NULL 2000 ; d5 ...a5 Voorstel + billing_type + 2 fees 5000   => org L: 5 deals, value sum 11500
--- Org C deals (2): ...c1 Lead 800, ...c2 "Deal gewonnen" 1200                                      => org C: 2 deals, value sum 2000
+-- Org C deals (3): ...c1 Lead 800, ...c2 "Deal gewonnen" 1200, ...c3 Lead NULL value + contact_id of org L's 31..a1
+--                  (legacy cross-org contact link: must be skipped by the deal_contacts backfill)  => org C: 3 deals, value sum 2000
 -- deal_fees: 2 (both on d5), amount sum 450 (100 one_time + 350 recurring/month)
--- deal_activities: 4 (all org L) ; crm_appointments: 2 (org L) ; company_items: 1 (org L) ; total deals 7
--- Deal ids: 40000000-0000-0000-0000-0000000000XX with XX as above (a1..a5, c1, c2)
+-- deal_activities: 4 (all org L) ; crm_appointments: 2 (org L) ; company_items: 1 (org L) ; total deals 8
+-- Deal ids: 40000000-0000-0000-0000-0000000000XX with XX as above (a1..a5, c1, c2, c3)
 
 -- The local image's auth.uid() only reads the legacy GUC request.jwt.claim.sub; hosted Supabase also reads
 -- request.jwt.claims (JSON). Mirror the hosted behaviour so checks can log in via set_config('request.jwt.claims', ...).
@@ -59,7 +60,8 @@ INSERT INTO deals (id, org_id, company_id, contact_id, stage_id, title, value_eu
  ('40000000-0000-0000-0000-0000000000a4','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2',NULL,NULL,'Deal zonder stage',2000,NULL,NULL,NULL,NULL,'00000000-0000-0000-0000-0000000000a1'),
  ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2','31000000-0000-0000-0000-0000000000a2','20000000-0000-0000-0000-0000000000a2','Cafe voorstel met fees',5000,'00000000-0000-0000-0000-0000000000a1',NULL,NULL,'70000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000a1'),
  ('40000000-0000-0000-0000-0000000000c1','10000000-0000-0000-0000-00000000000c',NULL,NULL,'20000000-0000-0000-0000-0000000000c1','Client lead',800,NULL,NULL,NULL,NULL,NULL),
- ('40000000-0000-0000-0000-0000000000c2','10000000-0000-0000-0000-00000000000c',NULL,NULL,'20000000-0000-0000-0000-0000000000c3','Client gewonnen',1200,NULL,NULL,NULL,NULL,NULL);
+ ('40000000-0000-0000-0000-0000000000c2','10000000-0000-0000-0000-00000000000c',NULL,NULL,'20000000-0000-0000-0000-0000000000c3','Client gewonnen',1200,NULL,NULL,NULL,NULL,NULL),
+ ('40000000-0000-0000-0000-0000000000c3','10000000-0000-0000-0000-00000000000c',NULL,'31000000-0000-0000-0000-0000000000a1','20000000-0000-0000-0000-0000000000c1','Client legacy cross-org contact',NULL,NULL,NULL,NULL,NULL,NULL);
 
 INSERT INTO deal_fees (deal_id, org_id, amount, kind, interval, label, position) VALUES
  ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a',100,'one_time',NULL,'Opstart',0),
