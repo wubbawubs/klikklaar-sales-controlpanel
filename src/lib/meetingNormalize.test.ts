@@ -29,6 +29,22 @@ const item = (over: Partial<AiItem>): AiItem => ({
   appointment_type: null, title: null, deal_title: null, contact_name: null, ...over,
 });
 
+describe('stage_type', () => {
+  it('treats a stage with stage_type won as closed even when its name is custom', () => {
+    const s = buildSnapshot({
+      companies: [{ id: 'co1', name: 'Bakkerij Jansen' }],
+      stages: [
+        { id: 'st-a', name: 'Voorstel', position: 1, stage_type: 'open' },
+        { id: 'st-w', name: 'Deal gewonnen', position: 2, stage_type: 'won' },
+      ],
+      deals: [{ id: 'de1', title: 'Website', company_id: 'co1', stage_id: 'st-w', value_eur: 1, assigned_to: null }],
+      members: [],
+    });
+    const [row] = normalizeProposals([item({ kind: 'note', company_ref: s.refOf.company['co1'] })], s, '2026-11-03');
+    expect(row.deal_id).toBeNull();
+  });
+});
+
 describe('normalizeProposals', () => {
   it('binds the single open deal of a company', () => {
     const [row] = normalizeProposals([item({ kind: 'stage', company_ref: ref('company', 'co1'), stage_ref: ref('stage', 'st-onder') })], snap, '2026-11-03');

@@ -36,8 +36,10 @@ Deno.serve(async (req) => {
   const { data: dealRows, error: dealsErr } = await supabase
     .from("deals")
     .select(
-      "id, title, value_eur, stage_updated_at, won_at, lost_at, company:companies(name), stage:pipeline_stages(name)",
+      "id, title, value_eur, stage_updated_at, won_at, lost_at, company:companies(name), stage:pipeline_stages(name), organizations!inner(kind)",
     )
+    .eq("organizations.kind", "label")
+    .is("deleted_at", null)
     .is("won_at", null)
     .is("lost_at", null)
     .order("stage_updated_at", { ascending: true });
@@ -94,7 +96,9 @@ Deno.serve(async (req) => {
 
   const { data: wonRows } = await supabase
     .from("deals")
-    .select("value_eur, won_at")
+    .select("value_eur, won_at, organizations!inner(kind)")
+    .eq("organizations.kind", "label")
+    .is("deleted_at", null)
     .not("won_at", "is", null)
     .gte("won_at", monthStart.toISOString());
 

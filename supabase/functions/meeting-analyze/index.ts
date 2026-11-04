@@ -111,19 +111,21 @@ Deno.serve(async (req) => {
   const run = async () => {
     try {
       // PostgREST caps responses (1000 rows by default), so page through big tables.
-      const fetchAll = async (table: string, cols: string, orgCol = "org_id") => {
+      const fetchAll = async (table: string, cols: string, orgCol = "org_id", skipTrashed = false) => {
         const out: Record<string, unknown>[] = [];
         for (let from = 0; ; from += 1000) {
-          const { data, error } = await admin.from(table).select(cols).eq(orgCol, imp.org_id).order("id").range(from, from + 999);
+          let q = admin.from(table).select(cols).eq(orgCol, imp.org_id);
+          if (skipTrashed) q = q.is("deleted_at", null); // service role bypasses RLS, so hide trash here
+          const { data, error } = await q.order("id").range(from, from + 999);
           if (error) throw new Error(error.message);
           out.push(...(data ?? []));
           if (!data || data.length < 1000) return { data: out };
         }
       };
       const [companies, deals, stages, members] = await Promise.all([
-        fetchAll("companies", "id, name"),
-        fetchAll("deals", "id, title, company_id, stage_id, value_eur, assigned_to"),
-        fetchAll("pipeline_stages", "id, name, position"),
+        fetchAll("companies", "id, name", "org_id", true),
+        fetchAll("deals", "id, title, company_id, stage_id, value_eur, assigned_to", "org_id", true),
+        fetchAll("pipeline_stages", "id, name, position, stage_type"),
         fetchAll("user_organizations", "user_id", "organization_id"),
       ]);
       const ids = (members.data ?? []).map((m: { user_id: string }) => m.user_id);

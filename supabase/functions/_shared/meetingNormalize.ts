@@ -30,7 +30,8 @@ export interface AiItem {
 
 interface SnapCompany { id: string; name: string }
 interface SnapDeal { id: string; title: string; company_id: string | null; stage_id: string | null; value_eur: number | null; assigned_to: string | null }
-interface SnapStage { id: string; name: string; position: number }
+export type StageType = 'open' | 'won' | 'lost';
+interface SnapStage { id: string; name: string; position: number; stage_type?: StageType | null }
 interface SnapMember { user_id: string; name: string }
 
 type RefKind = 'company' | 'deal' | 'stage' | 'user';
@@ -40,8 +41,13 @@ export interface Snapshot {
   idOf: Record<RefKind, Record<string, string>>;
 }
 
-export function stageKind(name: string | null | undefined): 'won' | 'lost' | null {
-  const n = (name ?? '').trim().toLowerCase();
+// Accepts a stage (stage_type wins) or a bare name (legacy name rule, used when stage_type is absent).
+export function stageKind(stage: { name?: string | null; stage_type?: StageType | null } | string | null | undefined): 'won' | 'lost' | null {
+  const st: { name?: string | null; stage_type?: StageType | null } =
+    stage != null && typeof stage !== 'string' ? stage : { name: stage as string | null | undefined };
+  if (st.stage_type === 'won' || st.stage_type === 'lost') return st.stage_type;
+  if (st.stage_type === 'open') return null;
+  const n = (st.name ?? '').trim().toLowerCase();
   if (n === 'won' || n === 'gewonnen') return 'won';
   if (n === 'verloren' || n === 'lost') return 'lost';
   return null;
@@ -97,7 +103,7 @@ export function normalizeProposals(ai: AiItem[], s: Snapshot, meetingDate: strin
   const nameKey = (n: string) => n.trim().toLowerCase().replace(/\s+/g, ' ');
   const sameName = new Map<string, string[]>();
   for (const c of s.companies) sameName.set(nameKey(c.name), [...(sameName.get(nameKey(c.name)) ?? []), c.id]);
-  const isOpen = (d: SnapDeal) => !stageKind(d.stage_id ? stageById.get(d.stage_id)?.name : null);
+  const isOpen = (d: SnapDeal) => !stageKind(d.stage_id ? stageById.get(d.stage_id) : null);
 
   return ai.map((raw, position) => {
     const quote = text(raw.quote) ?? '';
