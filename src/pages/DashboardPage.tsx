@@ -9,6 +9,7 @@ import { useOrganization, type Organization } from '@/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { isWonStage } from '@/lib/stages';
+import { TodayCard } from '@/components/tasks/TodayCard';
 
 // stage_type is not in the generated Supabase types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,6 +196,8 @@ function SingleDashboard() {
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Overzicht van je pipeline en boards</p>
       </div>
+
+      <TodayCard />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{kpis.map(k => kpiCard(k, navigate))}</div>
