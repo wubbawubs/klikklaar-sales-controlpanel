@@ -5,6 +5,7 @@ import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationBell } from './NotificationBell';
 import { OrgAccent } from './OrgAccent';
+import { UserAccountMenu } from './UserAccountMenu';
 
 const STORAGE_KEY = 'kk-sidebar-collapsed';
 
@@ -36,7 +37,7 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="app-backdrop flex h-screen">
+    <div className="app-backdrop flex h-screen lg:p-3 lg:gap-3">
       <OrgAccent />
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -49,7 +50,7 @@ export function AppLayout() {
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 lg:static lg:z-auto
+          fixed inset-y-0 left-0 z-50 p-3 lg:p-0 lg:static lg:z-auto
           transform transition-transform duration-200 ease-in-out
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -57,9 +58,9 @@ export function AppLayout() {
         <AppSidebar onCloseMobile={() => setMobileOpen(false)} collapsed={collapsed} />
       </div>
 
-      <main className="flex-1 overflow-y-auto min-w-0">
+      <main className="flex-1 overflow-y-auto min-w-0 lg:rounded-2xl">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <div className="sticky top-0 z-30 flex items-center justify-between h-12 px-3 mx-3 mt-3 lg:mx-0 lg:mt-0 glass !rounded-full">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileOpen(true)}
@@ -77,19 +78,16 @@ export function AppLayout() {
               {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
               <span className="text-[11px] font-medium hidden xl:inline tracking-wide">⌘B</span>
             </button>
-            <span className="text-sm font-semibold text-foreground lg:hidden">Control Center</span>
+            <span className="text-sm font-semibold text-foreground lg:hidden sm:hidden">Control Center</span>
+            <div className="hidden sm:block min-w-0"><Breadcrumbs /></div>
           </div>
           <div className="flex items-center gap-1">
             <NotificationBell />
+            <UserAccountMenu />
           </div>
         </div>
 
-        {/* Breadcrumbs get their own padded bar; each page owns its content
-            padding + width, so the kanban/board can run full-bleed. */}
         <div className="animate-fade-in">
-          <div className="px-4 sm:px-6 lg:px-8 pt-4 empty:hidden">
-            <Breadcrumbs />
-          </div>
           <Outlet />
         </div>
       </main>

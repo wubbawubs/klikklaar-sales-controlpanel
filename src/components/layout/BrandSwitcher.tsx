@@ -85,7 +85,7 @@ export function BrandSwitcher({ collapsed }: { collapsed?: boolean }) {
         <DropdownMenuTrigger asChild>
           <button
             className={cn(
-              'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sidebar-hover text-sidebar-foreground/85 transition-colors',
+              'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/40 dark:hover:bg-white/5 text-sidebar-foreground/85 transition-colors',
               collapsed && 'justify-center px-0'
             )}
           >
