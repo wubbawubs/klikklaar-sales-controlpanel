@@ -17,6 +17,21 @@ const ENTITY_LABEL: Record<TrashEntity, string> = {
   crm_appointments: 'Afspraak', company_items: 'Document of notitie',
 };
 
+// Singular / plural, in the order the breakdown is shown.
+const COUNT_LABEL: [keyof TrashItem['batch_counts'], string, string][] = [
+  ['companies', 'bedrijf', 'bedrijven'], ['deals', 'deal', 'deals'], ['contacts', 'contact', 'contacten'],
+  ['company_items', 'document of notitie', 'documenten of notities'], ['deal_activities', 'activiteit', 'activiteiten'],
+  ['crm_appointments', 'afspraak', 'afspraken'], ['deal_fees', 'tarief', 'tarieven'],
+];
+
+/** "3 deals, 2 contacten, 1 document of notitie" — what was deleted together with the item; '' when nothing. */
+function describeBatch(counts: TrashItem['batch_counts'] | null | undefined): string {
+  return COUNT_LABEL
+    .filter(([key]) => (counts?.[key] ?? 0) > 0)
+    .map(([key, one, many]) => `${counts![key]} ${counts![key] === 1 ? one : many}`)
+    .join(', ');
+}
+
 export default function TrashPage() {
   const orgId = useOrgId();
   const { data: items = [], isLoading } = useTrash();
@@ -53,7 +68,7 @@ export default function TrashPage() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Verwijderd op {format(new Date(item.deleted_at), 'd MMM yyyy HH:mm', { locale: nl })}
-                  {item.batch_size > 1 && ` · samen met ${item.batch_size - 1} gekoppelde ${item.batch_size - 1 === 1 ? 'item' : 'items'}`}
+                  {describeBatch(item.batch_counts) && ` · samen met ${describeBatch(item.batch_counts)}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -78,10 +93,16 @@ export default function TrashPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Definitief verwijderen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              "{toPurge?.label || '(zonder naam)'}"
-              {toPurge && toPurge.batch_size > 1 ? ` en ${toPurge.batch_size - 1} gekoppelde items worden` : ' wordt'} permanent
-              verwijderd. Dit kan niet ongedaan worden gemaakt.
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  "{toPurge?.label || '(zonder naam)'}"{toPurge && describeBatch(toPurge.batch_counts) ? ' en alles wat ermee is verwijderd worden' : ' wordt'} permanent
+                  verwijderd. Dit kan niet ongedaan worden gemaakt.
+                </p>
+                {toPurge && describeBatch(toPurge.batch_counts) && (
+                  <p className="font-medium text-foreground">Dit verwijdert definitief: {describeBatch(toPurge.batch_counts)}.</p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

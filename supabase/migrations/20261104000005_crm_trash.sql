@@ -3,13 +3,18 @@
 --    delete_batch. A BEFORE DELETE trigger (crm_soft_delete) marks the row instead of removing it and puts
 --    everything that used to go with it into the same batch:
 --      deal    -> its deal_activities and crm_appointments (today's ON DELETE CASCADE children)
---      company -> its deals (+ their activities/appointments), its contacts, company_items and appointments
+--      company -> its deals (+ their activities/appointments), its contacts, company_items and appointments.
+--      NB: before this migration a company delete only cascaded company_items; deals, contacts and
+--      crm_appointments kept living with company_id = NULL (ON DELETE SET NULL). Now they go into the company's
+--      batch: restore brings them back with it, and a purge of the company removes them for good. The trash list
+--      shows that breakdown (crm_trash_list.batch_counts) so the purge dialog can say so.
 --    deal_fees stay attached to the trashed deal untouched. deal_fees and deal_contacts keep hard deletes (the
 --    fees save path deletes + re-inserts on every save; history records those changes).
 --  * RLS: trashed rows are invisible and unchangeable for app users. FOR ALL policies are split per command.
 --  * crm_trash_list(org) lists batch heads, crm_restore(batch) brings a whole batch back (idempotent, only that
 --    batch), crm_purge(entity, id) lets an org admin remove a trashed batch for good. Purge scrubs the history of
---    every removed record to {"purged": true} and logs one 'purge' row without personal data.
+--    every removed record to {"purged": true}, logs one 'purge' row without personal data and returns
+--    {"rows": n, "files": [storage paths]} so the app removes the documents from bucket company-documents.
 --  * Guards: no live child can be added under (or moved onto, or restored under) a trashed deal/company; purge refuses
 --    while live ON DELETE CASCADE children hang off the batch; a stage with deals (trashed included) cannot be
 --    deleted; deleting an organization fails on purpose (fail-safe, see COMMENT ON FUNCTION crm_soft_delete).
@@ -116,7 +121,10 @@ COMMENT ON FUNCTION public.crm_soft_delete() IS
   'BEFORE DELETE on the six CRM record tables: turns a delete into a soft delete (deleted_at/by/batch) and trashes '
   'the children in the same batch; only crm_purge (crm.purge = on) really deletes. Consequence, intended (fail-safe): '
   'deleting an organization fails, because its ON DELETE CASCADE to these tables is suppressed and Postgres aborts '
-  'the cascade. Organizations are never deleted by the app; CRM data must not vanish with them.';
+  'the cascade. Organizations are never deleted by the app; CRM data must not vanish with them. '
+  'SECURITY: the GUC crm.purge = on turns every delete into a real, unrecoverable delete. It is set only by '
+  'crm_purge''s function-level SET. Never expose set_config(''crm.purge'', ...) to clients through an RPC, a view or '
+  'any SECURITY DEFINER function: that would bypass the trash, the org-admin check and the history scrub.';
 
 DO $$ DECLARE t text; BEGIN
   FOREACH t IN ARRAY ARRAY['deals','companies','contacts','deal_activities','crm_appointments','company_items'] LOOP
@@ -209,7 +217,8 @@ END $$;
 -- Batch head = the row the user deleted: company before deal before anything else (a batch never holds two
 -- rows of the same rank at the top, because every DELETE of a row starts its own batch).
 CREATE OR REPLACE FUNCTION public.crm_trash_list(p_org uuid)
-RETURNS TABLE(entity text, record_id uuid, label text, deleted_at timestamptz, deleted_by uuid, delete_batch uuid, batch_size int)
+RETURNS TABLE(entity text, record_id uuid, label text, deleted_at timestamptz, deleted_by uuid, delete_batch uuid, batch_size int,
+              batch_counts jsonb)
   LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
 #variable_conflict use_column
@@ -240,8 +249,18 @@ BEGIN
     SELECT t.*, count(*) OVER (PARTITION BY coalesce(t.bat, t.id)) AS n,
            row_number() OVER (PARTITION BY coalesce(t.bat, t.id) ORDER BY t.rnk, t.dat, t.id) AS rn
     FROM t
+  ), per AS (                                   -- rows per entity per batch
+    SELECT coalesce(t.bat, t.id) AS k, t.ent, count(*) AS c FROM t GROUP BY 1, 2
+  ), fees AS (                                  -- deal_fees have no trash state, but a purge of their deal removes them
+    SELECT coalesce(d.delete_batch, d.id) AS k, count(*) AS c
+    FROM public.deal_fees f JOIN public.deals d ON d.id = f.deal_id
+    WHERE d.org_id = p_org AND d.deleted_at IS NOT NULL GROUP BY 1
   )
-  SELECT r.ent, r.id, left(r.lbl, 80), r.dat, r.dby, r.bat, r.n::int
+  SELECT r.ent, r.id, left(r.lbl, 80), r.dat, r.dby, r.bat, r.n::int,
+         -- what the batch holds besides its head, e.g. {"deals": 3, "contacts": 2, "company_items": 1}
+         coalesce((SELECT jsonb_object_agg(p.ent, p.c - (p.ent = r.ent)::int) FROM per p
+                   WHERE p.k = coalesce(r.bat, r.id) AND p.c - (p.ent = r.ent)::int > 0), '{}'::jsonb)
+         || coalesce((SELECT jsonb_build_object('deal_fees', f.c) FROM fees f WHERE f.k = coalesce(r.bat, r.id)), '{}'::jsonb)
   FROM ranked r WHERE r.rn = 1
   ORDER BY r.dat DESC, r.id;
 END $$;
@@ -287,7 +306,9 @@ GRANT EXECUTE ON FUNCTION public.crm_restore(uuid) TO authenticated, service_rol
 -- History: every row about a removed record (incl. the full-row 'delete' rows the capture trigger writes during
 -- this purge, and rows of FK-cascaded children such as deal_fees) becomes {"purged": true}; then one 'purge' row
 -- on the batch head with only the row count.
-CREATE OR REPLACE FUNCTION public.crm_purge(p_entity text, p_record_id uuid) RETURNS int
+-- Returns {"rows": <rows of the batch removed>, "files": [<storage_path of every removed company_item>]}. The database
+-- cannot reach Storage; the app removes those files from bucket company-documents after a successful purge.
+CREATE OR REPLACE FUNCTION public.crm_purge(p_entity text, p_record_id uuid) RETURNS jsonb
   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public SET crm.purge = 'on'
 AS $$
 DECLARE
@@ -302,6 +323,7 @@ DECLARE
   v_appts     uuid[];
   v_items     uuid[];
   v_fees      uuid[];
+  v_files     text[];
   v_n         int := 0;
   v_c         int;
 BEGIN
@@ -332,6 +354,10 @@ BEGIN
     RAISE EXCEPTION 'Er hangen nog actieve gegevens aan dit item; zet die eerst in de prullenbak';
   END IF;
 
+  -- Files of every company_item that disappears (its own batch or taken along by the company FK cascade).
+  v_files := ARRAY(SELECT storage_path FROM public.company_items
+                   WHERE id = ANY (v_items) AND storage_path IS NOT NULL ORDER BY storage_path);
+
   DELETE FROM public.deal_activities  WHERE delete_batch = v_batch; GET DIAGNOSTICS v_c = ROW_COUNT; v_n := v_n + v_c;
   DELETE FROM public.crm_appointments WHERE delete_batch = v_batch; GET DIAGNOSTICS v_c = ROW_COUNT; v_n := v_n + v_c;
   DELETE FROM public.company_items    WHERE delete_batch = v_batch; GET DIAGNOSTICS v_c = ROW_COUNT; v_n := v_n + v_c;
@@ -354,10 +380,15 @@ BEGIN
 
   INSERT INTO public.crm_history (org_id, entity, record_id, action, changes, actor)
   VALUES (v_org, p_entity, p_record_id, 'purge', jsonb_build_object('purged', true, 'rows', v_n), v_uid);
-  RETURN v_n;
+  RETURN jsonb_build_object('rows', v_n, 'files', to_jsonb(v_files));
 END $$;
 REVOKE ALL ON FUNCTION public.crm_purge(text, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.crm_purge(text, uuid) TO authenticated, service_role;
+COMMENT ON FUNCTION public.crm_purge(text, uuid) IS
+  'Org admins: permanently removes one trashed batch, scrubs its history, returns {"rows": n, "files": [storage paths]}; '
+  'the caller removes those files from bucket company-documents. It sets the GUC crm.purge = on for its own duration '
+  '(function-level SET), which makes crm_soft_delete let deletes through. SECURITY: never expose '
+  'set_config(''crm.purge'', ...) to clients through an RPC, a view or any SECURITY DEFINER function.';
 
 -- 6. apply_meeting_proposal: trashed deal / company = not found (otherwise identical to 20261104000002) ----
 CREATE OR REPLACE FUNCTION public.apply_meeting_proposal(p_proposal_id uuid, p_input jsonb)

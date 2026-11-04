@@ -28,4 +28,9 @@ export type TrashEntity = 'deals' | 'companies' | 'contacts' | 'deal_activities'
 export interface TrashItem {
   entity: TrashEntity; record_id: string; label: string | null;
   deleted_at: string; deleted_by: string | null; delete_batch: string | null; batch_size: number;
+  /** What the batch holds besides the item itself, per entity (deal_fees: tarieven of trashed deals). */
+  batch_counts: Partial<Record<TrashEntity | 'deal_fees', number>>;
 }
+
+/** crm_purge result: rows removed, and the storage paths (bucket company-documents) of removed documents. */
+export interface PurgeResult { rows: number; files: string[] }

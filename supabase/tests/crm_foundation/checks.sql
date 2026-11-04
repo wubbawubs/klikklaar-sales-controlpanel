@@ -943,14 +943,16 @@ END $$;
 RESET ROLE;
 DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
 SET LOCAL ROLE authenticated;
-DO $$ DECLARE ok boolean := false; n int; BEGIN
+DO $$ DECLARE ok boolean := false; v_res jsonb; BEGIN
   BEGIN PERFORM crm_purge('pipeline_stages', '20000000-0000-0000-0000-0000000000a1'); EXCEPTION WHEN others THEN ok := true; END;
   IF NOT ok THEN RAISE EXCEPTION 'check purge_admin_only: unknown entity accepted'; END IF;
   ok := false;
   BEGIN PERFORM crm_purge('deals', '40000000-0000-0000-0000-0000000000a3'); EXCEPTION WHEN others THEN ok := true; END;
   IF NOT ok THEN RAISE EXCEPTION 'check purge_admin_only: purged a record that is not in the trash'; END IF;
-  n := crm_purge('companies', '30000000-0000-0000-0000-0000000000a1');
-  IF n IS DISTINCT FROM 9 THEN RAISE EXCEPTION 'check purge_admin_only: purged % rows, expected 9', n; END IF;
+  v_res := crm_purge('companies', '30000000-0000-0000-0000-0000000000a1');
+  IF v_res IS DISTINCT FROM '{"rows": 9, "files": []}'::jsonb THEN
+    RAISE EXCEPTION 'check purge_admin_only: purge returned %, expected 9 rows and no files', v_res;
+  END IF;
 END $$;
 RESET ROLE;
 DO $$ DECLARE r record; BEGIN
@@ -1150,6 +1152,66 @@ DO $$ BEGIN
 END $$;
 
 -- ===== Final review fixes =====
+-- purge_files: crm_purge returns the storage paths of every company_item it removed, including an item of an
+-- earlier batch that the company FK cascade takes along; a purge without documents returns [] (rolled back)
+BEGIN;
+UPDATE company_items SET storage_path = '10000000-0000-0000-0000-00000000000a/30000000-0000-0000-0000-0000000000a1/offerte.pdf'
+  WHERE company_id = '30000000-0000-0000-0000-0000000000a1';
+INSERT INTO company_items (org_id, company_id, item_type, title, file_name, storage_path) VALUES
+ ('10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a1','document','Los document','los.pdf',
+  '10000000-0000-0000-0000-00000000000a/30000000-0000-0000-0000-0000000000a1/los.pdf');
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM company_items WHERE file_name = 'los.pdf';                       -- own batch first
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1';     -- then the company
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a5';         -- a deal without documents
+RESET ROLE;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE v_res jsonb; BEGIN
+  v_res := crm_purge('companies', '30000000-0000-0000-0000-0000000000a1');
+  IF (v_res ->> 'rows')::int IS DISTINCT FROM 9
+     OR (SELECT array_agg(f ORDER BY f) FROM jsonb_array_elements_text(v_res -> 'files') f) IS DISTINCT FROM ARRAY[
+          '10000000-0000-0000-0000-00000000000a/30000000-0000-0000-0000-0000000000a1/los.pdf',
+          '10000000-0000-0000-0000-00000000000a/30000000-0000-0000-0000-0000000000a1/offerte.pdf'] THEN
+    RAISE EXCEPTION 'check purge_files: company purge returned %', v_res;
+  END IF;
+  v_res := crm_purge('deals', '40000000-0000-0000-0000-0000000000a5');
+  IF v_res -> 'files' IS DISTINCT FROM '[]'::jsonb THEN RAISE EXCEPTION 'check purge_files: deal purge returned %', v_res; END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM company_items WHERE company_id = '30000000-0000-0000-0000-0000000000a1') THEN
+    RAISE EXCEPTION 'check purge_files: items of the purged company still exist';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- trash_batch_counts: crm_trash_list reports what a batch holds besides its head, per entity (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM deal_activities WHERE body = 'Gebeld';
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1';
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a5';
+DO $$ DECLARE r record; BEGIN
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'companies';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check trash_batch_counts: company head missing'; END IF;
+  IF r.batch_counts IS DISTINCT FROM '{"deals": 2, "contacts": 1, "company_items": 1, "deal_activities": 2, "crm_appointments": 1}'::jsonb THEN
+    RAISE EXCEPTION 'check trash_batch_counts: company %', r.batch_counts;
+  END IF;
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'deals';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check trash_batch_counts: deal head missing'; END IF;
+  -- deal_fees are not in the trash, but a purge of the deal removes them too
+  IF r.batch_counts IS DISTINCT FROM '{"deal_fees": 2, "deal_activities": 1, "crm_appointments": 1}'::jsonb THEN
+    RAISE EXCEPTION 'check trash_batch_counts: deal %', r.batch_counts;
+  END IF;
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'deal_activities';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check trash_batch_counts: activity head missing'; END IF;
+  IF r.batch_counts IS DISTINCT FROM '{}'::jsonb THEN RAISE EXCEPTION 'check trash_batch_counts: activity %', r.batch_counts; END IF;
+END $$;
+ROLLBACK;
+
 -- funnel_default_creates: a deal inserted for an org without any funnel gets a new funnel instead of failing (rolled back)
 BEGIN;
 INSERT INTO organizations (id, slug, name) VALUES ('10000000-0000-0000-0000-0000000000ff','leeg','Lege org');
@@ -1192,6 +1254,14 @@ DO $$ BEGIN
   END IF;
 END $$;
 ROLLBACK;
+
+-- purge_guc_documented: crm_purge and crm_soft_delete warn never to expose set_config('crm.purge', ...)
+DO $$ BEGIN
+  IF coalesce(obj_description('public.crm_purge(text, uuid)'::regprocedure, 'pg_proc'), '') NOT LIKE '%set_config(''crm.purge''%'
+     OR coalesce(obj_description('public.crm_soft_delete()'::regprocedure, 'pg_proc'), '') NOT LIKE '%set_config(''crm.purge''%' THEN
+    RAISE EXCEPTION 'check purge_guc_documented: warning missing';
+  END IF;
+END $$;
 
 -- (later tasks append checks here)
 

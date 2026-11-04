@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { useAuth } from '@/hooks/useAuth';
 import { errorMessage } from '@/lib/errors';
-import type { TrashEntity, TrashItem } from '@/lib/crmTypes';
+import type { PurgeResult, TrashEntity, TrashItem } from '@/lib/crmTypes';
 import { toast } from 'sonner';
 
 // The trash RPCs are not in the generated Supabase types.
@@ -58,16 +58,42 @@ export function useRestoreBatch() {
   });
 }
 
+/**
+ * Removes the documents of a purge from storage. The purge itself already succeeded, so this never throws:
+ * it returns the paths that are still in the bucket (error, or silently skipped because storage RLS
+ * only lets members of the org folder delete).
+ */
+async function removePurgedFiles(files: string[]): Promise<string[]> {
+  if (files.length === 0) return [];
+  try {
+    const { data, error } = await supabase.storage.from('company-documents').remove(files);
+    if (error) return files;
+    const removed = new Set((data ?? []).map((o: { name: string }) => o.name));
+    return files.filter(f => !removed.has(f));
+  } catch {
+    return files;
+  }
+}
+
 export function usePurge() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ entity, recordId }: { entity: TrashEntity; recordId: string }) => {
       const { data, error } = await db.rpc('crm_purge', { p_entity: entity, p_record_id: recordId });
       if (error) throw error;
-      return (data ?? 0) as number;
+      const result = (data ?? { rows: 0, files: [] }) as PurgeResult;
+      const leftover = await removePurgedFiles(result.files ?? []);
+      return { ...result, leftover };
     },
     meta: { silent: true },
-    onSuccess: () => { refreshCrm(qc); toast.success('Definitief verwijderd'); },
+    onSuccess: ({ leftover }) => {
+      refreshCrm(qc);
+      toast.success('Definitief verwijderd');
+      if (leftover.length > 0) {
+        toast.error(`${leftover.length === 1 ? 'Eén bestand is' : `${leftover.length} bestanden zijn`} niet uit de opslag `
+          + `verwijderd (bucket company-documents): ${leftover.join(', ')}`);
+      }
+    },
     onError: (e) => toast.error(errorMessage(e, 'Definitief verwijderen mislukt')),
   });
 }
