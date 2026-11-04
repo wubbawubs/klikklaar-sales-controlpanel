@@ -6,6 +6,7 @@ import { useDeals, useMoveDeal, useStages, type Stage } from '@/hooks/usePipelin
 import { useAgenda, type Appointment } from '@/hooks/useAppointments';
 import { useTeamMembers } from '@/hooks/useBoards';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useOrgId } from '@/hooks/useOrgId';
 import { DealPanel } from '@/components/deal/DealPanel';
 import { FunnelBoard } from '@/components/funnel/FunnelBoard';
 import { KpiTiles } from '@/components/funnel/KpiTiles';
@@ -43,11 +44,13 @@ function Spinner() {
 
 /** `/pipeline`: open the org's first funnel; the legacy board is the fallback (no funnel, or the group view). */
 export function PipelineIndex() {
-  const { isAllView } = useOrganization();
-  const { data: funnels, isLoading } = useFunnels();
+  const { isAllView, loading: orgLoading } = useOrganization();
+  const orgId = useOrgId();
+  const { data: funnels, isPending } = useFunnels();
   const location = useLocation();
   if (isAllView) return <PipelinePage />;
-  if (isLoading) return <Spinner />;
+  // On a cold load the org is not known yet and the funnels query is disabled (isLoading=false in TanStack v5).
+  if (orgLoading || !orgId || isPending) return <Spinner />;
   const first = funnels?.[0];
   if (!first) return <PipelinePage />;
   return <Navigate to={`/pipeline/${first.id}${location.search}`} replace />;
@@ -82,8 +85,10 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
 
 export default function FunnelPage() {
   const { funnelId = '' } = useParams<{ funnelId: string }>();
-  const { isAllView } = useOrganization();
-  const { data: funnel, isLoading: funnelLoading } = useFunnel(funnelId);
+  const { isAllView, loading: orgLoading } = useOrganization();
+  const orgId = useOrgId();
+  const { data: funnel, isPending: funnelPending } = useFunnel(funnelId);
+  const location = useLocation();
   const { data: fields = [] } = useFunnelFields(funnelId);
   const { data: stages = [] } = useStages(funnelId);
   const { data: deals = [], isLoading: dealsLoading } = useDeals(funnelId);
@@ -137,8 +142,8 @@ export default function FunnelPage() {
 
   // The group view has no single org to write to: show the read-only legacy overview.
   if (isAllView) return <Navigate to="/pipeline" replace />;
-  if (funnelLoading) return <Spinner />;
-  if (!funnel) return <Navigate to="/pipeline" replace />;
+  if (orgLoading || !orgId || funnelPending) return <Spinner />;
+  if (!funnel) return <Navigate to={`/pipeline${location.search}`} replace />;
 
   return (
     <div className="flex flex-col gap-3 px-4 pb-4 pt-3 lg:px-0 lg:pt-3">
