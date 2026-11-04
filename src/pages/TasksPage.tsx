@@ -68,10 +68,11 @@ export default function TasksPage() {
   const [owner, setOwner] = useState('');
   const [showClosed, setShowClosed] = useState(false);
 
-  const { data: tasks = [], isLoading } = useTasks({
-    ownerId: scope === 'mine' ? user?.id : undefined,
-    includeClosed: true,
-  });
+  // "Mijn taken" = mine + unassigned; not fetched until the user is known.
+  const { data: tasks = [], isLoading } = useTasks(
+    { mine: scope === 'mine' ? user?.id : undefined, includeClosed: true },
+    { enabled: scope === 'all' || !!user?.id },
+  );
 
   const nameOf = useMemo(() => {
     const m = new Map(team.map(t => [t.user_id, t.full_name || t.email || null]));
@@ -131,7 +132,7 @@ export default function TasksPage() {
 
       <TaskQuickAdd />
 
-      {isLoading ? (
+      {isLoading || (scope === 'mine' && !user) ? (
         <div className="flex h-40 items-center justify-center">
           <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
         </div>
@@ -147,7 +148,7 @@ export default function TasksPage() {
 
           {OPEN_GROUPS.map(({ key, label }) => groups[key].length > 0 && (
             <Group key={key} label={label} count={groups[key].length} accent={key === 'overdue'}>
-              {groups[key].map(t => <TaskRow key={t.id} task={t} ownerName={ownerProp(t)} />)}
+              {groups[key].map(t => <TaskRow key={t.id} task={t} ownerName={ownerProp(t)} markUnassigned={scope === 'mine'} />)}
             </Group>
           ))}
 
@@ -164,7 +165,7 @@ export default function TasksPage() {
               </button>
               {showClosed && (
                 <section aria-label="Afgerond" className="glass !rounded-[20px] p-1.5 opacity-90">
-                  {closed.map(t => <TaskRow key={t.id} task={t} ownerName={ownerProp(t)} />)}
+                  {closed.map(t => <TaskRow key={t.id} task={t} ownerName={ownerProp(t)} markUnassigned={scope === 'mine'} />)}
                 </section>
               )}
             </div>

@@ -14,7 +14,7 @@ vi.mock('@/integrations/supabase/client', () => ({
       const rec = { table, ops: [] as [string, unknown[]][] };
       calls.push(rec);
       const chain: Record<string, unknown> = {};
-      for (const m of ['select', 'eq', 'not', 'lte', 'insert', 'update', 'delete']) chain[m] = (...a: unknown[]) => { rec.ops.push([m, a]); return chain; };
+      for (const m of ['select', 'eq', 'or', 'not', 'lte', 'insert', 'update', 'delete']) chain[m] = (...a: unknown[]) => { rec.ops.push([m, a]); return chain; };
       chain.then = (res: (v: unknown) => void) => res({ data: [], error: null, count: 3 });
       return chain;
     },
@@ -52,16 +52,17 @@ describe('task hooks', () => {
     expect(has('insert', [{ title: 'Bel Unica', org_id: 'org1' }])).toBe(true);
   });
 
-  it('useUpdateTask stamps completion and clears it on reopen', async () => {
+  it('useUpdateTask sends only the patch (the DB trigger stamps completion)', async () => {
     const { result } = renderHook(() => useUpdateTask(), { wrapper });
     await result.current.mutateAsync({ id: 't1', patch: { status: 'done' } });
-    const done = calls.find(c => c.ops.some(([o]) => o === 'update'))!.ops.find(([o]) => o === 'update')![1][0] as Record<string, unknown>;
-    expect(done.completed_by).toBe('u1');
-    expect(typeof done.completed_at).toBe('string');
-    calls = [];
-    await result.current.mutateAsync({ id: 't1', patch: { status: 'open' } });
-    expect(has('update', [{ status: 'open', completed_at: null, completed_by: null }])).toBe(true);
+    expect(has('update', [{ status: 'done' }])).toBe(true);
     expect(has('eq', ['id', 't1'])).toBe(true);
+  });
+
+  it('useTasks({ mine }) asks for my tasks and unassigned ones', async () => {
+    const { result } = renderHook(() => useTasks({ mine: 'u1' }), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(has('or', ['owner_id.eq.u1,owner_id.is.null'])).toBe(true);
   });
 
   it('useDeleteTask deletes by id and toasts', async () => {
@@ -72,11 +73,11 @@ describe('task hooks', () => {
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Taak verplaatst naar prullenbak'));
   });
 
-  it('useMyOpenTaskCount: head count of my open overdue+today', async () => {
+  it('useMyOpenTaskCount: head count of my (and unassigned) open overdue+today', async () => {
     const { result } = renderHook(() => useMyOpenTaskCount(), { wrapper });
     await waitFor(() => expect(result.current.data).toBe(3));
     expect(has('select', ['id', { count: 'exact', head: true }])).toBe(true);
-    expect(has('eq', ['owner_id', 'u1'])).toBe(true);
+    expect(has('or', ['owner_id.eq.u1,owner_id.is.null'])).toBe(true);
     expect(calls.some(c => c.ops.some(([o]) => o === 'lte'))).toBe(true);
   });
 });

@@ -5,9 +5,11 @@ import { localToday } from '@/lib/tasks';
 
 let tasks: any[] = [];
 let agenda: any[] = [];
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
+let user: { id: string } | null = { id: 'me' };
+const useTasksSpy = vi.fn();
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user }) }));
 vi.mock('@/hooks/useTasks', () => ({
-  useTasks: () => ({ data: tasks }),
+  useTasks: (...args: unknown[]) => { useTasksSpy(...args); return { data: tasks }; },
   useUpdateTask: () => ({ mutate: vi.fn() }),
   useCreateTask: () => ({ mutate: vi.fn() }),
   useDeleteTask: () => ({ mutate: vi.fn() }),
@@ -46,5 +48,18 @@ describe('TodayCard', () => {
     tasks = Array.from({ length: 10 }, (_, i) => mk(String(i), `Taak ${i}`, shift(0))); agenda = [];
     wrap();
     expect(screen.getAllByText(/^Taak \d$/)).toHaveLength(8);
+  });
+  it('asks for my tasks and unassigned ones, and labels unassigned rows', () => {
+    user = { id: 'me' }; useTasksSpy.mockClear();
+    tasks = [{ ...mk('1', 'Van niemand', shift(0)), owner_id: null }, mk('2', 'Van mij', shift(0))]; agenda = [];
+    wrap();
+    expect(useTasksSpy).toHaveBeenLastCalledWith({ mine: 'me' }, { enabled: true });
+    expect(screen.getAllByText('Niet toegewezen')).toHaveLength(1);
+  });
+  it('does not query tasks while the user is still loading', () => {
+    user = null; useTasksSpy.mockClear(); tasks = []; agenda = [];
+    wrap();
+    expect(useTasksSpy).toHaveBeenLastCalledWith({ mine: undefined }, { enabled: false });
+    user = { id: 'me' };
   });
 });

@@ -9,10 +9,10 @@ import { TaskRow } from './TaskRow';
 
 const MAX_TASKS = 8;
 
-/** "Vandaag": my overdue + due-today tasks and today's planned appointments. */
+/** "Vandaag": my (and unassigned) overdue + due-today tasks and today's planned appointments. */
 export function TodayCard() {
   const { user } = useAuth();
-  const { data: tasks = [] } = useTasks({ ownerId: user?.id });
+  const { data: tasks = [] } = useTasks({ mine: user?.id }, { enabled: !!user?.id });
   const { data: agenda = [] } = useAgenda();
   const today = localToday();
 
@@ -42,7 +42,7 @@ export function TodayCard() {
             ))}
           </ul>
         )}
-        {shown.length > 0 && <ul className="space-y-1">{shown.map(t => <li key={t.id}><TaskRow task={t} /></li>)}</ul>}
+        {shown.length > 0 && <ul className="space-y-1">{shown.map(t => <li key={t.id}><TaskRow task={t} markUnassigned /></li>)}</ul>}
       </CardContent>
     </Card>
   );

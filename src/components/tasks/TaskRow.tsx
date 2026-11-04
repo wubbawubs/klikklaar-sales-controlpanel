@@ -20,12 +20,14 @@ export interface TaskRowProps {
   hideLinks?: TaskLinkKind[];
   /** Override the default (built-in TaskDialog) when the row is clicked. */
   onOpen?: (task: Task) => void;
+  /** Show a subtle "Niet toegewezen" chip when the task has no owner (e.g. under "Mijn taken"). */
+  markUnassigned?: boolean;
   className?: string;
 }
 
 const CHIP = 'inline-flex max-w-[14rem] items-center gap-1 rounded-full bg-black/[0.04] px-2 py-0.5 text-[11.5px] text-muted-foreground dark:bg-white/[0.06]';
 
-export function TaskRow({ task, ownerName, hideLinks = [], onOpen, className }: TaskRowProps) {
+export function TaskRow({ task, ownerName, hideLinks = [], onOpen, markUnassigned, className }: TaskRowProps) {
   const update = useUpdateTask();
   const [open, setOpen] = useState(false);
   const today = localToday();
@@ -37,7 +39,7 @@ export function TaskRow({ task, ownerName, hideLinks = [], onOpen, className }: 
   const toggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     update.mutate(
-      { id: task.id, patch: { status: done ? 'open' : 'done' } },
+      { id: task.id, patch: { status: closed ? 'open' : 'done' } },   // done or cancelled: reopen
       { onError: (err: Error) => toast.error(`Bijwerken mislukt: ${err.message}`) },
     );
   };
@@ -59,7 +61,7 @@ export function TaskRow({ task, ownerName, hideLinks = [], onOpen, className }: 
           type="button"
           onClick={toggle}
           disabled={update.isPending}
-          aria-label={done ? 'Markeer als open' : 'Markeer als afgerond'}
+          aria-label={closed ? 'Markeer als open' : 'Markeer als afgerond'}
           aria-pressed={done}
           className={cn(
             'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors motion-reduce:transition-none',
@@ -92,6 +94,9 @@ export function TaskRow({ task, ownerName, hideLinks = [], onOpen, className }: 
                 <CalendarDays className="h-3 w-3" aria-hidden />
                 {formatDue(task.due_date, today)}{task.due_time ? ` · ${task.due_time.slice(0, 5)}` : ''}
               </span>
+            )}
+            {markUnassigned && !task.owner_id && (
+              <span className={cn(CHIP, 'bg-transparent italic text-muted-foreground/80 dark:bg-transparent')}>Niet toegewezen</span>
             )}
             {task.status !== 'open' && !closed && (
               <span className={cn(CHIP, 'text-foreground/70')}>{TASK_STATUS_LABEL[task.status]}</span>

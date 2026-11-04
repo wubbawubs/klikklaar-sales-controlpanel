@@ -194,6 +194,7 @@ export function useDeleteDeal() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['deals', orgId] });
       qc.invalidateQueries({ queryKey: ['appointments'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });   // the deal's tasks went to the trash with it
       toast.success('Verplaatst naar prullenbak');
     },
     meta: { silent: true },
@@ -213,7 +214,11 @@ export function useUpdateDeal() {
       const { error } = await db.from('deals').update(patch).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['deals', orgId] }); toast.success('Deal bijgewerkt'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['deals', orgId] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });   // task rows show the deal title
+      toast.success('Deal bijgewerkt');
+    },
     meta: { silent: true },
     onError: (e) => toast.error(errorMessage(e, 'Bijwerken mislukt')),
   });

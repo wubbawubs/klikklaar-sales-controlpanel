@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanies, useUpdateDeal, type Deal } from '@/hooks/usePipeline';
 import { useTasks } from '@/hooks/useTasks';
+import { useOrgId } from '@/hooks/useOrgId';
 import { sortTasks } from '@/lib/tasks';
 import { TaskRow, TaskQuickAdd } from '@/components/tasks';
 import { useCompany, useUpdateCompany, useCreateCompanyForDeal, useContact, useUpdateContact, useCompanyDeals, type Company, type Contact } from '@/hooks/useCompanyHub';
@@ -136,6 +137,7 @@ export function CompanyPanel({ deal, onOpenDeal }: { deal: Deal; onOpenDeal: (id
   const others = companyDeals.filter(d => d.id !== deal.id);
   const updateDeal = useUpdateDeal();
   const [relinking, setRelinking] = useState(false);
+  const orgId = useOrgId();   // null in the group view: no task UI there
 
   const companyActions = deal.company_id ? (
     <div className="flex items-center gap-1">
@@ -166,7 +168,7 @@ export function CompanyPanel({ deal, onOpenDeal }: { deal: Deal; onOpenDeal: (id
       <Section title="Contactpersoon">
         {contact ? <ContactCard key={contact.id} contact={contact} /> : <p className="text-xs text-muted-foreground">Geen contactpersoon</p>}
       </Section>
-      {deal.company_id && <CompanyTasks companyId={deal.company_id} />}
+      {deal.company_id && orgId && <CompanyTasks companyId={deal.company_id} />}
       {others.length > 0 && (
         <Section title="Andere deals">
           <ul className="space-y-1">

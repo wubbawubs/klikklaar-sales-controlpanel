@@ -6,7 +6,7 @@ import { useAllCompanies } from '@/hooks/useMeetings';
 import { useOrgContactOptions } from '@/hooks/useDealContacts';
 import { useAuth } from '@/hooks/useAuth';
 import { localToday } from '@/lib/tasks';
-import type { Task, TaskStatus } from '@/lib/crmTypes';
+import type { Task } from '@/lib/crmTypes';
 
 // CRM tables are not in the generated Supabase types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,19 +14,25 @@ const db = supabase as any;
 
 export interface TaskFilter {
   ownerId?: string; dealId?: string; companyId?: string; contactId?: string; includeClosed?: boolean;
+  /** "Mijn taken": tasks owned by this user plus unassigned ones (owner_id is null). */
+  mine?: string;
 }
+
+/** PostgREST or-filter for "mine or unassigned". */
+const mineOrUnassigned = (userId: string) => `owner_id.eq.${userId},owner_id.is.null`;
 
 const TASK_SELECT = '*, deal:deals(title, funnel_id), company:companies(name), contact:contacts(name)';
 
 /** Tasks of the active organisation (disabled in the group view). Trashed rows are hidden by RLS. */
-export function useTasks(filter: TaskFilter = {}) {
+export function useTasks(filter: TaskFilter = {}, { enabled = true }: { enabled?: boolean } = {}) {
   const orgId = useOrgId();
   return useQuery({
     queryKey: ['tasks', orgId, filter],
-    enabled: !!orgId,
+    enabled: !!orgId && enabled,
     queryFn: async () => {
       let q = db.from('crm_tasks').select(TASK_SELECT).eq('org_id', orgId!);
       if (filter.ownerId) q = q.eq('owner_id', filter.ownerId);
+      if (filter.mine) q = q.or(mineOrUnassigned(filter.mine));
       if (filter.dealId) q = q.eq('deal_id', filter.dealId);
       if (filter.companyId) q = q.eq('company_id', filter.companyId);
       if (filter.contactId) q = q.eq('contact_id', filter.contactId);
@@ -55,17 +61,10 @@ export function useCreateTask() {
 
 export function useUpdateTask() {
   const qc = useQueryClient();
-  const { user } = useAuth();
   return useMutation({
+    // completed_at / completed_by are maintained by the crm_tasks_completion trigger.
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<TaskInput> }) => {
-      const body: Record<string, unknown> = { ...patch };
-      // Completing stamps who/when; any other status clears it again.
-      if (patch.status !== undefined) {
-        const done = (patch.status as TaskStatus) === 'done';
-        body.completed_at = done ? new Date().toISOString() : null;
-        body.completed_by = done ? user?.id ?? null : null;
-      }
-      const { error } = await db.from('crm_tasks').update(body).eq('id', id);
+      const { error } = await db.from('crm_tasks').update(patch).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
@@ -88,7 +87,7 @@ export function useDeleteTask() {
   });
 }
 
-/** My open tasks that are due today or overdue (head/count query). */
+/** My (or unassigned) open tasks that are due today or overdue (head/count query). */
 export function useMyOpenTaskCount() {
   const orgId = useOrgId();
   const { user } = useAuth();
@@ -98,7 +97,7 @@ export function useMyOpenTaskCount() {
     enabled: !!orgId && !!user?.id,
     queryFn: async () => {
       const { count, error } = await db.from('crm_tasks').select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId!).eq('owner_id', user!.id)
+        .eq('org_id', orgId!).or(mineOrUnassigned(user!.id))
         .not('status', 'in', '(done,cancelled)').lte('due_date', today);
       if (error) throw error;
       return (count ?? 0) as number;
