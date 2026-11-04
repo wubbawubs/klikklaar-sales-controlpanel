@@ -2,16 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Plus, Building2, User, UserPlus, Search, X } from 'lucide-react';
-import { useStages, useDeals, useMoveDeal, useCreateDeal, useCreateLead, useCompanies, useBillingTypes, formatFee, type Deal } from '@/hooks/usePipeline';
+import { LeadDialog, NewDealDialog } from '@/components/funnel/DealDialogs';
+import { useStages, useDeals, useMoveDeal, formatFee, type Deal } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAgenda, type Appointment } from '@/hooks/useAppointments';
 import { DealHubDialog } from '@/components/deal/DealHubDialog';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 function DealCard({ deal, index, onClick, next }: { deal: Deal; index: number; onClick: () => void; next?: Appointment }) {
   return (
@@ -52,134 +50,6 @@ function DealCard({ deal, index, onClick, next }: { deal: Deal; index: number; o
   );
 }
 
-function NewDealDialog({ stageId, stageName, open, onClose }: { stageId: string; stageName: string; open: boolean; onClose: () => void }) {
-  const createDeal = useCreateDeal();
-  const [title, setTitle] = useState('');
-  const [value, setValue] = useState('');
-
-  const submit = () => {
-    if (!title.trim()) { toast.error('Naam verplicht'); return; }
-    createDeal.mutate({ title: title.trim(), stage_id: stageId, value_eur: value ? Number(value) : null } as any, {
-      onSuccess: () => { setTitle(''); setValue(''); onClose(); },
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Nieuwe deal — {stageName}</DialogTitle></DialogHeader>
-        <div className="flex flex-col gap-3 py-1">
-          <Input placeholder="Naam van de deal" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
-          <Input placeholder="Waarde (€)" type="number" value={value} onChange={e => setValue(e.target.value)} />
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Annuleren</Button>
-          <Button onClick={submit} disabled={createDeal.isPending}>Aanmaken</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-const NEW_COMPANY = '__new__';
-
-function LeadDialog({ open, onClose, stages, defaultStageId }: {
-  open: boolean; onClose: () => void;
-  stages: { id: string; name: string }[]; defaultStageId: string;
-}) {
-  const createLead = useCreateLead();
-  const { data: companies = [] } = useCompanies();
-  const { data: billingTypes = [] } = useBillingTypes();
-  const [billingTypeId, setBillingTypeId] = useState<string>('');
-  const [companyId, setCompanyId] = useState<string>(NEW_COMPANY);
-  const [companyName, setCompanyName] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [email, setEmail] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-  const [phone, setPhone] = useState('');
-  const [title, setTitle] = useState('');
-  const [value, setValue] = useState('');
-  const [stageId, setStageId] = useState(defaultStageId);
-
-  const reset = () => {
-    setCompanyId(NEW_COMPANY); setCompanyName(''); setContactName(''); setEmail('');
-    setLinkedin(''); setPhone(''); setTitle(''); setValue(''); setStageId(defaultStageId); setBillingTypeId('');
-  };
-
-  const submit = () => {
-    const isNew = companyId === NEW_COMPANY;
-    if (!title.trim() && !companyName.trim() && !contactName.trim()) {
-      toast.error('Vul minstens bedrijf of dealnaam in'); return;
-    }
-    createLead.mutate({
-      companyId: isNew ? null : companyId,
-      companyName: isNew ? companyName : undefined,
-      contactName, email, linkedin, phone,
-      title: title.trim() || companyName.trim() || contactName.trim(),
-      valueEur: value ? Number(value) : null,
-      billingTypeId: billingTypeId || null,
-      stageId: stageId || defaultStageId,
-    }, { onSuccess: () => { reset(); onClose(); } });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Nieuwe lead</DialogTitle></DialogHeader>
-        <div className="grid gap-3 py-1">
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Bedrijf</label>
-            <Select value={companyId} onValueChange={setCompanyId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NEW_COMPANY}>+ Nieuw bedrijf…</SelectItem>
-                {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {companyId === NEW_COMPANY && (
-              <Input placeholder="Bedrijfsnaam" value={companyName} onChange={e => setCompanyName(e.target.value)} autoFocus />
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="Contactpersoon" value={contactName} onChange={e => setContactName(e.target.value)} />
-            <Input placeholder="E-mail" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="LinkedIn URL" value={linkedin} onChange={e => setLinkedin(e.target.value)} />
-            <Input placeholder="Telefoon" value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
-          <Input placeholder="Deal / titel" value={title} onChange={e => setTitle(e.target.value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="Waarde (€)" type="number" value={value} onChange={e => setValue(e.target.value)} />
-            <Select value={billingTypeId} onValueChange={setBillingTypeId}>
-              <SelectTrigger><SelectValue placeholder="Tarieftype" /></SelectTrigger>
-              <SelectContent>
-                {billingTypes.map(b => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}{b.kind === 'recurring' && b.interval ? ` (${b.interval === 'month' ? '/mnd' : '/jr'})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Stage</label>
-            <Select value={stageId} onValueChange={setStageId}>
-              <SelectTrigger><SelectValue placeholder="Kies stage" /></SelectTrigger>
-              <SelectContent>
-                {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Annuleren</Button>
-          <Button onClick={submit} disabled={createLead.isPending}>{createLead.isPending ? 'Toevoegen…' : 'Lead toevoegen'}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function PipelinePage() {
   const { data: stages = [] } = useStages();

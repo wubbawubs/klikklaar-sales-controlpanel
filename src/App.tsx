@@ -11,7 +11,7 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
-import PipelinePage from "@/pages/PipelinePage";
+import FunnelPage, { PipelineIndex } from "@/pages/FunnelPage";
 import ContactsPage from "@/pages/ContactsPage";
 import AgendaPage from "@/pages/AgendaPage";
 import MeetingsPage from "@/pages/MeetingsPage";
@@ -59,7 +59,8 @@ function AppRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/pipeline" element={<PipelinePage />} />
+        <Route path="/pipeline" element={<PipelineIndex />} />
+        <Route path="/pipeline/:funnelId" element={<FunnelPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/agenda" element={<AgendaPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
