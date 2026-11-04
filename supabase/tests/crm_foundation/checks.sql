@@ -164,6 +164,42 @@ DO $$ DECLARE v_org uuid := gen_random_uuid(); BEGIN
   END;
 END $$;
 
+-- stage_type_on_insert: name-only inserts (as today's frontend seeds) get typed by exact name; rolled back
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO pipeline_stages (org_id, name, position) VALUES
+      ('10000000-0000-0000-0000-00000000000c', ' Won ', 10), ('10000000-0000-0000-0000-00000000000c', 'verloren', 11),
+      ('10000000-0000-0000-0000-00000000000c', 'Deal gewonnen 2', 12);
+    INSERT INTO pipeline_stages (org_id, name, position, stage_type) VALUES ('10000000-0000-0000-0000-00000000000c', 'Gewonnen', 13, 'lost');
+    IF (SELECT stage_type FROM pipeline_stages WHERE org_id='10000000-0000-0000-0000-00000000000c' AND position=10) <> 'won'
+       OR (SELECT stage_type FROM pipeline_stages WHERE org_id='10000000-0000-0000-0000-00000000000c' AND position=11) <> 'lost'
+       OR (SELECT stage_type FROM pipeline_stages WHERE org_id='10000000-0000-0000-0000-00000000000c' AND position=12) <> 'open'
+       OR (SELECT stage_type FROM pipeline_stages WHERE org_id='10000000-0000-0000-0000-00000000000c' AND position=13) <> 'lost' THEN
+      RAISE EXCEPTION 'check stage_type_on_insert: wrong typing';
+    END IF;
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
+END $$;
+
+-- seed_as_member: a non-admin member can seed stages for an org without funnel (trigger creates it)
+BEGIN;
+INSERT INTO organizations (id, slug, name) VALUES ('10000000-0000-0000-0000-0000000000ee', 'seedmember', 'Seed member');
+INSERT INTO user_organizations (user_id, organization_id, is_default) VALUES ('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-0000000000ee', false);
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  PERFORM seed_default_stages('10000000-0000-0000-0000-0000000000ee');
+  IF (SELECT count(*) FROM funnels WHERE org_id='10000000-0000-0000-0000-0000000000ee') <> 1
+     OR (SELECT count(*) FROM pipeline_stages WHERE org_id='10000000-0000-0000-0000-0000000000ee') <> 7
+     OR EXISTS (SELECT 1 FROM pipeline_stages s WHERE s.org_id='10000000-0000-0000-0000-0000000000ee'
+                AND s.funnel_id IS DISTINCT FROM (SELECT id FROM funnels WHERE org_id='10000000-0000-0000-0000-0000000000ee')) THEN
+    RAISE EXCEPTION 'check seed_as_member: expected 1 funnel and 7 stages in it';
+  END IF;
+END $$;
+ROLLBACK;
+
 -- funnels RLS: member reads own org's funnel only and cannot create one; admin can
 BEGIN;
 DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;

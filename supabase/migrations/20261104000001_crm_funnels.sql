@@ -3,7 +3,14 @@
 -- backfills, recomputes and RAISEs (rolling back everything) if any count differs.
 -- Data changes are limited to: new rows in funnels, the missing Gewonnen/Verloren stages per funnel,
 -- and backfilling the NEW columns funnel_id / stage_type. Nothing is dropped; won_at is never backfilled.
-BEGIN;
+-- No BEGIN/COMMIT here: `supabase db push` runs this file plus its schema_migrations insert as one
+-- transaction (the test harness mirrors that with psql -1). The ON COMMIT DROP temp tables rely on it.
+
+-- 0. Locks: snapshot + counts must be consistent; concurrent app writes wait (or abort cleanly).
+SET LOCAL lock_timeout = '5s';
+LOCK TABLE public.deals, public.pipeline_stages, public.organizations IN ACCESS EXCLUSIVE MODE;  -- altered below
+LOCK TABLE public.companies, public.contacts, public.deal_activities, public.crm_appointments,
+           public.deal_fees, public.company_items IN SHARE MODE;
 
 -- 1. Backup snapshot ---------------------------------------------------------------------------
 CREATE SCHEMA crm_backup_20261104;
@@ -167,10 +174,16 @@ CREATE TRIGGER deals_funnel_default BEFORE INSERT ON public.deals
 
 -- Same fallback for stages, so existing app code that inserts stages without funnel_id keeps working
 -- until the frontend passes funnel_id itself (creates the org's first funnel when it has none).
+-- Also types stages the app seeds by name only (Won/Verloren) — INSERT only, exact won/lost names.
 CREATE OR REPLACE FUNCTION public.pipeline_stages_funnel_default() RETURNS trigger
   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
+  IF NEW.stage_type = 'open' THEN
+    IF lower(trim(NEW.name)) IN ('won','gewonnen') THEN NEW.stage_type := 'won';
+    ELSIF lower(trim(NEW.name)) IN ('lost','verloren') THEN NEW.stage_type := 'lost';
+    END IF;
+  END IF;
   IF NEW.funnel_id IS NULL THEN
     SELECT id INTO NEW.funnel_id FROM public.funnels
     WHERE org_id = NEW.org_id ORDER BY (archived_at IS NOT NULL), position, created_at, id LIMIT 1;
@@ -185,25 +198,20 @@ REVOKE ALL ON FUNCTION public.pipeline_stages_funnel_default() FROM PUBLIC, anon
 CREATE TRIGGER pipeline_stages_funnel_default BEFORE INSERT ON public.pipeline_stages
   FOR EACH ROW EXECUTE FUNCTION public.pipeline_stages_funnel_default();
 
--- seed_default_stages: same stages as before, now inside a funnel and typed.
+-- seed_default_stages: same stages as before, typed. SECURITY INVOKER, so it does not insert into
+-- funnels itself (RLS denies non-admins); pipeline_stages_funnel_default picks/creates the funnel.
 CREATE OR REPLACE FUNCTION public.seed_default_stages(_org_id uuid) RETURNS void
   LANGUAGE plpgsql
 AS $$
-DECLARE v_funnel uuid;
 BEGIN
-  SELECT id INTO v_funnel FROM public.funnels
-  WHERE org_id = _org_id ORDER BY (archived_at IS NOT NULL), position, created_at, id LIMIT 1;
-  IF v_funnel IS NULL THEN
-    INSERT INTO public.funnels (org_id, name, position) VALUES (_org_id, 'Sales pipeline', 0) RETURNING id INTO v_funnel;
-  END IF;
-  INSERT INTO public.pipeline_stages (org_id, funnel_id, name, position, color, stage_type) VALUES
-    (_org_id, v_funnel, 'Prospect',        1, '#6B7280', 'open'),
-    (_org_id, v_funnel, 'Gecontacteerd',   2, '#3B82F6', 'open'),
-    (_org_id, v_funnel, 'Audit Verstuurd', 3, '#8B5CF6', 'open'),
-    (_org_id, v_funnel, 'Voorstel',        4, '#F59E0B', 'open'),
-    (_org_id, v_funnel, 'Onderhandeling',  5, '#EC4899', 'open'),
-    (_org_id, v_funnel, 'Won',             6, '#10B981', 'won'),
-    (_org_id, v_funnel, 'Verloren',        7, '#EF4444', 'lost');
+  INSERT INTO public.pipeline_stages (org_id, name, position, color, stage_type) VALUES
+    (_org_id, 'Prospect',        1, '#6B7280', 'open'),
+    (_org_id, 'Gecontacteerd',   2, '#3B82F6', 'open'),
+    (_org_id, 'Audit Verstuurd', 3, '#8B5CF6', 'open'),
+    (_org_id, 'Voorstel',        4, '#F59E0B', 'open'),
+    (_org_id, 'Onderhandeling',  5, '#EC4899', 'open'),
+    (_org_id, 'Won',             6, '#10B981', 'won'),
+    (_org_id, 'Verloren',        7, '#EF4444', 'lost');
 END;
 $$;
 
@@ -243,5 +251,3 @@ DO $$ DECLARE r record; v text; BEGIN
     RAISE NOTICE 'org % (%): deals in won-fase zonder won_at (niet aangepast): %', r.name, r.id, coalesce(v, '(geen)');
   END LOOP;
 END $$;
-
-COMMIT;

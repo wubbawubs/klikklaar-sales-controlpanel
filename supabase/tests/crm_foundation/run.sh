@@ -43,7 +43,7 @@ psqlx -v ON_ERROR_STOP=1 < $DIR/fixtures.sql
 for f in supabase/migrations/2026110400000*.sql; do
   [ -e "$f" ] || continue
   echo ">> migration $f"
-  psqlx -v ON_ERROR_STOP=1 < "$f"
+  psqlx -1 -v ON_ERROR_STOP=1 < "$f"   # one transaction per file, like `supabase db push`
 done
 echo ">> checks"
 psqlx -v ON_ERROR_STOP=1 < $DIR/checks.sql 2>&1 | tee /dev/stderr | grep -q "CRM FOUNDATION CHECKS PASSED"
