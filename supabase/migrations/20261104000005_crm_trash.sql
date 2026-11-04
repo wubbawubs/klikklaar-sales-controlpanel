@@ -21,8 +21,10 @@
 --  * apply_meeting_proposal (definer, bypasses RLS) treats a trashed deal or a deal of a trashed company as not found.
 --  * crm_integrity_counts keeps counting every row, trashed or not (no deleted_at filter, by design).
 -- Data changes: none (new columns are NULL). Self-verifying: crm_integrity_counts per org identical before/after.
--- No BEGIN/COMMIT here: `supabase db push` wraps this file in one transaction (harness: psql -1).
+-- Runs in its own explicit transaction (BEGIN/COMMIT below; the Supabase CLI does not wrap files itself):
+-- if anything fails, nothing of this file is applied.
 
+BEGIN;
 SET LOCAL lock_timeout = '5s';
 LOCK TABLE public.deals, public.companies, public.contacts, public.deal_activities, public.crm_appointments,
            public.company_items IN ACCESS EXCLUSIVE MODE;                -- ADD COLUMN, policies, trigger below
@@ -123,7 +125,7 @@ COMMENT ON FUNCTION public.crm_soft_delete() IS
   'deleting an organization fails, because its ON DELETE CASCADE to these tables is suppressed and Postgres aborts '
   'the cascade. Organizations are never deleted by the app; CRM data must not vanish with them. '
   'SECURITY: the GUC crm.purge = on turns every delete into a real, unrecoverable delete. It is set only by '
-  'crm_purge''s function-level SET. Never expose set_config(''crm.purge'', ...) to clients through an RPC, a view or '
+  'crm_purge''s transaction-local set_config. Never expose set_config(''crm.purge'', ...) to clients through an RPC, a view or '
   'any SECURITY DEFINER function: that would bypass the trash, the org-admin check and the history scrub.';
 
 DO $$ DECLARE t text; BEGIN
@@ -302,14 +304,16 @@ REVOKE ALL ON FUNCTION public.crm_restore(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.crm_restore(uuid) TO authenticated, service_role;
 
 -- Permanently removes the trashed batch of (p_entity, p_record_id). Org admins only.
--- crm.purge is 'on' only while this function runs (function-level SET, reset on exit and on error).
+-- crm.purge is 'on' only while this function runs: set_config(..., true) after the access checks, reset before RETURN;
+-- transaction-local, so an error rolls it back too. (A function-level SET crm.purge is denied for role postgres on
+-- Supabase: supautils only allows listed placeholders there, so the CLI/db push would fail.)
 -- History: every row about a removed record (incl. the full-row 'delete' rows the capture trigger writes during
 -- this purge, and rows of FK-cascaded children such as deal_fees) becomes {"purged": true}; then one 'purge' row
 -- on the batch head with only the row count.
 -- Returns {"rows": <rows of the batch removed>, "files": [<storage_path of every removed company_item>]}. The database
 -- cannot reach Storage; the app removes those files from bucket company-documents after a successful purge.
 CREATE OR REPLACE FUNCTION public.crm_purge(p_entity text, p_record_id uuid) RETURNS jsonb
-  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public SET crm.purge = 'on'
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
   v_uid       uuid := auth.uid();
@@ -335,6 +339,8 @@ BEGIN
   -- Same message for "does not exist" and "not your org": non-admins learn nothing about the record.
   IF v_uid IS NULL OR v_org IS NULL OR NOT public.is_org_admin(v_uid, v_org) THEN RAISE EXCEPTION 'Geen toegang'; END IF;
   IF v_deleted IS NULL OR v_batch IS NULL THEN RAISE EXCEPTION 'Niet gevonden in de prullenbak'; END IF;
+
+  PERFORM set_config('crm.purge', 'on', true);
 
   -- Everything that disappears: the batch, plus whatever FK cascades take along with its deals/companies.
   v_companies := ARRAY(SELECT id FROM public.companies WHERE delete_batch = v_batch FOR UPDATE);
@@ -380,6 +386,7 @@ BEGIN
 
   INSERT INTO public.crm_history (org_id, entity, record_id, action, changes, actor)
   VALUES (v_org, p_entity, p_record_id, 'purge', jsonb_build_object('purged', true, 'rows', v_n), v_uid);
+  PERFORM set_config('crm.purge', 'off', true);
   RETURN jsonb_build_object('rows', v_n, 'files', to_jsonb(v_files));
 END $$;
 REVOKE ALL ON FUNCTION public.crm_purge(text, uuid) FROM PUBLIC, anon;
@@ -653,3 +660,5 @@ DO $$ BEGIN
   RAISE NOTICE 'soft delete actief op 6 tabellen (deals, companies, contacts, deal_activities, crm_appointments, company_items)';
   RAISE NOTICE 'geen bestaande data gewijzigd; integriteitstellingen per org gelijk';
 END $$;
+
+COMMIT;

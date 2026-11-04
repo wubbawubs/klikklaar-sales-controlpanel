@@ -9,8 +9,10 @@
 --  * entity = table name; record_id = the row's id, except deal_contacts (no id column): record_id = deal_id and
 --    contact_id is always included in its update diffs, so the link stays identifiable.
 -- Data changes: none (DDL only). Self-verifying: crm_integrity_counts per org identical before and after.
--- No BEGIN/COMMIT here: `supabase db push` wraps this file in one transaction (harness: psql -1).
+-- Runs in its own explicit transaction (BEGIN/COMMIT below; the Supabase CLI does not wrap files itself):
+-- if anything fails, nothing of this file is applied.
 
+BEGIN;
 SET LOCAL lock_timeout = '5s';
 LOCK TABLE public.deals, public.companies, public.contacts, public.deal_activities, public.crm_appointments,
            public.deal_fees, public.deal_contacts, public.pipeline_stages, public.funnels, public.crm_fields,
@@ -126,3 +128,5 @@ DO $$ BEGIN
   RAISE NOTICE '=== CRM historie migratie-rapport ===';
   RAISE NOTICE 'historie-trigger actief op 11 tabellen; geen bestaande data gewijzigd';
 END $$;
+
+COMMIT;

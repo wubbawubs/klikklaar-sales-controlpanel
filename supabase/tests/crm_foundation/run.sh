@@ -38,12 +38,18 @@ for t in deals pipeline_stages companies contacts deal_activities crm_appointmen
   psqlx -tAc "select to_regclass('public.$t') is not null" | grep -q t || { echo "MISSING TABLE: $t"; cat "$DIR/.schema_load.log" | head -20; exit 1; }
 done
 
+echo ">> guard: migrations carry their own BEGIN/COMMIT"
+for f in supabase/migrations/20261104000*.sql; do
+  first=$(grep -v -E '^[[:space:]]*(--.*)?$' "$f" | head -1 | tr -d '[:space:]')
+  last=$(grep -v -E '^[[:space:]]*(--.*)?$' "$f" | tail -1 | tr -d '[:space:]')
+  [ "$first" = "BEGIN;" ] && [ "$last" = "COMMIT;" ] || { echo "GUARD FAILED: $f must start with BEGIN; and end with COMMIT;"; exit 1; }
+done
 echo ">> fixtures"
 psqlx -v ON_ERROR_STOP=1 < $DIR/fixtures.sql
 for f in supabase/migrations/2026110400000*.sql; do
   [ -e "$f" ] || continue
   echo ">> migration $f"
-  psqlx -1 -v ON_ERROR_STOP=1 < "$f"   # one transaction per file, like `supabase db push`
+  psqlx -v ON_ERROR_STOP=1 < "$f"   # plain, like the Supabase CLI (no wrapping transaction): files carry their own BEGIN/COMMIT
 done
 echo ">> checks"
 psqlx -v ON_ERROR_STOP=1 < $DIR/checks.sql 2>&1 | tee /dev/stderr | grep -q "CRM FOUNDATION CHECKS PASSED"

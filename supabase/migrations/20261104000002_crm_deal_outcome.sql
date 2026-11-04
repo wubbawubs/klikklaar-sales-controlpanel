@@ -5,8 +5,10 @@
 --  * funnels insert/update policies use is_org_admin
 --  * apply_meeting_proposal picks won/lost targets by stage_type within the deal's funnel
 -- No data is changed: existing deals keep their won_at/lost_at (the trigger only fires on a stage change).
--- No BEGIN/COMMIT here: `supabase db push` wraps this file in one transaction (harness: psql -1).
+-- Runs in its own explicit transaction (BEGIN/COMMIT below; the Supabase CLI does not wrap files itself):
+-- if anything fails, nothing of this file is applied.
 
+BEGIN;
 SET LOCAL lock_timeout = '5s';
 LOCK TABLE public.funnels IN ACCESS EXCLUSIVE MODE;      -- policies replaced below
 LOCK TABLE public.deals IN SHARE ROW EXCLUSIVE MODE;     -- trigger created below
@@ -300,3 +302,5 @@ $$;
 
 REVOKE ALL ON FUNCTION public.apply_meeting_proposal(uuid, jsonb) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.apply_meeting_proposal(uuid, jsonb) TO authenticated;
+
+COMMIT;

@@ -3,10 +3,11 @@
 -- backfills, recomputes and RAISEs (rolling back everything) if any count differs.
 -- Data changes are limited to: new rows in funnels, the missing Gewonnen/Verloren stages per funnel,
 -- and backfilling the NEW columns funnel_id / stage_type. Nothing is dropped; won_at is never backfilled.
--- No BEGIN/COMMIT here: `supabase db push` runs this file plus its schema_migrations insert as one
--- transaction (the test harness mirrors that with psql -1). The ON COMMIT DROP temp tables rely on it.
+-- Runs in its own explicit transaction (BEGIN/COMMIT below; the Supabase CLI does not wrap files itself):
+-- if anything fails, nothing of this file is applied.
 
 -- 0. Locks: snapshot + counts must be consistent; concurrent app writes wait (or abort cleanly).
+BEGIN;
 SET LOCAL lock_timeout = '5s';
 LOCK TABLE public.deals, public.pipeline_stages, public.organizations IN ACCESS EXCLUSIVE MODE;  -- altered below
 LOCK TABLE public.companies, public.contacts, public.deal_activities, public.crm_appointments,
@@ -270,3 +271,5 @@ DO $$ DECLARE r record; v text; BEGIN
     RAISE NOTICE 'org % (%): deals met een fase van een andere org (niet aangepast): %', r.name, r.id, coalesce(v, '(geen)');
   END LOOP;
 END $$;
+
+COMMIT;

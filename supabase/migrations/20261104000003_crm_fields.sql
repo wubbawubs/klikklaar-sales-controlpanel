@@ -7,8 +7,10 @@
 --    in both directions, so old screens that only write deals.contact_id keep working.
 -- Data changes: only rows in the new tables (deal_contacts backfill, built-in crm_fields per funnel).
 -- Self-verifying: crm_integrity_counts per org must be identical before and after.
--- No BEGIN/COMMIT here: `supabase db push` wraps this file in one transaction (harness: psql -1).
+-- Runs in its own explicit transaction (BEGIN/COMMIT below; the Supabase CLI does not wrap files itself):
+-- if anything fails, nothing of this file is applied.
 
+BEGIN;
 SET LOCAL lock_timeout = '5s';
 LOCK TABLE public.deals, public.contacts, public.companies IN ACCESS EXCLUSIVE MODE;   -- altered below
 LOCK TABLE public.funnels, public.organizations IN SHARE ROW EXCLUSIVE MODE;          -- trigger / FK targets
@@ -281,3 +283,5 @@ DO $$ BEGIN
   RAISE NOTICE 'ingebouwde velden: % funnels x 9 = % rijen', (SELECT count(*) FROM public.funnels),
     (SELECT count(*) FROM public.crm_fields WHERE builtin);
 END $$;
+
+COMMIT;
