@@ -26,7 +26,8 @@ describe('useTrash hooks', () => {
     rpcResult = { data: true, error: null };
     const { result } = renderHook(() => useIsOrgAdmin(), { wrapper });
     await waitFor(() => expect(result.current.data).toBe(true));
-    expect(rpc).toHaveBeenCalledWith('is_org_admin', { _user: 'u1', _org: 'org1' });
+    // only ever about the caller: the 1-arg version (auth.uid() in the database), never another user id
+    expect(rpc).toHaveBeenCalledWith('is_org_admin', { _org: 'org1' });
   });
 
   it('shows the database message when a restore is refused', async () => {

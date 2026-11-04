@@ -1,6 +1,7 @@
 -- CRM foundation 2/n: the stage type drives won/lost, enforced in the database.
 --  * trigger deals_sync_outcome keeps won_at / lost_at / stage_updated_at in step with the stage's stage_type
 --  * is_org_admin(): global admin, or user_organizations.role IN ('admin','owner') (client admin / org creator) for that org
+--    is_org_admin(_org) asks the same for the caller (auth.uid()) only; the app uses that one
 --  * funnels insert/update policies use is_org_admin
 --  * apply_meeting_proposal picks won/lost targets by stage_type within the deal's funnel
 -- No data is changed: existing deals keep their won_at/lost_at (the trigger only fires on a stage change).
@@ -57,8 +58,19 @@ AS $$
     WHERE user_id = _user AND organization_id = _org AND role IN ('admin','owner')
   )
 $$;
+-- authenticated keeps EXECUTE on the 2-arg version: the funnels and crm_fields policies call
+-- is_org_admin(auth.uid(), org_id) and policies run as the caller. The app asks with the 1-arg version below.
 REVOKE ALL ON FUNCTION public.is_org_admin(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_org_admin(uuid, uuid) TO authenticated, service_role;
+
+-- For the app: "am I org admin of this org?" (never asks about another user). No login -> false.
+CREATE OR REPLACE FUNCTION public.is_org_admin(_org uuid) RETURNS boolean
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT auth.uid() IS NOT NULL AND public.is_org_admin(auth.uid(), _org)
+$$;
+REVOKE ALL ON FUNCTION public.is_org_admin(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_org_admin(uuid) TO authenticated, service_role;
 
 DROP POLICY "Admins create funnels" ON public.funnels;
 DROP POLICY "Admins update funnels" ON public.funnels;

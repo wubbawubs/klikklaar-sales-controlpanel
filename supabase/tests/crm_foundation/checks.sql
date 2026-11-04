@@ -1149,6 +1149,50 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ===== Final review fixes =====
+-- funnel_default_creates: a deal inserted for an org without any funnel gets a new funnel instead of failing (rolled back)
+BEGIN;
+INSERT INTO organizations (id, slug, name) VALUES ('10000000-0000-0000-0000-0000000000ff','leeg','Lege org');
+INSERT INTO deals (id, org_id, title) VALUES ('40000000-0000-0000-0000-0000000000ff','10000000-0000-0000-0000-0000000000ff','Eerste deal');
+DO $$ DECLARE v uuid; BEGIN
+  SELECT funnel_id INTO v FROM deals WHERE id = '40000000-0000-0000-0000-0000000000ff';
+  IF NOT FOUND OR v IS NULL
+     OR NOT EXISTS (SELECT 1 FROM funnels WHERE id = v AND org_id = '10000000-0000-0000-0000-0000000000ff') THEN
+    RAISE EXCEPTION 'check funnel_default_creates: deal got funnel %', v;
+  END IF;
+END $$;
+ROLLBACK;
+
+-- org_admin_self: is_org_admin(_org) answers for the caller only; the 2-arg version stays executable for
+-- authenticated because the funnels / crm_fields policies call it as the caller
+BEGIN;
+DO $$ BEGIN
+  IF NOT has_function_privilege('authenticated', 'public.is_org_admin(uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.is_org_admin(uuid)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.is_org_admin(uuid, uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'check org_admin_self: grants';
+  END IF;
+END $$;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  IF is_org_admin('10000000-0000-0000-0000-00000000000a'::uuid) THEN RAISE EXCEPTION 'check org_admin_self: member is org admin'; END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  IF NOT is_org_admin('10000000-0000-0000-0000-00000000000c'::uuid) THEN RAISE EXCEPTION 'check org_admin_self: global admin not org admin'; END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', '', true); END $$;
+DO $$ BEGIN
+  IF is_org_admin('10000000-0000-0000-0000-00000000000c'::uuid) IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'check org_admin_self: anonymous caller must get false';
+  END IF;
+END $$;
+ROLLBACK;
+
 -- (later tasks append checks here)
 
 DO $$ BEGIN RAISE NOTICE 'CRM FOUNDATION CHECKS PASSED'; END $$;

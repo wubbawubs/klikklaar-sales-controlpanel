@@ -32,7 +32,8 @@ export function useIsOrgAdmin() {
     queryKey: ['is-org-admin', user?.id, orgId],
     enabled: !!orgId && !!user?.id,
     queryFn: async () => {
-      const { data, error } = await db.rpc('is_org_admin', { _user: user!.id, _org: orgId });
+      // 1-arg version: the database answers for auth.uid() only.
+      const { data, error } = await db.rpc('is_org_admin', { _org: orgId });
       if (error) throw error;
       return data === true;
     },

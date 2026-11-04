@@ -155,6 +155,8 @@ CREATE TRIGGER deals_stage_in_funnel BEFORE INSERT OR UPDATE OF stage_id, funnel
   FOR EACH ROW EXECUTE FUNCTION public.deals_stage_in_funnel();
 
 -- 7. funnel_id defaults on insert ---------------------------------------------------------------
+-- An org without any funnel (no stages yet) gets its first funnel here, like pipeline_stages_funnel_default
+-- below, instead of failing on NOT NULL.
 CREATE OR REPLACE FUNCTION public.deals_funnel_default() RETURNS trigger
   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
@@ -165,6 +167,10 @@ BEGIN
   IF NEW.funnel_id IS NULL THEN
     SELECT id INTO NEW.funnel_id FROM public.funnels
     WHERE org_id = NEW.org_id ORDER BY (archived_at IS NOT NULL), position, created_at, id LIMIT 1;
+    IF NEW.funnel_id IS NULL THEN
+      INSERT INTO public.funnels (org_id, name, position) VALUES (NEW.org_id, 'Sales pipeline', 0)
+      RETURNING id INTO NEW.funnel_id;
+    END IF;
   END IF;
   RETURN NEW;
 END $$;
@@ -249,5 +255,18 @@ DO $$ DECLARE r record; v text; BEGIN
       FROM public.deals d JOIN public.pipeline_stages s ON s.id = d.stage_id
       WHERE d.org_id = r.id AND s.stage_type = 'won' AND d.won_at IS NULL;
     RAISE NOTICE 'org % (%): deals in won-fase zonder won_at (niet aangepast): %', r.name, r.id, coalesce(v, '(geen)');
+    SELECT string_agg(format('%s "%s" in fase "%s"', d.id, d.title, s.name), '; ' ORDER BY d.created_at) INTO v
+      FROM public.deals d JOIN public.pipeline_stages s ON s.id = d.stage_id
+      WHERE d.org_id = r.id AND s.stage_type = 'lost' AND d.lost_at IS NULL;
+    RAISE NOTICE 'org % (%): deals in verloren-fase zonder lost_at (niet aangepast): %', r.name, r.id, coalesce(v, '(geen)');
+    -- near-misses: names that look like won/lost but are not an exact match, so they stayed 'open'
+    SELECT string_agg(format('"%s"', s.name), ', ' ORDER BY s.position) INTO v
+      FROM public.pipeline_stages s
+      WHERE s.org_id = r.id AND s.stage_type = 'open' AND lower(s.name) ~ '(won|gewonnen|lost|verloren)';
+    RAISE NOTICE 'org % (%): fases die op won/lost lijken maar open bleven (controleer): %', r.name, r.id, coalesce(v, '(geen)');
+    SELECT string_agg(format('%s "%s" → fase "%s" van org %s', d.id, d.title, s.name, s.org_id), '; ' ORDER BY d.created_at) INTO v
+      FROM public.deals d JOIN public.pipeline_stages s ON s.id = d.stage_id
+      WHERE d.org_id = r.id AND s.org_id <> d.org_id;
+    RAISE NOTICE 'org % (%): deals met een fase van een andere org (niet aangepast): %', r.name, r.id, coalesce(v, '(geen)');
   END LOOP;
 END $$;
