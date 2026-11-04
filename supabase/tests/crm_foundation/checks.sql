@@ -223,6 +223,135 @@ DO $$ BEGIN
 END $$;
 ROLLBACK;
 
+-- ===== Task 3: won/lost from stage type =====
+-- drag_to_won / drag_back_open / drag_to_lost (rolled back via sentinel)
+DO $$ DECLARE d deals%ROWTYPE; v_first timestamptz; BEGIN
+  BEGIN
+    -- drag_to_won: Prospect -> Won sets won_at and stage_updated_at
+    UPDATE deals SET stage_id = '20000000-0000-0000-0000-0000000000a3' WHERE id = '40000000-0000-0000-0000-0000000000a1' RETURNING * INTO d;
+    IF d.won_at IS NULL THEN RAISE EXCEPTION 'check drag_to_won: won_at NULL'; END IF;
+    IF d.lost_at IS NOT NULL THEN RAISE EXCEPTION 'check drag_to_won: lost_at set'; END IF;
+    IF d.stage_updated_at IS DISTINCT FROM now() THEN RAISE EXCEPTION 'check drag_to_won: stage_updated_at not bumped'; END IF;
+    -- drag_back_open: Won -> Prospect clears won_at
+    UPDATE deals SET stage_id = '20000000-0000-0000-0000-0000000000a1' WHERE id = '40000000-0000-0000-0000-0000000000a1' RETURNING * INTO d;
+    IF d.won_at IS NOT NULL OR d.lost_at IS NOT NULL THEN RAISE EXCEPTION 'check drag_back_open: won_at/lost_at not cleared'; END IF;
+    -- drag_to_lost: sets lost_at, clears won_at
+    UPDATE deals SET stage_id = '20000000-0000-0000-0000-0000000000a3' WHERE id = '40000000-0000-0000-0000-0000000000a1';
+    UPDATE deals SET stage_id = '20000000-0000-0000-0000-0000000000a4' WHERE id = '40000000-0000-0000-0000-0000000000a1' RETURNING * INTO d;
+    IF d.lost_at IS NULL OR d.won_at IS NOT NULL THEN RAISE EXCEPTION 'check drag_to_lost: lost_at/won_at wrong'; END IF;
+    -- won_at kept when an explicit value is written together with a won stage
+    UPDATE deals SET stage_id = '20000000-0000-0000-0000-0000000000a3', won_at = '2026-01-01T00:00:00Z'
+      WHERE id = '40000000-0000-0000-0000-0000000000a1' RETURNING * INTO d;
+    IF d.won_at <> '2026-01-01T00:00:00Z'::timestamptz OR d.lost_at IS NOT NULL THEN RAISE EXCEPTION 'check drag_to_won: explicit won_at not kept'; END IF;
+    -- deal d3 keeps its historic lost_at when re-saved into the same lost stage
+    UPDATE deals SET stage_id = stage_id WHERE id = '40000000-0000-0000-0000-0000000000a3' RETURNING * INTO d;
+    IF d.lost_at <> '2026-10-01T10:00:00Z'::timestamptz THEN RAISE EXCEPTION 'check same_stage: lost_at changed'; END IF;
+    -- deal d2 (Won, NULL won_at) stays NULL when the stage does not change
+    UPDATE deals SET stage_id = stage_id, title = title WHERE id = '40000000-0000-0000-0000-0000000000a2' RETURNING * INTO d;
+    IF d.won_at IS NOT NULL THEN RAISE EXCEPTION 'check same_stage: won_at backfilled without a stage change'; END IF;
+    -- moving to NULL stage (as ON DELETE SET NULL does) leaves outcome fields alone
+    UPDATE deals SET stage_id = NULL WHERE id = '40000000-0000-0000-0000-0000000000a3' RETURNING * INTO d;
+    IF d.lost_at <> '2026-10-01T10:00:00Z'::timestamptz THEN RAISE EXCEPTION 'check null_stage: lost_at changed'; END IF;
+    -- insert straight into a won stage gets won_at
+    INSERT INTO deals (org_id, stage_id, title) VALUES ('10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-0000000000a3','ins-won')
+      RETURNING * INTO d;
+    IF d.won_at IS NULL THEN RAISE EXCEPTION 'check insert_won: won_at NULL'; END IF;
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
+  IF (SELECT count(*) FROM deals) <> 7
+     OR (SELECT won_at FROM deals WHERE id='40000000-0000-0000-0000-0000000000a1') IS NOT NULL
+     OR (SELECT won_at FROM deals WHERE id='40000000-0000-0000-0000-0000000000a2') IS NOT NULL THEN
+    RAISE EXCEPTION 'check drag: fixtures changed';
+  END IF;
+END $$;
+
+-- meeting_won_by_type: org C's "Deal gewonnen" is an open stage; won lands on the added "Gewonnen" (stage_type won)
+BEGIN;
+INSERT INTO user_organizations (user_id, organization_id, is_default) VALUES ('00000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000c', false);
+INSERT INTO meeting_imports (id, org_id, meeting_date, transcript, status) VALUES
+  ('50000000-0000-0000-0000-0000000000c1','10000000-0000-0000-0000-00000000000c','2026-11-03','x','ready');
+INSERT INTO meeting_proposals (id, org_id, import_id, position, kind, company_label, deal_id, payload, expected, quote) VALUES
+  ('60000000-0000-0000-0000-0000000000c1','10000000-0000-0000-0000-00000000000c','50000000-0000-0000-0000-0000000000c1',0,'won','Client',
+   '40000000-0000-0000-0000-0000000000c1','{}','{"stage_id":"20000000-0000-0000-0000-0000000000c1"}','getekend'),
+  ('60000000-0000-0000-0000-0000000000c2','10000000-0000-0000-0000-00000000000c','50000000-0000-0000-0000-0000000000c1',1,'lost','Client',
+   '40000000-0000-0000-0000-0000000000c2','{"lost_reason":"te duur"}','{"stage_id":"20000000-0000-0000-0000-0000000000c3"}','afgehaakt');
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb; d record; BEGIN
+  r := apply_meeting_proposal('60000000-0000-0000-0000-0000000000c1', jsonb_build_object('deal_id','40000000-0000-0000-0000-0000000000c1','payload','{}'::jsonb));
+  IF NOT coalesce((r->>'ok')::boolean, false) THEN RAISE EXCEPTION 'check meeting_won_by_type: apply failed: %', r; END IF;
+  SELECT dl.stage_id, dl.won_at, dl.lost_at, s.name, s.stage_type INTO d
+    FROM deals dl JOIN pipeline_stages s ON s.id = dl.stage_id WHERE dl.id = '40000000-0000-0000-0000-0000000000c1';
+  IF d.stage_id = '20000000-0000-0000-0000-0000000000c3' OR d.name <> 'Gewonnen' OR d.stage_type <> 'won' THEN
+    RAISE EXCEPTION 'check meeting_won_by_type: landed on % (%), expected Gewonnen', d.name, d.stage_type;
+  END IF;
+  IF d.won_at IS DISTINCT FROM now() OR d.lost_at IS NOT NULL THEN RAISE EXCEPTION 'check meeting_won_by_type: won_at/lost_at wrong'; END IF;
+  IF NOT (r->'events' @> '[{"event":"deal.won"}]' AND r->'events' @> '[{"event":"deal.stage_changed","payload":{"to_stage":"Gewonnen"}}]')
+     OR jsonb_array_length(r->'events') <> 2 THEN
+    RAISE EXCEPTION 'check meeting_won_by_type: events %', r->'events';
+  END IF;
+  -- lost from a deal in the open-typed "Deal gewonnen" stage: no confirmation needed, lands on Verloren with reason
+  r := apply_meeting_proposal('60000000-0000-0000-0000-0000000000c2', jsonb_build_object('deal_id','40000000-0000-0000-0000-0000000000c2','payload','{"lost_reason":"te duur"}'::jsonb));
+  IF NOT coalesce((r->>'ok')::boolean, false) THEN RAISE EXCEPTION 'check meeting_lost_by_type: apply failed: %', r; END IF;
+  SELECT dl.won_at, dl.lost_at, dl.lost_reason, s.name, s.stage_type INTO d
+    FROM deals dl JOIN pipeline_stages s ON s.id = dl.stage_id WHERE dl.id = '40000000-0000-0000-0000-0000000000c2';
+  IF d.name <> 'Verloren' OR d.stage_type <> 'lost' OR d.lost_at IS DISTINCT FROM now() OR d.won_at IS NOT NULL OR d.lost_reason <> 'te duur' THEN
+    RAISE EXCEPTION 'check meeting_lost_by_type: deal %', row_to_json(d);
+  END IF;
+  IF NOT (r->'events' @> '[{"event":"deal.lost"}]') OR jsonb_array_length(r->'events') <> 2 THEN
+    RAISE EXCEPTION 'check meeting_lost_by_type: events %', r->'events';
+  END IF;
+END $$;
+ROLLBACK;
+DO $$ BEGIN
+  IF (SELECT stage_id FROM deals WHERE id='40000000-0000-0000-0000-0000000000c1') <> '20000000-0000-0000-0000-0000000000c1'
+     OR EXISTS (SELECT 1 FROM meeting_proposals) THEN
+    RAISE EXCEPTION 'check meeting_won_by_type: fixtures changed';
+  END IF;
+END $$;
+
+-- org_admin
+BEGIN;
+DO $$ BEGIN
+  IF NOT is_org_admin('00000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000c') THEN
+    RAISE EXCEPTION 'check org_admin: global admin must be org admin of C';
+  END IF;
+  IF is_org_admin('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a') THEN
+    RAISE EXCEPTION 'check org_admin: plain member must not be org admin';
+  END IF;
+  UPDATE user_organizations SET role = 'admin'
+    WHERE user_id='00000000-0000-0000-0000-0000000000a2' AND organization_id='10000000-0000-0000-0000-00000000000a';
+  IF NOT is_org_admin('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a') THEN
+    RAISE EXCEPTION 'check org_admin: role admin must make member org admin';
+  END IF;
+  IF is_org_admin('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000c') THEN
+    RAISE EXCEPTION 'check org_admin: org admin of L must not be org admin of C';
+  END IF;
+END $$;
+-- funnels RLS follows is_org_admin: client admin can create a funnel in own org only
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE ok boolean := false; BEGIN
+  INSERT INTO funnels (org_id, name) VALUES ('10000000-0000-0000-0000-00000000000a', 'Client admin funnel');
+  UPDATE funnels SET name = 'Hernoemd' WHERE org_id = '10000000-0000-0000-0000-00000000000a' AND name = 'Client admin funnel';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check org_admin_rls: org admin could not update funnel'; END IF;
+  BEGIN
+    INSERT INTO funnels (org_id, name) VALUES ('10000000-0000-0000-0000-00000000000c', 'Foreign funnel');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check org_admin_rls: org admin of L created a funnel in C'; END IF;
+END $$;
+ROLLBACK;
+DO $$ BEGIN
+  IF (SELECT role FROM user_organizations WHERE user_id='00000000-0000-0000-0000-0000000000a2'
+        AND organization_id='10000000-0000-0000-0000-00000000000a') <> 'member'
+     OR (SELECT count(*) FROM funnels) <> 2 THEN
+    RAISE EXCEPTION 'check org_admin: fixtures changed';
+  END IF;
+END $$;
+
 -- (later tasks append checks here)
 
 DO $$ BEGIN RAISE NOTICE 'CRM FOUNDATION CHECKS PASSED'; END $$;

@@ -7,6 +7,10 @@ docker run -d --rm --name $NAME -e POSTGRES_PASSWORD=test postgres:17-alpine >/d
 trap 'docker stop $NAME >/dev/null' EXIT
 until docker exec $NAME pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
 sleep 1
-for f in supabase/tests/meeting_apply/stub_schema.sql supabase/migrations/20261103000001_meeting_imports.sql supabase/tests/meeting_apply/checks.sql; do
-  docker exec -i $NAME psql -q -v ON_ERROR_STOP=1 -U postgres < "$f"
+# 20261104000002 re-creates apply_meeting_proposal (won/lost by stage_type) and adds the outcome trigger.
+# Migrations run as one transaction each (-1), like `supabase db push`.
+docker exec -i $NAME psql -q -v ON_ERROR_STOP=1 -U postgres < supabase/tests/meeting_apply/stub_schema.sql
+for f in supabase/migrations/20261103000001_meeting_imports.sql supabase/migrations/20261104000002_crm_deal_outcome.sql; do
+  docker exec -i $NAME psql -1 -q -v ON_ERROR_STOP=1 -U postgres < "$f"
 done
+docker exec -i $NAME psql -q -v ON_ERROR_STOP=1 -U postgres < supabase/tests/meeting_apply/checks.sql
