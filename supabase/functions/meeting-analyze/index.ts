@@ -1,6 +1,7 @@
 // Reads a pasted meeting transcript and stores AI-proposed CRM changes. Nothing in the CRM changes here:
 // proposals are applied one by one by the user via the apply_meeting_proposal RPC.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Anthropic from "npm:@anthropic-ai/sdk";
 import { buildSnapshot, normalizeProposals, snapshotPrompt, PROPOSAL_KINDS, type AiItem } from "../_shared/meetingNormalize.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
@@ -12,48 +13,40 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-const MODEL = "google/gemini-2.5-pro";
+const MODEL = "claude-opus-5-5";
 const AI_TIMEOUT_MS = 140_000;
 const WEEKDAYS = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
 
-const nullable = (type: string) => ({ type: [type, "null"] });
-const TOOL = {
-  type: "function",
-  function: {
-    name: "propose_crm_changes",
-    description: "Stel CRM-wijzigingen voor op basis van het transcript",
-    parameters: {
-      type: "object",
-      properties: {
-        items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              kind: { type: "string", enum: PROPOSAL_KINDS },
-              quote: { type: "string" },
-              company_ref: nullable("string"),
-              candidate_company_refs: { type: "array", items: { type: "string" } },
-              company_name: nullable("string"),
-              deal_ref: nullable("string"),
-              stage_ref: nullable("string"),
-              lost_reason: nullable("string"),
-              body: nullable("string"),
-              value_eur: nullable("number"),
-              user_ref: nullable("string"),
-              date: nullable("string"),
-              appointment_type: { type: ["string", "null"], enum: ["call", "meeting", null] },
-              title: nullable("string"),
-              deal_title: nullable("string"),
-              contact_name: nullable("string"),
-            },
-            required: ["kind", "quote"],
-          },
-        },
-      },
-      required: ["items"],
+const nullable = (type: string) => ({ anyOf: [{ type }, { type: "null" }] });
+const ITEM_FIELDS = {
+  kind: { type: "string", enum: PROPOSAL_KINDS },
+  quote: { type: "string" },
+  company_ref: nullable("string"),
+  candidate_company_refs: { type: "array", items: { type: "string" } },
+  company_name: nullable("string"),
+  deal_ref: nullable("string"),
+  stage_ref: nullable("string"),
+  lost_reason: nullable("string"),
+  body: nullable("string"),
+  value_eur: nullable("number"),
+  user_ref: nullable("string"),
+  date: nullable("string"),
+  appointment_type: nullable("string"),
+  title: nullable("string"),
+  deal_title: nullable("string"),
+  contact_name: nullable("string"),
+};
+// Structured output: Claude must answer with exactly this JSON shape.
+const OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    items: {
+      type: "array",
+      items: { type: "object", properties: ITEM_FIELDS, required: Object.keys(ITEM_FIELDS), additionalProperties: false },
     },
   },
+  required: ["items"],
+  additionalProperties: false,
 };
 
 function systemPrompt(meetingDate: string): string {
@@ -79,7 +72,9 @@ Regels — heel belangrijk:
 - Een klant die niet in de bedrijvenlijst staat → new_deal, niet een ander bedrijf kiezen.
 - quote: een kort letterlijk stukje uit het transcript waar het voorstel op gebaseerd is.
 - Eén item per wijziging. Fase + notitie voor dezelfde deal = twee items.
-- Negeer small talk, interne zaken en dingen die niet over een klant gaan.`;
+- Negeer small talk, interne zaken en dingen die niet over een klant gaan.
+- appointment_type is "call" of "meeting"; voor andere soorten null.
+- Geef je antwoord als JSON met een lijst "items" (leeg als er niets te wijzigen is).`;
 }
 
 Deno.serve(async (req) => {
@@ -100,8 +95,8 @@ Deno.serve(async (req) => {
     .select("id, org_id, meeting_date, transcript").eq("id", import_id).maybeSingle();
   if (!imp) return json({ error: "Meeting niet gevonden" }, 404);
 
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return json({ error: "AI is niet geconfigureerd" }, 500);
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) return json({ error: "AI is niet geconfigureerd (ANTHROPIC_API_KEY ontbreekt)" }, 500);
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   // One run at a time, and never after something was applied (would propose the same changes again).
@@ -144,31 +139,23 @@ Deno.serve(async (req) => {
           ({ user_id: p.user_id, name: p.full_name || p.email || "Onbekend" })),
       });
 
-      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: "system", content: systemPrompt(imp.meeting_date) },
-            { role: "user", content: `${snapshotPrompt(snap)}\n\n=== TRANSCRIPT ===\n${imp.transcript}` },
-          ],
-          tools: [TOOL],
-          tool_choice: { type: "function", function: { name: "propose_crm_changes" } },
-        }),
-      });
+      const claude = new Anthropic({ apiKey: ANTHROPIC_API_KEY, timeout: AI_TIMEOUT_MS, maxRetries: 1 });
+      const msg = await claude.beta.messages.stream({
+        model: MODEL,
+        max_tokens: 32000,
+        output_config: { effort: "medium", format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
+        // If Claude declines (rare false positive on safety filters), the API retries on a fallback model.
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        system: systemPrompt(imp.meeting_date),
+        messages: [{ role: "user", content: `${snapshotPrompt(snap)}\n\n=== TRANSCRIPT ===\n${imp.transcript}` }],
+      } as never).finalMessage();
 
-      if (!aiRes.ok) {
-        console.error("AI Gateway error", aiRes.status, await aiRes.text());
-        if (aiRes.status === 429) return void await fail("AI is even overbelast, probeer het over een minuut opnieuw");
-        if (aiRes.status === 402) return void await fail("AI-tegoed is op");
-        return void await fail(`Analyse mislukt: AI gaf foutcode ${aiRes.status}`);
-      }
-      const data = await aiRes.json();
-      const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-      if (!args) return void await fail("Analyse mislukt: AI gaf geen bruikbaar antwoord");
-      const parsed = typeof args === "string" ? JSON.parse(args) : args;
+      if (msg.stop_reason === "refusal") return void await fail("Analyse mislukt: de AI weigerde dit transcript te verwerken");
+      if (msg.stop_reason === "max_tokens") return void await fail("Analyse mislukt: transcript te lang voor één analyse — splits het op");
+      const text = msg.content.filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("");
+      if (!text) return void await fail("Analyse mislukt: AI gaf geen bruikbaar antwoord");
+      const parsed = JSON.parse(text);
       const items: AiItem[] = Array.isArray(parsed?.items) ? parsed.items : [];
 
       const rows = normalizeProposals(items, snap, imp.meeting_date).map(r => ({ ...r, org_id: imp.org_id, import_id: imp.id }));
@@ -179,8 +166,11 @@ Deno.serve(async (req) => {
       await admin.from("meeting_imports").update({ status: "ready", analyzed_at: new Date().toISOString(), error: null }).eq("id", imp.id);
     } catch (e) {
       console.error("meeting-analyze failed", e);
-      const timedOut = e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError");
-      await fail(timedOut ? "Analyse duurde te lang — probeer het opnieuw" : `Analyse mislukt: ${e instanceof Error ? e.message : String(e)}`);
+      if (e instanceof Anthropic.APIConnectionTimeoutError) return void await fail("Analyse duurde te lang — probeer het opnieuw");
+      if (e instanceof Anthropic.RateLimitError) return void await fail("AI is even overbelast, probeer het over een minuut opnieuw");
+      if (e instanceof Anthropic.AuthenticationError) return void await fail("AI-sleutel ongeldig — controleer ANTHROPIC_API_KEY");
+      if (e instanceof Anthropic.APIError) return void await fail(`Analyse mislukt: AI gaf foutcode ${e.status}`);
+      await fail(`Analyse mislukt: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
