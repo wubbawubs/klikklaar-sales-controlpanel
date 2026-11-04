@@ -10,6 +10,9 @@
 --  * crm_trash_list(org) lists batch heads, crm_restore(batch) brings a whole batch back (idempotent, only that
 --    batch), crm_purge(entity, id) lets an org admin remove a trashed batch for good. Purge scrubs the history of
 --    every removed record to {"purged": true} and logs one 'purge' row without personal data.
+--  * Guards: no live child can be added under (or moved onto, or restored under) a trashed deal/company; purge refuses
+--    while live ON DELETE CASCADE children hang off the batch; a stage with deals (trashed included) cannot be
+--    deleted; deleting an organization fails on purpose (fail-safe, see COMMENT ON FUNCTION crm_soft_delete).
 --  * apply_meeting_proposal (definer, bypasses RLS) treats a trashed deal or a deal of a trashed company as not found.
 --  * crm_integrity_counts keeps counting every row, trashed or not (no deleted_at filter, by design).
 -- Data changes: none (new columns are NULL). Self-verifying: crm_integrity_counts per org identical before/after.
@@ -18,6 +21,7 @@
 SET LOCAL lock_timeout = '5s';
 LOCK TABLE public.deals, public.companies, public.contacts, public.deal_activities, public.crm_appointments,
            public.company_items IN ACCESS EXCLUSIVE MODE;                -- ADD COLUMN, policies, trigger below
+LOCK TABLE public.pipeline_stages IN SHARE ROW EXCLUSIVE MODE;          -- CREATE TRIGGER (stage guard) below
 
 CREATE TEMP TABLE _crm_counts_before_trash ON COMMIT DROP AS
   SELECT o.id AS org_id, public.crm_integrity_counts(o.id) AS counts FROM public.organizations o;
@@ -108,6 +112,11 @@ BEGIN
   RETURN NULL;                                    -- the row stays; FK cascades never fire
 END $$;
 REVOKE ALL ON FUNCTION public.crm_soft_delete() FROM PUBLIC, anon, authenticated;
+COMMENT ON FUNCTION public.crm_soft_delete() IS
+  'BEFORE DELETE on the six CRM record tables: turns a delete into a soft delete (deleted_at/by/batch) and trashes '
+  'the children in the same batch; only crm_purge (crm.purge = on) really deletes. Consequence, intended (fail-safe): '
+  'deleting an organization fails, because its ON DELETE CASCADE to these tables is suppressed and Postgres aborts '
+  'the cascade. Organizations are never deleted by the app; CRM data must not vanish with them.';
 
 DO $$ DECLARE t text; BEGIN
   FOREACH t IN ARRAY ARRAY['deals','companies','contacts','deal_activities','crm_appointments','company_items'] LOOP
@@ -115,6 +124,62 @@ DO $$ DECLARE t text; BEGIN
                     FOR EACH ROW EXECUTE FUNCTION public.crm_soft_delete()', t);
   END LOOP;
 END $$;
+
+-- 3b. Nothing new hangs off a trashed record --------------------------------------------------------
+-- A live child of a trashed deal/company would be invisible in the trash and would be taken along by the FK
+-- cascades of a purge. So: no insert of a live child under a trashed parent, no move of a live child onto a trashed
+-- parent, and no restore of a child while its parent is still trashed. Plain edits of existing rows are not checked.
+-- SECURITY DEFINER: the parent's trash state must be read regardless of the caller's RLS (which hides trashed rows).
+CREATE OR REPLACE FUNCTION public.crm_trash_parent_guard() RETURNS trigger
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_new jsonb := to_jsonb(NEW);
+  v_old jsonb;
+BEGIN
+  IF NEW.deleted_at IS NOT NULL THEN
+    RETURN NEW;                                   -- the row itself goes to (or stays in) the trash
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    v_old := to_jsonb(OLD);
+    IF OLD.deleted_at IS NULL
+       AND v_new -> 'deal_id' IS NOT DISTINCT FROM v_old -> 'deal_id'
+       AND v_new -> 'company_id' IS NOT DISTINCT FROM v_old -> 'company_id' THEN
+      RETURN NEW;                                 -- ordinary edit, parent unchanged
+    END IF;
+  END IF;
+  IF (v_new ? 'deal_id' AND EXISTS (SELECT 1 FROM public.deals
+        WHERE id = (v_new ->> 'deal_id')::uuid AND deleted_at IS NOT NULL))
+     OR (v_new ? 'company_id' AND EXISTS (SELECT 1 FROM public.companies
+        WHERE id = (v_new ->> 'company_id')::uuid AND deleted_at IS NOT NULL)) THEN
+    RAISE EXCEPTION 'Dit item staat in de prullenbak';
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.crm_trash_parent_guard() FROM PUBLIC, anon, authenticated;
+-- deal_activities.deal_id, crm_appointments.deal_id/company_id, company_items.company_id, deals.company_id
+DO $$ DECLARE t text; BEGIN
+  FOREACH t IN ARRAY ARRAY['deals','deal_activities','crm_appointments','company_items'] LOOP
+    EXECUTE format('CREATE TRIGGER crm_trash_parent_guard BEFORE INSERT OR UPDATE ON public.%I
+                    FOR EACH ROW EXECUTE FUNCTION public.crm_trash_parent_guard()', t);
+  END LOOP;
+END $$;
+
+-- 3c. A stage with deals cannot be deleted, trashed deals included ---------------------------------
+-- deals.stage_id is ON DELETE SET NULL; the app's guard counts deals through RLS, which hides trashed deals,
+-- so a stage delete would silently strip the stage from trashed deals.
+CREATE OR REPLACE FUNCTION public.pipeline_stages_delete_guard() RETURNS trigger
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.deals WHERE stage_id = OLD.id) THEN
+    RAISE EXCEPTION 'Deze fase heeft nog deals (ook in de prullenbak)';
+  END IF;
+  RETURN OLD;
+END $$;
+REVOKE ALL ON FUNCTION public.pipeline_stages_delete_guard() FROM PUBLIC, anon, authenticated;
+CREATE TRIGGER pipeline_stages_delete_guard BEFORE DELETE ON public.pipeline_stages
+  FOR EACH ROW EXECUTE FUNCTION public.pipeline_stages_delete_guard();
 
 -- 4. RLS: trashed rows are invisible and frozen for app users ---------------------------------------
 -- DELETE needs no deleted_at condition: Postgres also applies the SELECT policy, so a trashed row cannot be hit again.
@@ -245,8 +310,8 @@ BEGIN
   END IF;
   EXECUTE format('SELECT org_id, delete_batch, deleted_at FROM public.%I WHERE id = $1', p_entity)
     INTO v_org, v_batch, v_deleted USING p_record_id;
-  IF v_org IS NULL THEN RAISE EXCEPTION 'Niet gevonden in de prullenbak'; END IF;
-  IF v_uid IS NULL OR NOT public.is_org_admin(v_uid, v_org) THEN RAISE EXCEPTION 'Geen toegang'; END IF;
+  -- Same message for "does not exist" and "not your org": non-admins learn nothing about the record.
+  IF v_uid IS NULL OR v_org IS NULL OR NOT public.is_org_admin(v_uid, v_org) THEN RAISE EXCEPTION 'Geen toegang'; END IF;
   IF v_deleted IS NULL OR v_batch IS NULL THEN RAISE EXCEPTION 'Niet gevonden in de prullenbak'; END IF;
 
   -- Everything that disappears: the batch, plus whatever FK cascades take along with its deals/companies.
@@ -257,6 +322,15 @@ BEGIN
   v_appts     := ARRAY(SELECT id FROM public.crm_appointments WHERE delete_batch = v_batch OR deal_id = ANY (v_deals));
   v_items     := ARRAY(SELECT id FROM public.company_items WHERE delete_batch = v_batch OR company_id = ANY (v_companies));
   v_fees      := ARRAY(SELECT id FROM public.deal_fees WHERE deal_id = ANY (v_deals));
+
+  -- Never take live data along: every ON DELETE CASCADE child with a trash state (deal_activities and
+  -- crm_appointments via deal_id, company_items via company_id) must itself be in the trash. deal_fees and
+  -- deal_contacts have no trash state; they belong to the deal / the contact link and go with it.
+  IF EXISTS (SELECT 1 FROM public.deal_activities  WHERE deal_id = ANY (v_deals) AND deleted_at IS NULL)
+     OR EXISTS (SELECT 1 FROM public.crm_appointments WHERE deal_id = ANY (v_deals) AND deleted_at IS NULL)
+     OR EXISTS (SELECT 1 FROM public.company_items    WHERE company_id = ANY (v_companies) AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'Er hangen nog actieve gegevens aan dit item; zet die eerst in de prullenbak';
+  END IF;
 
   DELETE FROM public.deal_activities  WHERE delete_batch = v_batch; GET DIAGNOSTICS v_c = ROW_COUNT; v_n := v_n + v_c;
   DELETE FROM public.crm_appointments WHERE delete_batch = v_batch; GET DIAGNOSTICS v_c = ROW_COUNT; v_n := v_n + v_c;
@@ -272,7 +346,11 @@ BEGIN
      OR (entity = 'deal_activities'  AND record_id = ANY (v_acts))
      OR (entity = 'crm_appointments' AND record_id = ANY (v_appts))
      OR (entity = 'company_items'    AND record_id = ANY (v_items))
-     OR (entity = 'deal_fees'        AND record_id = ANY (v_fees));
+     OR (entity = 'deal_fees'        AND record_id = ANY (v_fees))
+     -- links of purged contacts to other deals (role is free text); update diffs hold contact_id as {from, to}
+     OR (entity = 'deal_contacts' AND (changes ->> 'contact_id' = ANY (v_contacts::text[])
+                                       OR changes -> 'contact_id' ->> 'from' = ANY (v_contacts::text[])
+                                       OR changes -> 'contact_id' ->> 'to'   = ANY (v_contacts::text[])));
 
   INSERT INTO public.crm_history (org_id, entity, record_id, action, changes, actor)
   VALUES (v_org, p_entity, p_record_id, 'purge', jsonb_build_object('purged', true, 'rows', v_n), v_uid);
@@ -526,6 +604,10 @@ DO $$ DECLARE r record; v_after jsonb; t text; BEGIN
   END LOOP;
   IF (SELECT count(*) FROM pg_trigger WHERE tgname = 'crm_soft_delete' AND tgfoid = 'public.crm_soft_delete()'::regprocedure) <> 6 THEN
     RAISE EXCEPTION 'Integriteitscontrole mislukt: prullenbak-trigger niet op alle 6 tabellen';
+  END IF;
+  IF (SELECT count(*) FROM pg_trigger WHERE tgname = 'crm_trash_parent_guard') <> 4
+     OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'pipeline_stages_delete_guard') THEN
+    RAISE EXCEPTION 'Integriteitscontrole mislukt: prullenbak-guards ontbreken';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND cmd = 'ALL'
              AND tablename IN ('deals','companies','contacts','deal_activities','crm_appointments','company_items'))

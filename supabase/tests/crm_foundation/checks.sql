@@ -929,6 +929,9 @@ BEGIN;
 DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
 SET LOCAL ROLE authenticated;
 UPDATE companies SET name = 'Bakkerij Jansen BV' WHERE id = '30000000-0000-0000-0000-0000000000a1';   -- older history with personal data
+-- the purged contact also hangs on a deal outside the batch, with a free-text role (insert + update history)
+INSERT INTO deal_contacts (deal_id, contact_id, role) VALUES ('40000000-0000-0000-0000-0000000000a5','31000000-0000-0000-0000-0000000000a1','Rol Geheim');
+UPDATE deal_contacts SET role = 'Rol Geheimer' WHERE deal_id = '40000000-0000-0000-0000-0000000000a5' AND contact_id = '31000000-0000-0000-0000-0000000000a1';
 DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1';
 DO $$ DECLARE ok boolean := false; BEGIN
   BEGIN PERFORM crm_purge('companies', '30000000-0000-0000-0000-0000000000a1'); EXCEPTION WHEN others THEN ok := true; END;
@@ -981,11 +984,15 @@ DO $$ DECLARE r record; BEGIN
              AND entity IN ('companies','deals','contacts')) THEN
     RAISE EXCEPTION 'check purge_admin_only: unscrubbed history of a purged record';
   END IF;
+  IF (SELECT count(*) FROM crm_history WHERE entity = 'deal_contacts' AND record_id = '40000000-0000-0000-0000-0000000000a5'
+      AND changes = '{"purged": true}'::jsonb) < 3 THEN   -- insert, update and the cascaded delete of the a5 link
+    RAISE EXCEPTION 'check purge_admin_only: deal_contacts link of the purged contact not scrubbed';
+  END IF;
   IF (SELECT count(*) FROM crm_history WHERE changes = '{"purged": true}'::jsonb) < 18 THEN   -- 9 soft deletes + 9 hard deletes, at least
     RAISE EXCEPTION 'check purge_admin_only: only % scrubbed rows', (SELECT count(*) FROM crm_history WHERE changes = '{"purged": true}'::jsonb);
   END IF;
   IF EXISTS (SELECT 1 FROM crm_history
-             WHERE changes::text ~ '(Bakkerij Jansen|Jan Jansen|Website Jansen|SEO Jansen|Eerste notitie|Gebeld|Naar Won|Belafspraak|Voorbereiding|Notitie)') THEN
+             WHERE changes::text ~ '(Bakkerij Jansen|Jan Jansen|Website Jansen|SEO Jansen|Eerste notitie|Gebeld|Naar Won|Belafspraak|Voorbereiding|Notitie|Rol Geheim)') THEN
     RAISE EXCEPTION 'check purge_admin_only: personal data left in history';
   END IF;
 END $$;
@@ -1018,6 +1025,117 @@ RESET ROLE;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM deal_activities WHERE body LIKE 'Uit sales-meeting%') THEN
     RAISE EXCEPTION 'check meeting_ignores_trash: note written on a trashed deal';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- trash_parent_guard: nothing live can be attached to a trashed deal/company (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a2';
+DO $$ DECLARE v_err text; BEGIN
+  v_err := NULL;
+  BEGIN
+    INSERT INTO deal_activities (org_id, deal_id, type, body)
+    VALUES ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a1','note','notitie op prullenbak-deal');
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Dit item staat in de prullenbak' THEN RAISE EXCEPTION 'check trash_parent_guard: note on trashed deal: %', v_err; END IF;
+  v_err := NULL;
+  BEGIN
+    INSERT INTO crm_appointments (org_id, deal_id, owner_id, type, title, starts_at)
+    VALUES ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000a2','call','x','2026-12-01T09:00:00Z');
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Dit item staat in de prullenbak' THEN RAISE EXCEPTION 'check trash_parent_guard: appointment on trashed deal: %', v_err; END IF;
+  v_err := NULL;
+  BEGIN
+    INSERT INTO company_items (org_id, company_id, item_type, title)
+    VALUES ('10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-0000000000a2','note','x');
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Dit item staat in de prullenbak' THEN RAISE EXCEPTION 'check trash_parent_guard: item on trashed company: %', v_err; END IF;
+  v_err := NULL;
+  BEGIN
+    UPDATE deals SET company_id = '30000000-0000-0000-0000-0000000000a2' WHERE id = '40000000-0000-0000-0000-0000000000a2';
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Dit item staat in de prullenbak' THEN RAISE EXCEPTION 'check trash_parent_guard: deal moved to trashed company: %', v_err; END IF;
+  -- ordinary edits of live rows still work
+  UPDATE deals SET title = 'SEO Jansen v2' WHERE id = '40000000-0000-0000-0000-0000000000a2';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check trash_parent_guard: ordinary edit blocked'; END IF;
+END $$;
+ROLLBACK;
+
+-- purge_live_child: a live child forced under a trashed deal blocks the purge; nothing is deleted (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+RESET ROLE;
+SET LOCAL session_replication_role = replica;   -- superuser bypasses the guard trigger to force the bad state
+INSERT INTO deal_activities (org_id, deal_id, type, body)
+VALUES ('10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-0000000000a1','note','levende notitie');
+SET LOCAL session_replication_role = origin;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE v_err text; BEGIN
+  BEGIN PERFORM crm_purge('deals', '40000000-0000-0000-0000-0000000000a1');
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Er hangen nog actieve gegevens aan dit item; zet die eerst in de prullenbak' THEN
+    RAISE EXCEPTION 'check purge_live_child: purge not refused: %', v_err;
+  END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1' AND deleted_at IS NOT NULL)
+     OR (SELECT count(*) FROM deal_activities WHERE deal_id = '40000000-0000-0000-0000-0000000000a1') IS DISTINCT FROM 3::bigint
+     OR (SELECT count(*) FROM crm_appointments WHERE deal_id = '40000000-0000-0000-0000-0000000000a1') IS DISTINCT FROM 1::bigint
+     OR EXISTS (SELECT 1 FROM crm_history WHERE action = 'purge' OR changes = '{"purged": true}'::jsonb) THEN
+    RAISE EXCEPTION 'check purge_live_child: something was deleted or scrubbed';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- purge_generic_error: a non-admin gets the same error for an unknown id as for a real trashed record (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+DO $$ DECLARE e1 text; e2 text; BEGIN
+  BEGIN PERFORM crm_purge('deals', gen_random_uuid()); EXCEPTION WHEN others THEN e1 := SQLERRM; END;
+  BEGIN PERFORM crm_purge('deals', '40000000-0000-0000-0000-0000000000a1'); EXCEPTION WHEN others THEN e2 := SQLERRM; END;
+  IF e1 IS NULL OR e1 IS DISTINCT FROM e2 THEN RAISE EXCEPTION 'check purge_generic_error: % / %', e1, e2; END IF;
+END $$;
+ROLLBACK;
+
+-- org_delete_fails: deleting an organization is refused (fail-safe), nothing changes (rolled back)
+DO $$ DECLARE ok boolean := false; BEGIN
+  BEGIN
+    DELETE FROM organizations WHERE id = '10000000-0000-0000-0000-00000000000c';
+  EXCEPTION WHEN others THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check org_delete_fails: organization delete succeeded'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM organizations WHERE id = '10000000-0000-0000-0000-00000000000c')
+     OR (SELECT count(*) FROM deals WHERE org_id = '10000000-0000-0000-0000-00000000000c') IS DISTINCT FROM 3::bigint
+     OR EXISTS (SELECT 1 FROM deals WHERE deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check org_delete_fails: data changed';
+  END IF;
+END $$;
+
+-- stage_delete_guard: a stage whose only deal is trashed cannot be deleted; a stage without deals can (rolled back)
+BEGIN;
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';   -- the only deal in Prospect, now trashed
+DO $$ DECLARE v_err text; BEGIN
+  BEGIN DELETE FROM pipeline_stages WHERE id = '20000000-0000-0000-0000-0000000000a1';
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Deze fase heeft nog deals (ook in de prullenbak)' THEN
+    RAISE EXCEPTION 'check stage_delete_guard: delete not refused: %', v_err;
+  END IF;
+  IF (SELECT stage_id FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1') IS DISTINCT FROM '20000000-0000-0000-0000-0000000000a1'::uuid THEN
+    RAISE EXCEPTION 'check stage_delete_guard: trashed deal lost its stage';
+  END IF;
+  DELETE FROM pipeline_stages WHERE id = '20000000-0000-0000-0000-0000000000c2';   -- Offerte: no deals
+  IF EXISTS (SELECT 1 FROM pipeline_stages WHERE id = '20000000-0000-0000-0000-0000000000c2') THEN
+    RAISE EXCEPTION 'check stage_delete_guard: empty stage not deleted';
   END IF;
 END $$;
 ROLLBACK;
