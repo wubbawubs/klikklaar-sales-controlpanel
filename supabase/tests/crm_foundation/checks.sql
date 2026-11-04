@@ -610,8 +610,9 @@ DO $$ DECLARE r record; BEGIN
     RAISE EXCEPTION 'check history_update: expected 1 row, got %', (SELECT count(*) FROM crm_history WHERE record_id = '40000000-0000-0000-0000-0000000000a1');
   END IF;
   SELECT * INTO r FROM crm_history WHERE record_id = '40000000-0000-0000-0000-0000000000a1';
-  IF r.entity <> 'deals' OR r.action <> 'update' OR r.org_id <> '10000000-0000-0000-0000-00000000000a'
-     OR r.changes <> '{"title": {"from": "Website Jansen", "to": "Website Jansen v2"}}'::jsonb
+  IF NOT FOUND THEN RAISE EXCEPTION 'check history_update: no row captured'; END IF;
+  IF r.entity IS DISTINCT FROM 'deals' OR r.action IS DISTINCT FROM 'update' OR r.org_id IS DISTINCT FROM '10000000-0000-0000-0000-00000000000a'::uuid
+     OR r.changes IS DISTINCT FROM '{"title": {"from": "Website Jansen", "to": "Website Jansen v2"}}'::jsonb
      OR r.actor IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid OR r.at IS NULL THEN
     RAISE EXCEPTION 'check history_update: wrong row %', to_jsonb(r);
   END IF;
@@ -667,7 +668,7 @@ DO $$ BEGIN
   IF (SELECT count(*) FROM crm_history WHERE org_id = '10000000-0000-0000-0000-00000000000c') <> 1 THEN
     RAISE EXCEPTION 'check history_rls: org C row not written';
   END IF;
-  IF (SELECT actor FROM crm_history WHERE org_id = '10000000-0000-0000-0000-00000000000c') IS NOT NULL THEN
+  IF EXISTS (SELECT 1 FROM crm_history WHERE org_id = '10000000-0000-0000-0000-00000000000c' AND actor IS NOT NULL) THEN
     RAISE EXCEPTION 'check history_rls: actor must be null without a logged-in user';
   END IF;
 END $$;
@@ -684,21 +685,28 @@ DO $$ DECLARE v_id uuid; v_fee uuid; r record; BEGIN
   BEGIN
     INSERT INTO companies (org_id, name) VALUES ('10000000-0000-0000-0000-00000000000a','Nieuw BV') RETURNING id INTO v_id;
     SELECT * INTO r FROM crm_history WHERE entity = 'companies' AND record_id = v_id;
-    IF r.action <> 'insert' OR r.changes->>'name' <> 'Nieuw BV' OR r.changes->>'org_id' <> '10000000-0000-0000-0000-00000000000a'
-       OR NOT r.changes ? 'updated_at' THEN
+    IF NOT FOUND THEN RAISE EXCEPTION 'check history_capture: insert not captured'; END IF;
+    IF r.action IS DISTINCT FROM 'insert' OR r.changes->>'name' IS DISTINCT FROM 'Nieuw BV'
+       OR r.changes->>'org_id' IS DISTINCT FROM '10000000-0000-0000-0000-00000000000a'
+       OR NOT coalesce(r.changes ? 'updated_at', false) THEN
       RAISE EXCEPTION 'check history_capture: insert row %', to_jsonb(r);
     END IF;
+    -- a hard delete (since the trash migration only possible during a purge) keeps the full row
+    PERFORM set_config('crm.purge', 'on', true);
     DELETE FROM companies WHERE id = v_id;
+    PERFORM set_config('crm.purge', 'off', true);
+    IF EXISTS (SELECT 1 FROM companies WHERE id = v_id) THEN RAISE EXCEPTION 'check history_capture: purge delete kept the row'; END IF;
     SELECT * INTO r FROM crm_history WHERE entity = 'companies' AND record_id = v_id AND action = 'delete';
-    IF r.changes->>'name' <> 'Nieuw BV' THEN RAISE EXCEPTION 'check history_capture: delete row %', to_jsonb(r); END IF;
+    IF NOT FOUND THEN RAISE EXCEPTION 'check history_capture: delete not captured'; END IF;
+    IF r.changes->>'name' IS DISTINCT FROM 'Nieuw BV' THEN RAISE EXCEPTION 'check history_capture: delete row %', to_jsonb(r); END IF;
     -- app save path: delete + re-insert fees
     SELECT id INTO v_fee FROM deal_fees WHERE label = 'Opstart';
+    IF NOT FOUND THEN RAISE EXCEPTION 'check history_capture: fixture fee missing'; END IF;
     DELETE FROM deal_fees WHERE deal_id = '40000000-0000-0000-0000-0000000000a5';
     INSERT INTO deal_fees (deal_id, org_id, amount, kind, interval, label, position) VALUES
       ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a',150,'one_time',NULL,'Opstart',0);
     IF (SELECT count(*) FROM crm_history WHERE entity = 'deal_fees' AND action = 'delete') <> 2
-       OR (SELECT changes->>'amount' FROM crm_history WHERE entity = 'deal_fees' AND record_id = v_fee) <> '100.00'
-          AND (SELECT changes->>'amount' FROM crm_history WHERE entity = 'deal_fees' AND record_id = v_fee) <> '100'
+       OR coalesce((SELECT changes->>'amount' FROM crm_history WHERE entity = 'deal_fees' AND record_id = v_fee), '') NOT IN ('100.00','100')
        OR (SELECT count(*) FROM crm_history WHERE entity = 'deal_fees' AND action = 'insert'
            AND changes->>'deal_id' = '40000000-0000-0000-0000-0000000000a5') <> 1 THEN
       RAISE EXCEPTION 'check history_capture: deal_fees churn not recorded';
@@ -707,8 +715,9 @@ DO $$ DECLARE v_id uuid; v_fee uuid; r record; BEGIN
     INSERT INTO deal_contacts (deal_id, contact_id, role) VALUES ('40000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a3','Gebruiker');
     UPDATE deal_contacts SET role = 'Beslisser' WHERE deal_id = '40000000-0000-0000-0000-0000000000a1' AND contact_id = '31000000-0000-0000-0000-0000000000a3';
     SELECT * INTO r FROM crm_history WHERE entity = 'deal_contacts' AND action = 'update';
-    IF r.record_id <> '40000000-0000-0000-0000-0000000000a1'
-       OR r.changes <> '{"role": {"from": "Gebruiker", "to": "Beslisser"}, "contact_id": {"from": "31000000-0000-0000-0000-0000000000a3", "to": "31000000-0000-0000-0000-0000000000a3"}}'::jsonb THEN
+    IF NOT FOUND THEN RAISE EXCEPTION 'check history_capture: deal_contacts update not captured'; END IF;
+    IF r.record_id IS DISTINCT FROM '40000000-0000-0000-0000-0000000000a1'::uuid
+       OR r.changes IS DISTINCT FROM '{"role": {"from": "Gebruiker", "to": "Beslisser"}, "contact_id": {"from": "31000000-0000-0000-0000-0000000000a3", "to": "31000000-0000-0000-0000-0000000000a3"}}'::jsonb THEN
       RAISE EXCEPTION 'check history_capture: deal_contacts update %', to_jsonb(r);
     END IF;
     -- every listed table carries the trigger
@@ -737,7 +746,7 @@ DO $$ DECLARE v_id uuid := gen_random_uuid(); BEGIN
     UPDATE public._hist_probe SET deleted_at = now() WHERE id = v_id;
     UPDATE public._hist_probe SET deleted_at = NULL WHERE id = v_id;
     UPDATE public._hist_probe SET name = 'y' WHERE id = v_id;
-    IF (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history WHERE record_id = v_id) <> 'insert,delete,restore,update' THEN
+    IF (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history WHERE record_id = v_id) IS DISTINCT FROM 'insert,delete,restore,update' THEN
       RAISE EXCEPTION 'check history_soft_delete: got %', (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history WHERE record_id = v_id);
     END IF;
     RAISE EXCEPTION 'rollback_sentinel';
@@ -746,6 +755,279 @@ DO $$ DECLARE v_id uuid := gen_random_uuid(); BEGIN
   END;
   IF to_regclass('public._hist_probe') IS NOT NULL OR EXISTS (SELECT 1 FROM crm_history) THEN
     RAISE EXCEPTION 'check history_soft_delete: probe not rolled back';
+  END IF;
+END $$;
+
+-- ===== Task 6: trash (soft delete, batch restore, admin purge) =====
+-- Ids: deal a1 = 40..a1 (2 activities, 1 appointment), company Bakkerij Jansen = 30..a1 (deals a1+a2, contact 31..a1,
+-- 1 company_item, appointment of a1), member u_member = 00..a2, super admin u_admin = 00..a1.
+
+-- delete_is_soft / hidden_from_select / deal batch restore (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+RESET ROLE;
+DO $$ DECLARE d record; r record; BEGIN
+  SELECT * INTO d FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check delete_is_soft: deal row is gone (hard delete)'; END IF;
+  IF d.deleted_at IS NULL OR d.delete_batch IS NULL OR d.deleted_by IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid THEN
+    RAISE EXCEPTION 'check delete_is_soft: deleted_at/by/batch not set: %', to_jsonb(d);
+  END IF;
+  IF (SELECT count(*) FROM deal_activities WHERE deal_id = d.id AND delete_batch = d.delete_batch AND deleted_at IS NOT NULL) IS DISTINCT FROM 2::bigint
+     OR (SELECT count(*) FROM crm_appointments WHERE deal_id = d.id AND delete_batch = d.delete_batch AND deleted_at IS NOT NULL) IS DISTINCT FROM 1::bigint THEN
+    RAISE EXCEPTION 'check delete_is_soft: activities/appointments not in the deal''s batch';
+  END IF;
+  IF (SELECT count(*) FROM deal_fees) IS DISTINCT FROM 2::bigint
+     OR (SELECT count(*) FROM deals WHERE deleted_at IS NOT NULL) IS DISTINCT FROM 1::bigint
+     OR (SELECT count(*) FROM companies WHERE deleted_at IS NOT NULL) IS DISTINCT FROM 0::bigint THEN
+    RAISE EXCEPTION 'check delete_is_soft: other rows touched';
+  END IF;
+  SELECT * INTO r FROM crm_history WHERE entity = 'deals' AND record_id = d.id AND action = 'delete';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check delete_is_soft: no delete history row'; END IF;
+  IF NOT coalesce(r.changes ? 'deleted_at', false) OR r.actor IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid THEN
+    RAISE EXCEPTION 'check delete_is_soft: history row %', to_jsonb(r);
+  END IF;
+  IF (SELECT count(*) FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid JOIN pg_class c ON c.oid = t.tgrelid
+      WHERE p.proname = 'crm_soft_delete' AND NOT t.tgisinternal
+        AND c.relname IN ('deals','companies','contacts','deal_activities','crm_appointments','company_items')) IS DISTINCT FROM 6::bigint
+     OR EXISTS (SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid JOIN pg_class c ON c.oid = t.tgrelid
+      WHERE p.proname = 'crm_soft_delete' AND c.relname IN ('deal_fees','deal_contacts')) THEN
+    RAISE EXCEPTION 'check delete_is_soft: soft-delete trigger not on exactly the six tables';
+  END IF;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE ok boolean := false; n int; r record; BEGIN
+  IF EXISTS (SELECT 1 FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1')
+     OR (SELECT count(*) FROM deals) IS DISTINCT FROM 4::bigint
+     OR EXISTS (SELECT 1 FROM deal_activities WHERE deal_id = '40000000-0000-0000-0000-0000000000a1')
+     OR EXISTS (SELECT 1 FROM crm_appointments WHERE deal_id = '40000000-0000-0000-0000-0000000000a1') THEN
+    RAISE EXCEPTION 'check hidden_from_select: trashed deal or its children still visible';
+  END IF;
+  UPDATE deals SET title = 'x' WHERE id = '40000000-0000-0000-0000-0000000000a1';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN RAISE EXCEPTION 'check hidden_from_select: member updated a trashed deal'; END IF;
+  BEGIN
+    UPDATE deals SET deleted_at = now() WHERE id = '40000000-0000-0000-0000-0000000000a3';
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check hidden_from_select: member could trash a deal by UPDATE (no batch)'; END IF;
+  -- trash list: one batch head (the deal), batch of 4
+  IF (SELECT count(*) FROM crm_trash_list('10000000-0000-0000-0000-00000000000a')) IS DISTINCT FROM 1::bigint THEN
+    RAISE EXCEPTION 'check trash_list: expected 1 head, got %', (SELECT count(*) FROM crm_trash_list('10000000-0000-0000-0000-00000000000a'));
+  END IF;
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a');
+  IF NOT FOUND THEN RAISE EXCEPTION 'check trash_list: empty'; END IF;
+  IF r.entity IS DISTINCT FROM 'deals' OR r.record_id IS DISTINCT FROM '40000000-0000-0000-0000-0000000000a1'::uuid
+     OR r.label IS DISTINCT FROM 'Website Jansen' OR r.batch_size IS DISTINCT FROM 4
+     OR r.deleted_by IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid OR r.deleted_at IS NULL THEN
+    RAISE EXCEPTION 'check trash_list: row %', to_jsonb(r);
+  END IF;
+  n := crm_restore(r.delete_batch);
+  IF n IS DISTINCT FROM 4 THEN RAISE EXCEPTION 'check deal_restore: restored % rows, expected 4', n; END IF;
+  n := crm_restore(r.delete_batch);
+  IF n IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'check deal_restore: second restore returned %', n; END IF;
+  IF (SELECT count(*) FROM deals) IS DISTINCT FROM 5::bigint OR (SELECT count(*) FROM deal_activities) IS DISTINCT FROM 4::bigint
+     OR (SELECT count(*) FROM crm_appointments) IS DISTINCT FROM 2::bigint
+     OR EXISTS (SELECT 1 FROM crm_trash_list('10000000-0000-0000-0000-00000000000a')) THEN
+    RAISE EXCEPTION 'check deal_restore: not everything back';
+  END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history WHERE entity = 'deals' AND record_id = '40000000-0000-0000-0000-0000000000a1')
+     IS DISTINCT FROM 'delete,restore' THEN
+    RAISE EXCEPTION 'check deal_restore: history %', (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history
+      WHERE entity = 'deals' AND record_id = '40000000-0000-0000-0000-0000000000a1');
+  END IF;
+  IF EXISTS (SELECT 1 FROM deals WHERE deleted_at IS NOT NULL OR delete_batch IS NOT NULL OR deleted_by IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM deal_activities WHERE deleted_at IS NOT NULL OR delete_batch IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM crm_appointments WHERE deleted_at IS NOT NULL OR delete_batch IS NOT NULL) THEN
+    RAISE EXCEPTION 'check deal_restore: trash columns not cleared';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- company_batch: a company takes its deals (+ children), contacts, items and appointments into one batch;
+-- an activity trashed earlier keeps its own batch and is not restored with the company (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM deal_activities WHERE body = 'Gebeld';
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1';
+RESET ROLE;
+DO $$ DECLARE v_b uuid; BEGIN
+  SELECT delete_batch INTO v_b FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1' AND deleted_at IS NOT NULL;
+  IF NOT FOUND OR v_b IS NULL THEN RAISE EXCEPTION 'check company_batch: company not soft-deleted'; END IF;
+  IF (SELECT count(*) FROM deals WHERE delete_batch = v_b) IS DISTINCT FROM 2::bigint
+     OR (SELECT count(*) FROM deal_activities WHERE delete_batch = v_b) IS DISTINCT FROM 2::bigint
+     OR (SELECT count(*) FROM crm_appointments WHERE delete_batch = v_b) IS DISTINCT FROM 1::bigint
+     OR (SELECT count(*) FROM contacts WHERE delete_batch = v_b) IS DISTINCT FROM 1::bigint
+     OR (SELECT count(*) FROM company_items WHERE delete_batch = v_b) IS DISTINCT FROM 1::bigint THEN
+    RAISE EXCEPTION 'check company_batch: batch incomplete';
+  END IF;
+  IF (SELECT delete_batch FROM deal_activities WHERE body = 'Gebeld') IS NULL
+     OR (SELECT delete_batch FROM deal_activities WHERE body = 'Gebeld') = v_b THEN
+    RAISE EXCEPTION 'check company_batch: earlier trashed activity was re-batched';
+  END IF;
+  IF EXISTS (SELECT 1 FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3' AND deleted_at IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a2' AND deleted_at IS NOT NULL)
+     OR (SELECT count(*) FROM deals WHERE deleted_at IS NOT NULL) IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check company_batch: rows outside the company trashed';
+  END IF;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r record; v_act uuid; n int; BEGIN
+  IF (SELECT count(*) FROM deals) IS DISTINCT FROM 3::bigint OR (SELECT count(*) FROM contacts) IS DISTINCT FROM 2::bigint
+     OR EXISTS (SELECT 1 FROM company_items) OR (SELECT count(*) FROM companies) IS DISTINCT FROM 1::bigint THEN
+    RAISE EXCEPTION 'check company_batch: trashed rows still visible';
+  END IF;
+  IF (SELECT string_agg(entity || ':' || label || ':' || batch_size, ',' ORDER BY entity)
+      FROM crm_trash_list('10000000-0000-0000-0000-00000000000a')) IS DISTINCT FROM 'companies:Bakkerij Jansen:8,deal_activities:Gebeld:1' THEN
+    RAISE EXCEPTION 'check company_batch: trash list %', (SELECT string_agg(entity || ':' || label || ':' || batch_size, ',' ORDER BY entity)
+      FROM crm_trash_list('10000000-0000-0000-0000-00000000000a'));
+  END IF;
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'companies';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check company_batch: company head missing'; END IF;
+  SELECT delete_batch INTO v_act FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'deal_activities';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check company_batch: activity head missing'; END IF;
+  n := crm_restore(r.delete_batch);
+  IF n IS DISTINCT FROM 8 THEN RAISE EXCEPTION 'check company_batch: restore returned %, expected 8', n; END IF;
+  IF (SELECT count(*) FROM deals) IS DISTINCT FROM 5::bigint OR (SELECT count(*) FROM contacts) IS DISTINCT FROM 3::bigint
+     OR (SELECT count(*) FROM company_items) IS DISTINCT FROM 1::bigint OR (SELECT count(*) FROM companies) IS DISTINCT FROM 2::bigint
+     OR (SELECT count(*) FROM crm_appointments) IS DISTINCT FROM 2::bigint OR (SELECT count(*) FROM deal_activities) IS DISTINCT FROM 3::bigint THEN
+    RAISE EXCEPTION 'check company_batch: not everything back after restore';
+  END IF;
+  IF crm_restore(r.delete_batch) IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'check company_batch: restore not idempotent'; END IF;
+  n := crm_restore(v_act);   -- separate statement: a query sees the restore's changes only in the next statement
+  IF n IS DISTINCT FROM 1 OR (SELECT count(*) FROM deal_activities) IS DISTINCT FROM 4::bigint THEN
+    RAISE EXCEPTION 'check company_batch: separate activity batch restore failed';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- counts_after_soft_delete: crm_integrity_counts counts trashed rows too (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('crm.test_counts', crm_integrity_counts('10000000-0000-0000-0000-00000000000a')::text, true); END $$;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1';
+DELETE FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3';
+RESET ROLE;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM companies WHERE deleted_at IS NOT NULL) IS DISTINCT FROM 1::bigint THEN
+    RAISE EXCEPTION 'check counts_after_soft_delete: nothing was soft-deleted';
+  END IF;
+  IF crm_integrity_counts('10000000-0000-0000-0000-00000000000a') IS DISTINCT FROM current_setting('crm.test_counts')::jsonb THEN
+    RAISE EXCEPTION 'check counts_after_soft_delete: % vs %', crm_integrity_counts('10000000-0000-0000-0000-00000000000a'), current_setting('crm.test_counts');
+  END IF;
+END $$;
+ROLLBACK;
+
+-- purge_admin_only: a member cannot purge; the admin's purge removes the whole batch and scrubs its history (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+UPDATE companies SET name = 'Bakkerij Jansen BV' WHERE id = '30000000-0000-0000-0000-0000000000a1';   -- older history with personal data
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1';
+DO $$ DECLARE ok boolean := false; BEGIN
+  BEGIN PERFORM crm_purge('companies', '30000000-0000-0000-0000-0000000000a1'); EXCEPTION WHEN others THEN ok := true; END;
+  IF NOT ok THEN RAISE EXCEPTION 'check purge_admin_only: member could purge'; END IF;
+  ok := false;
+  BEGIN PERFORM crm_trash_list('10000000-0000-0000-0000-00000000000c'); EXCEPTION WHEN others THEN ok := true; END;
+  IF NOT ok THEN RAISE EXCEPTION 'check purge_admin_only: member listed another org''s trash'; END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE ok boolean := false; n int; BEGIN
+  BEGIN PERFORM crm_purge('pipeline_stages', '20000000-0000-0000-0000-0000000000a1'); EXCEPTION WHEN others THEN ok := true; END;
+  IF NOT ok THEN RAISE EXCEPTION 'check purge_admin_only: unknown entity accepted'; END IF;
+  ok := false;
+  BEGIN PERFORM crm_purge('deals', '40000000-0000-0000-0000-0000000000a3'); EXCEPTION WHEN others THEN ok := true; END;
+  IF NOT ok THEN RAISE EXCEPTION 'check purge_admin_only: purged a record that is not in the trash'; END IF;
+  n := crm_purge('companies', '30000000-0000-0000-0000-0000000000a1');
+  IF n IS DISTINCT FROM 9 THEN RAISE EXCEPTION 'check purge_admin_only: purged % rows, expected 9', n; END IF;
+END $$;
+RESET ROLE;
+DO $$ DECLARE r record; BEGIN
+  IF EXISTS (SELECT 1 FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a1')
+     OR EXISTS (SELECT 1 FROM deals WHERE id IN ('40000000-0000-0000-0000-0000000000a1','40000000-0000-0000-0000-0000000000a2'))
+     OR EXISTS (SELECT 1 FROM deal_activities WHERE deal_id IN ('40000000-0000-0000-0000-0000000000a1','40000000-0000-0000-0000-0000000000a2'))
+     OR EXISTS (SELECT 1 FROM crm_appointments WHERE deal_id = '40000000-0000-0000-0000-0000000000a1')
+     OR EXISTS (SELECT 1 FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a1')
+     OR EXISTS (SELECT 1 FROM company_items) THEN
+    RAISE EXCEPTION 'check purge_admin_only: purged rows still exist';
+  END IF;
+  IF (SELECT count(*) FROM deals) IS DISTINCT FROM 6::bigint OR (SELECT count(*) FROM companies) IS DISTINCT FROM 1::bigint
+     OR (SELECT count(*) FROM deal_fees) IS DISTINCT FROM 2::bigint OR (SELECT count(*) FROM contacts) IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check purge_admin_only: rows outside the batch removed';
+  END IF;
+  IF (SELECT count(*) FROM crm_history WHERE action = 'purge') IS DISTINCT FROM 1::bigint THEN
+    RAISE EXCEPTION 'check purge_admin_only: expected exactly one purge row';
+  END IF;
+  SELECT * INTO r FROM crm_history WHERE action = 'purge';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check purge_admin_only: purge row missing'; END IF;
+  IF r.entity IS DISTINCT FROM 'companies' OR r.record_id IS DISTINCT FROM '30000000-0000-0000-0000-0000000000a1'::uuid
+     OR r.org_id IS DISTINCT FROM '10000000-0000-0000-0000-00000000000a'::uuid
+     OR r.actor IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a1'::uuid
+     OR r.changes IS DISTINCT FROM '{"purged": true, "rows": 9}'::jsonb THEN
+    RAISE EXCEPTION 'check purge_admin_only: purge row %', to_jsonb(r);
+  END IF;
+  -- every history row of a purged record is scrubbed (the company's update + soft delete, and the purge's own deletes)
+  IF EXISTS (SELECT 1 FROM crm_history WHERE action <> 'purge' AND changes IS DISTINCT FROM '{"purged": true}'::jsonb
+             AND record_id IN ('30000000-0000-0000-0000-0000000000a1','40000000-0000-0000-0000-0000000000a1',
+                               '40000000-0000-0000-0000-0000000000a2','31000000-0000-0000-0000-0000000000a1')
+             AND entity IN ('companies','deals','contacts')) THEN
+    RAISE EXCEPTION 'check purge_admin_only: unscrubbed history of a purged record';
+  END IF;
+  IF (SELECT count(*) FROM crm_history WHERE changes = '{"purged": true}'::jsonb) < 18 THEN   -- 9 soft deletes + 9 hard deletes, at least
+    RAISE EXCEPTION 'check purge_admin_only: only % scrubbed rows', (SELECT count(*) FROM crm_history WHERE changes = '{"purged": true}'::jsonb);
+  END IF;
+  IF EXISTS (SELECT 1 FROM crm_history
+             WHERE changes::text ~ '(Bakkerij Jansen|Jan Jansen|Website Jansen|SEO Jansen|Eerste notitie|Gebeld|Naar Won|Belafspraak|Voorbereiding|Notitie)') THEN
+    RAISE EXCEPTION 'check purge_admin_only: personal data left in history';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- meeting_ignores_trash: the RPC (definer, bypasses RLS) treats a trashed deal, or a deal of a trashed company, as not found
+BEGIN;
+INSERT INTO meeting_imports (id, org_id, meeting_date, transcript, status) VALUES
+  ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','2026-11-03','x','ready');
+INSERT INTO meeting_proposals (id, org_id, import_id, position, kind, company_label, deal_id, payload, quote) VALUES
+  ('60000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','50000000-0000-0000-0000-0000000000a1',0,'note','Jansen',
+   '40000000-0000-0000-0000-0000000000a1','{"body":"x"}','x'),
+  ('60000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','50000000-0000-0000-0000-0000000000a1',1,'note','De Hoek',
+   '40000000-0000-0000-0000-0000000000a4','{"body":"x"}','x');
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+UPDATE companies SET deleted_at = now() WHERE id = '30000000-0000-0000-0000-0000000000a2';   -- company alone in the trash
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb; BEGIN
+  r := apply_meeting_proposal('60000000-0000-0000-0000-0000000000a1', jsonb_build_object('deal_id','40000000-0000-0000-0000-0000000000a1','payload','{"body":"x"}'::jsonb));
+  IF coalesce((r->>'ok')::boolean, true) OR r->>'error' IS DISTINCT FROM 'Deal niet gevonden' THEN
+    RAISE EXCEPTION 'check meeting_ignores_trash: trashed deal: %', r;
+  END IF;
+  r := apply_meeting_proposal('60000000-0000-0000-0000-0000000000a2', jsonb_build_object('deal_id','40000000-0000-0000-0000-0000000000a4','payload','{"body":"x"}'::jsonb));
+  IF coalesce((r->>'ok')::boolean, true) OR r->>'error' IS DISTINCT FROM 'Deal niet gevonden' THEN
+    RAISE EXCEPTION 'check meeting_ignores_trash: deal of trashed company: %', r;
+  END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM deal_activities WHERE body LIKE 'Uit sales-meeting%') THEN
+    RAISE EXCEPTION 'check meeting_ignores_trash: note written on a trashed deal';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- trash checks left the fixtures as they were
+DO $$ BEGIN
+  IF (SELECT count(*) FROM deals) <> 8 OR EXISTS (SELECT 1 FROM crm_history) OR EXISTS (SELECT 1 FROM meeting_proposals)
+     OR EXISTS (SELECT 1 FROM deals WHERE deleted_at IS NOT NULL) OR EXISTS (SELECT 1 FROM companies WHERE deleted_at IS NOT NULL)
+     OR (SELECT count(*) FROM deal_activities) <> 4 OR (SELECT count(*) FROM contacts) <> 3 THEN
+    RAISE EXCEPTION 'check trash: fixtures changed';
   END IF;
 END $$;
 

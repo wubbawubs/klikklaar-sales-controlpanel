@@ -12,7 +12,8 @@ GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
 CREATE TABLE public.organizations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text);
 CREATE TABLE public.user_organizations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, organization_id uuid NOT NULL REFERENCES organizations(id), role text NOT NULL DEFAULT 'member');
 CREATE TABLE public.profiles (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid UNIQUE, full_name text, email text);
-CREATE TABLE public.companies (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL REFERENCES organizations(id), name text NOT NULL, source text, created_by uuid);
+CREATE TABLE public.companies (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL REFERENCES organizations(id), name text NOT NULL, source text, created_by uuid,
+  deleted_at timestamptz);   -- trash column from 20261104000005
 CREATE TABLE public.contacts (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id uuid NOT NULL, company_id uuid REFERENCES companies(id), name text NOT NULL);
 CREATE TABLE public.user_roles (user_id uuid NOT NULL, role text NOT NULL);
 CREATE FUNCTION public.is_admin(_user_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
@@ -37,7 +38,8 @@ CREATE TABLE public.deals (
   funnel_id uuid NOT NULL REFERENCES funnels(id),
   title text NOT NULL, value_eur numeric(12,2), assigned_to uuid REFERENCES auth.users(id),
   stage_updated_at timestamptz DEFAULT now(), won_at timestamptz, lost_at timestamptz, lost_reason text,
-  created_by uuid, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+  created_by uuid, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(),
+  deleted_at timestamptz);   -- trash column from 20261104000005
 -- Like 20261104000001's deals_funnel_default: a new deal takes the funnel of its stage.
 CREATE FUNCTION public.deals_funnel_default() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
