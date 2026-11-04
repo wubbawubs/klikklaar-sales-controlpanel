@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { KIND_LABEL, CONFIRM_CLOSED, describeProposal, filterCompanies, proposalBlockers, stageKind, type ProposalPayload } from '@/lib/meetingProposals';
 import type { MeetingProposal, ProposalDraft } from '@/hooks/useMeetings';
+import type { StageType } from '@/lib/crmTypes';
 
 export interface CardDeal { id: string; title: string; company_id: string | null; stage_id: string | null; value_eur: number | null; assigned_to: string | null }
-export interface CardStage { id: string; name: string; position: number; color: string }
+export interface CardStage { id: string; name: string; position: number; color: string; stage_type: StageType }
 export interface CardMember { user_id: string; full_name: string | null; email: string | null }
 
 interface Props {
@@ -75,13 +76,15 @@ export function ProposalCard({ proposal, draft, onDraftChange, onApply, onDismis
   const [editingCompany, setEditingCompany] = useState(false);
   const pl = draft.payload;
   const setPayload = (patch: Partial<ProposalPayload>) => onDraftChange({ ...draft, payload: { ...pl, ...patch } });
-  const stageName = (id: string) => stages.find(s => s.id === id)?.name ?? null;
+  const stageOf = (id: string | null | undefined) => (id ? stages.find(s => s.id === id) : undefined);
+  const stageName = (id: string) => stageOf(id)?.name ?? null;
   const userName = (id: string) => { const m = team.find(t => t.user_id === id); return m ? memberName(m) : null; };
 
   const deal = draft.deal_id ? deals.find(d => d.id === draft.deal_id) : undefined;
-  const dealStageName = deal?.stage_id ? stageName(deal.stage_id) : null;
+  const dealStage = stageOf(deal?.stage_id);
+  const dealStageName = dealStage?.name ?? null;
   const blockers = proposalBlockers({ kind: proposal.kind, company_id: draft.company_id, deal_id: draft.deal_id, payload: pl },
-    { dealStageName, confirmClosed: draft.confirm_closed });
+    { dealStage, confirmClosed: draft.confirm_closed });
   const companyDeals = draft.company_id ? deals.filter(d => d.company_id === draft.company_id) : [];
   const isNew = proposal.kind === 'new_deal';
   const done = proposal.status === 'applied';
@@ -141,7 +144,7 @@ export function ProposalCard({ proposal, draft, onDraftChange, onApply, onDismis
           {(!draft.company_id || editingCompany) ? (
             <CompanyPicker value={draft.company_id} candidates={proposal.candidates} companies={companies}
               onChange={id => {
-                const open = deals.filter(d => d.company_id === id && !stageKind(d.stage_id ? stageName(d.stage_id) : null));
+                const open = deals.filter(d => d.company_id === id && !stageKind(stageOf(d.stage_id)));
                 onDraftChange({ ...draft, company_id: id, deal_id: open.length === 1 ? open[0].id : null, confirm_closed: false });
                 setEditingCompany(false);
               }} />
@@ -201,7 +204,7 @@ export function ProposalCard({ proposal, draft, onDraftChange, onApply, onDismis
         )}
       </div>
 
-      {deal && stageKind(dealStageName) && ['stage', 'won', 'lost'].includes(proposal.kind) && (
+      {deal && stageKind(dealStage) && ['stage', 'won', 'lost'].includes(proposal.kind) && (
         <label className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
           <Checkbox checked={draft.confirm_closed} onCheckedChange={v => onDraftChange({ ...draft, confirm_closed: v === true })} />
           Bevestig: deze deal staat al op {dealStageName}

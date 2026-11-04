@@ -16,6 +16,8 @@ import {
 } from '@/hooks/usePipeline';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { isClosedStage, isWonStage } from '@/lib/stages';
 
 function BillingTypesTab() {
   const { data: types = [] } = useBillingTypes();
@@ -93,7 +95,9 @@ function StagesTab() {
   const add = () => {
     if (!newName.trim()) return;
     const pos = (stages[stages.length - 1]?.position ?? 0) + 1;
-    createStage.mutate({ name: newName.trim(), color: newColor, position: pos }, {
+    // The current funnel is the one the listed stages belong to (the database picks it when there are none).
+    const funnelId = stages[0]?.funnel_id ?? null;
+    createStage.mutate({ name: newName.trim(), color: newColor, position: pos, funnelId }, {
       onSuccess: () => { setNewName(''); },
     });
   };
@@ -127,7 +131,20 @@ function StagesTab() {
               <button onClick={() => move(idx, -1)} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronUp className="h-3.5 w-3.5" /></button>
               <button onClick={() => move(idx, 1)} disabled={idx === stages.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronDown className="h-3.5 w-3.5" /></button>
             </div>
-            <button onClick={() => deleteStage.mutate(s.id)} className="text-muted-foreground/50 hover:text-destructive shrink-0"><Trash2 className="h-4 w-4" /></button>
+            {isClosedStage(s) ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* span: a disabled button fires no hover events */}
+                  <span className="shrink-0 flex items-center gap-1">
+                    <Badge variant="secondary" className="text-[10px]">{isWonStage(s) ? 'Gewonnen' : 'Verloren'}</Badge>
+                    <button disabled aria-label="Verwijderen niet mogelijk" className="text-muted-foreground/30 cursor-not-allowed"><Trash2 className="h-4 w-4" /></button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Gewonnen en Verloren blijven altijd bestaan</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button onClick={() => deleteStage.mutate(s.id)} aria-label="Stage verwijderen" className="text-muted-foreground/50 hover:text-destructive shrink-0"><Trash2 className="h-4 w-4" /></button>
+            )}
           </div>
         ))}
         {stages.length === 0 && <p className="text-xs text-muted-foreground py-2">Nog geen stages. Voeg de eerste toe.</p>}

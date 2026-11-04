@@ -41,16 +41,10 @@ export interface Snapshot {
   idOf: Record<RefKind, Record<string, string>>;
 }
 
-// Accepts a stage (stage_type wins) or a bare name (legacy name rule, used when stage_type is absent).
-export function stageKind(stage: { name?: string | null; stage_type?: StageType | null } | string | null | undefined): 'won' | 'lost' | null {
-  const st: { name?: string | null; stage_type?: StageType | null } =
-    stage != null && typeof stage !== 'string' ? stage : { name: stage as string | null | undefined };
-  if (st.stage_type === 'won' || st.stage_type === 'lost') return st.stage_type;
-  if (st.stage_type === 'open') return null;
-  const n = (st.name ?? '').trim().toLowerCase();
-  if (n === 'won' || n === 'gewonnen') return 'won';
-  if (n === 'verloren' || n === 'lost') return 'lost';
-  return null;
+// Won/lost comes from the stage's stage_type only; the name is never used (an open stage called "Won" is open).
+export function stageKind(stage: { name?: string | null; stage_type?: StageType | null } | null | undefined): 'won' | 'lost' | null {
+  const t = stage?.stage_type;
+  return t === 'won' || t === 'lost' ? t : null;
 }
 
 export function buildSnapshot(input: { companies: SnapCompany[]; deals: SnapDeal[]; stages: SnapStage[]; members: SnapMember[] }): Snapshot {

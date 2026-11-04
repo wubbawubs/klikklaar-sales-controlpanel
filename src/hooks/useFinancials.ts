@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export interface Financial {
   id: string;
@@ -46,7 +47,8 @@ export function useUpsertFinancial() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['financials'] }); toast.success('Periode opgeslagen'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Opslaan mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Opslaan mislukt')),
   });
 }
 
@@ -58,6 +60,7 @@ export function useDeleteFinancial() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['financials'] }); toast.success('Periode verwijderd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Verwijderen mislukt')),
   });
 }

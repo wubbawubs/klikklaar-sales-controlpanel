@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { stageKind, proposalBlockers, describeProposal, groupByCompany, isStuck, filterCompanies } from './meetingProposals';
 
-const open = { dealStageName: 'Voorstel', confirmClosed: false };
+const open = { dealStage: { name: 'Voorstel', stage_type: 'open' as const }, confirmClosed: false };
 
 describe('stageKind', () => {
-  it('recognises won and lost stages by name', () => {
-    expect(stageKind('Won')).toBe('won');
-    expect(stageKind(' gewonnen ')).toBe('won');
-    expect(stageKind('Verloren')).toBe('lost');
-    expect(stageKind('Voorstel')).toBeNull();
+  it('reads the stage type, never the name', () => {
+    expect(stageKind({ name: 'Deal rond', stage_type: 'won' })).toBe('won');
+    expect(stageKind({ name: 'Afgehaakt', stage_type: 'lost' })).toBe('lost');
+    expect(stageKind({ name: 'Won', stage_type: 'open' })).toBeNull();
+    expect(stageKind({ name: 'Verloren' })).toBeNull();
     expect(stageKind(null)).toBeNull();
   });
 });
@@ -20,15 +20,26 @@ describe('proposalBlockers', () => {
   });
 
   it('asks for client and deal when unbound', () => {
-    const b = proposalBlockers({ kind: 'stage', company_id: null, deal_id: null, payload: { stage_id: 's' } }, { dealStageName: null, confirmClosed: false });
+    const b = proposalBlockers({ kind: 'stage', company_id: null, deal_id: null, payload: { stage_id: 's' } }, { dealStage: null, confirmClosed: false });
     expect(b).toContain('Kies klant');
     expect(b).toContain('Kies deal');
   });
 
   it('requires confirmation for a deal that is already won', () => {
     const p = { kind: 'stage' as const, company_id: 'c', deal_id: 'd', payload: { stage_id: 's' } };
-    expect(proposalBlockers(p, { dealStageName: 'Won', confirmClosed: false })).toContain('Deal is al gewonnen of verloren — bevestig');
-    expect(proposalBlockers(p, { dealStageName: 'Won', confirmClosed: true })).toEqual([]);
+    const won = { name: 'Won', stage_type: 'won' as const };
+    expect(proposalBlockers(p, { dealStage: won, confirmClosed: false })).toContain('Deal is al gewonnen of verloren — bevestig');
+    expect(proposalBlockers(p, { dealStage: won, confirmClosed: true })).toEqual([]);
+  });
+
+  it('treats a lost-typed stage as closed', () => {
+    const p = { kind: 'won' as const, company_id: 'c', deal_id: 'd', payload: {} };
+    expect(proposalBlockers(p, { dealStage: { name: 'Afgehaakt', stage_type: 'lost' }, confirmClosed: false })).toEqual(['Deal is al gewonnen of verloren — bevestig']);
+  });
+
+  it('treats an open-typed stage named "Won" as open', () => {
+    const p = { kind: 'stage' as const, company_id: 'c', deal_id: 'd', payload: { stage_id: 's' } };
+    expect(proposalBlockers(p, { dealStage: { name: 'Won', stage_type: 'open' }, confirmClosed: false })).toEqual([]);
   });
 
   it('accepts a complete new deal without a client or deal', () => {

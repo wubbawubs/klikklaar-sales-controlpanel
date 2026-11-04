@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { companyDocPath, validateDoc } from '@/lib/companyDocs';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export interface Company {
   id: string; org_id: string; name: string; website: string | null; industry: string | null;
@@ -16,7 +17,7 @@ export interface CompanyItem {
   mime_type: string | null; size_bytes: number | null; created_at: string; updated_at: string;
 }
 
-const errToast = (fallback: string) => (e: unknown) => toast.error(e instanceof Error ? e.message : fallback);
+const errToast = (fallback: string) => (e: unknown) => toast.error(errorMessage(e, fallback));
 
 export function useCompany(companyId: string | null) {
   return useQuery({
@@ -44,6 +45,7 @@ export function useUpdateCompany() {
       qc.invalidateQueries({ queryKey: ['deals', orgId] });
       toast.success('Bedrijf bijgewerkt');
     },
+    meta: { silent: true },
     onError: errToast('Bijwerken mislukt'),
   });
 }
@@ -67,6 +69,7 @@ export function useCreateCompanyForDeal() {
       qc.invalidateQueries({ queryKey: ['companies', orgId] });
       qc.invalidateQueries({ queryKey: ['deals', orgId] });
     },
+    meta: { silent: true },
     onError: errToast('Bedrijf aanmaken mislukt'),
   });
 }
@@ -97,6 +100,7 @@ export function useUpdateContact() {
       qc.invalidateQueries({ queryKey: ['deals', orgId] });
       toast.success('Contact bijgewerkt');
     },
+    meta: { silent: true },
     onError: errToast('Bijwerken mislukt'),
   });
 }
@@ -148,6 +152,7 @@ export function useSaveCompanyNote() {
       if (error) throw error;
     },
     onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['company-items', v.companyId] }); toast.success('Notitie opgeslagen'); },
+    meta: { silent: true },
     onError: errToast('Opslaan mislukt'),
   });
 }
@@ -175,6 +180,7 @@ export function useUploadCompanyDocument() {
       }
     },
     onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['company-items', v.companyId] }); toast.success('Document toegevoegd'); },
+    meta: { silent: true },
     onError: errToast('Upload mislukt'),
   });
 }
@@ -183,14 +189,13 @@ export function useDeleteCompanyItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (item: CompanyItem) => {
-      if (item.storage_path) {
-        const { error: sErr } = await supabase.storage.from('company-documents').remove([item.storage_path]);
-        if (sErr) throw sErr; // keep the row so the file is not lost from view
-      }
+      // Soft delete: the row goes to the trash and can be restored, so the stored file must stay.
+      // Only a purge (definitief verwijderen) may remove the file.
       const { error } = await supabase.from('company_items').delete().eq('id', item.id);
       if (error) throw error;
     },
     onSuccess: (_, item) => qc.invalidateQueries({ queryKey: ['company-items', item.company_id] }),
+    meta: { silent: true },
     onError: errToast('Verwijderen mislukt'),
   });
 }

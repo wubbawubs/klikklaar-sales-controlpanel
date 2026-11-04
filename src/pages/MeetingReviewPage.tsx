@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProposalCard } from '@/components/meeting/ProposalCard';
@@ -43,14 +44,14 @@ export default function MeetingReviewPage() {
     });
   }, [proposals]);
 
-  const stageName = (sid: string | null | undefined) => (sid ? stages.find(s => s.id === sid)?.name ?? null : null);
+  const stageOf = (sid: string | null | undefined) => (sid ? stages.find(s => s.id === sid) : undefined);
   const draftOf = (p: MeetingProposal) => drafts[p.id] ?? draftFrom(p);
   const isReady = (p: MeetingProposal) => {
     const d = draftOf(p);
     const deal = d.deal_id ? deals.find(x => x.id === d.deal_id) : undefined;
     return (p.status === 'open' || p.status === 'failed')
       && proposalBlockers({ kind: p.kind, company_id: d.company_id, deal_id: d.deal_id, payload: d.payload },
-        { dealStageName: stageName(deal?.stage_id), confirmClosed: d.confirm_closed }).length === 0;
+        { dealStage: stageOf(deal?.stage_id), confirmClosed: d.confirm_closed }).length === 0;
   };
 
   // For a deal the user picked, the server checks against the deal as shown on screen.
@@ -110,7 +111,7 @@ export default function MeetingReviewPage() {
       {(imp.status === 'failed' || isStuck(imp)) && (
         <div className="rounded-lg border border-destructive/50 p-4 space-y-2">
           <p className="text-sm text-destructive">{imp.status === 'failed' ? imp.error || 'Analyse mislukt' : 'De analyse lijkt vastgelopen.'}</p>
-          <Button size="sm" onClick={() => reanalyze.mutate(imp.id, { onError: e => toast.error((e as Error).message) })} disabled={reanalyze.isPending}>
+          <Button size="sm" onClick={() => reanalyze.mutate(imp.id, { onError: e => toast.error(errorMessage(e, 'Opnieuw analyseren mislukt')) })} disabled={reanalyze.isPending}>
             Opnieuw analyseren
           </Button>
         </div>
@@ -144,7 +145,7 @@ export default function MeetingReviewPage() {
 
           {counts.applied === 0 && <div className="flex justify-end">
             <Button variant="ghost" size="sm" disabled={reanalyze.isPending}
-              onClick={() => reanalyze.mutate(imp.id, { onError: e => toast.error((e as Error).message) })}>
+              onClick={() => reanalyze.mutate(imp.id, { onError: e => toast.error(errorMessage(e, 'Opnieuw analyseren mislukt')) })}>
               Opnieuw analyseren
             </Button>
           </div>}

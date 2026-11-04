@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,7 +27,7 @@ export default function MeetingsPage() {
     { transcript: transcript.trim(), meeting_date: date, title: title.trim() || null },
     {
       onSuccess: id => navigate(`/meetings/${id}`),
-      onError: e => toast.error(e instanceof Error ? e.message : 'Opslaan mislukt'),
+      onError: e => toast.error(errorMessage(e, 'Opslaan mislukt')),
     },
   );
 

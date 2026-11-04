@@ -101,6 +101,7 @@ export function useCreateMeetingImport() {
       }
       return id;
     },
+    meta: { silent: true }, // the caller shows its own error toast
     onSuccess: () => qc.invalidateQueries({ queryKey: ['meeting-imports', orgId] }),
   });
 }
@@ -109,6 +110,7 @@ export function useReanalyze() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (importId: string) => startAnalysis(importId),
+    meta: { silent: true }, // the caller shows its own error toast
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ['meeting-import', id] });
       qc.invalidateQueries({ queryKey: ['meeting-proposals', id] });
@@ -134,6 +136,7 @@ export function useApplyProposal() {
       if (orgId) for (const e of result.events ?? []) await fireWebhook(orgId, e.event, e.payload);
       return result;
     },
+    meta: { silent: true }, // failures are shown on the proposal card and summarised by the review page
     onSettled: (_d, _e, v) => {
       qc.invalidateQueries({ queryKey: ['meeting-proposals', v.proposal.import_id] });
       qc.invalidateQueries({ queryKey: ['meeting-imports'] });

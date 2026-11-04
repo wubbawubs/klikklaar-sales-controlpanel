@@ -8,10 +8,10 @@ const snap = buildSnapshot({
     { id: 'co3', name: 'Garage De Vries' },
   ],
   stages: [
-    { id: 'st-voorstel', name: 'Voorstel', position: 4 },
-    { id: 'st-onder', name: 'Onderhandeling', position: 5 },
-    { id: 'st-won', name: 'Won', position: 6 },
-    { id: 'st-lost', name: 'Verloren', position: 7 },
+    { id: 'st-voorstel', name: 'Voorstel', position: 4, stage_type: 'open' as const },
+    { id: 'st-onder', name: 'Onderhandeling', position: 5, stage_type: 'open' as const },
+    { id: 'st-won', name: 'Won', position: 6, stage_type: 'won' as const },
+    { id: 'st-lost', name: 'Verloren', position: 7, stage_type: 'lost' as const },
   ],
   deals: [
     { id: 'de1', title: 'Website', company_id: 'co1', stage_id: 'st-voorstel', value_eur: 2500, assigned_to: 'user-a' },
@@ -42,6 +42,17 @@ describe('stage_type', () => {
     });
     const [row] = normalizeProposals([item({ kind: 'note', company_ref: s.refOf.company['co1'] })], s, '2026-11-03');
     expect(row.deal_id).toBeNull();
+  });
+
+  it('treats an open-typed stage named "Won" as open', () => {
+    const s = buildSnapshot({
+      companies: [{ id: 'co1', name: 'Bakkerij Jansen' }],
+      stages: [{ id: 'st-o', name: 'Won', position: 1, stage_type: 'open' }],
+      deals: [{ id: 'de1', title: 'Website', company_id: 'co1', stage_id: 'st-o', value_eur: 1, assigned_to: null }],
+      members: [],
+    });
+    const [row] = normalizeProposals([item({ kind: 'note', company_ref: s.refOf.company['co1'] })], s, '2026-11-03');
+    expect(row.deal_id).toBe('de1');
   });
 });
 

@@ -8,6 +8,11 @@ import { useOrgId } from '@/hooks/useOrgId';
 import { useOrganization, type Organization } from '@/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isWonStage } from '@/lib/stages';
+
+// stage_type is not in the generated Supabase types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 
 function useContactCount() {
   const orgId = useOrgId();
@@ -51,13 +56,13 @@ function useGroupDashboard(orgIds: string[]) {
     queryFn: async () => {
       const [dealsRes, stagesRes, contactsRes] = await Promise.all([
         supabase.from('deals').select('value_eur, org_id, stage_id').in('org_id', orgIds),
-        supabase.from('pipeline_stages').select('id, name, org_id').in('org_id', orgIds),
+        db.from('pipeline_stages').select('id, name, org_id, stage_type').in('org_id', orgIds),
         supabase.from('contacts').select('org_id').in('org_id', orgIds),
       ]);
       const deals = dealsRes.data ?? [];
-      const stages = stagesRes.data ?? [];
+      const stages = (stagesRes.data ?? []) as { id: string; stage_type: string | null }[];
       const contacts = contactsRes.data ?? [];
-      const wonIds = new Set(stages.filter(s => (s.name ?? '').toLowerCase() === 'won').map(s => s.id));
+      const wonIds = new Set(stages.filter(isWonStage).map(s => s.id));
       const isWon = (stageId: string | null) => !!stageId && wonIds.has(stageId);
 
       const per = new Map<string, { deals: number; value: number; won: number; contacts: number }>();
@@ -174,10 +179,7 @@ function SingleDashboard() {
   const { data: contactCount = 0 } = useContactCount();
 
   const totalValue = deals.reduce((s, d) => s + (Number(d.value_eur) || 0), 0);
-  const wonDeals = deals.filter(d => {
-    const stage = stages.find(s => s.id === d.stage_id);
-    return stage?.name.toLowerCase() === 'won';
-  });
+  const wonDeals = deals.filter(d => isWonStage(stages.find(s => s.id === d.stage_id)));
   const wonValue = wonDeals.reduce((s, d) => s + (Number(d.value_eur) || 0), 0);
 
   const kpis = [

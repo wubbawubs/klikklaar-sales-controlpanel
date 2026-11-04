@@ -6,6 +6,11 @@ import { useCashPositions } from '@/hooks/useCash';
 import { useContracts, monthlyValue } from '@/hooks/useContracts';
 import { useInvoices, displayStatus } from '@/hooks/useInvoices';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isWonStage } from '@/lib/stages';
+
+// stage_type is not in the generated Supabase types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 
 const fmt = (v: number) => `€${Math.round(v || 0).toLocaleString('nl')}`;
 
@@ -18,12 +23,12 @@ function useFinance(orgIds: string[]) {
     enabled: orgIds.length > 0,
     queryFn: async () => {
       const [st, dl, fe] = await Promise.all([
-        supabase.from('pipeline_stages').select('id, name, org_id').in('org_id', orgIds),
+        db.from('pipeline_stages').select('id, org_id, stage_type').in('org_id', orgIds),
         supabase.from('deals').select('id, org_id, stage_id, won_at, value_eur').in('org_id', orgIds),
         supabase.from('deal_fees').select('deal_id, org_id, amount, kind, interval').in('org_id', orgIds),
       ]);
-      const stages = st.data ?? [], deals = dl.data ?? [], fees = fe.data ?? [];
-      const wonStageIds = new Set(stages.filter(s => /won|gewonnen/i.test(s.name ?? '')).map(s => s.id));
+      const stages = (st.data ?? []) as { id: string; stage_type: string | null }[], deals = dl.data ?? [], fees = fe.data ?? [];
+      const wonStageIds = new Set(stages.filter(isWonStage).map(s => s.id));
       const isWon = (d: { stage_id: string | null; won_at: string | null }) => (d.stage_id && wonStageIds.has(d.stage_id)) || !!d.won_at;
       const wonIds = new Set(deals.filter(isWon).map(d => d.id));
       const dealsWithFees = new Set(fees.map(f => f.deal_id));

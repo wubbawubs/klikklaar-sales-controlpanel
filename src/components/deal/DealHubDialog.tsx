@@ -40,7 +40,7 @@ function DealHub({ deal, onClose, onOpenDeal }: { deal: Deal; onClose: () => voi
     const from = stages.find(s => s.id === deal.stage_id);
     const to = stages.find(s => s.id === stageId);
     if (!to || stageId === deal.stage_id) return;
-    moveDeal.mutate({ dealId: deal.id, stageId, fromStageName: from?.name ?? '—', toStageName: to.name });
+    moveDeal.mutate({ dealId: deal.id, fromStage: from, toStage: to });
   };
 
   return (

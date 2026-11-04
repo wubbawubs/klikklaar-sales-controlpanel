@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { useOrganization } from '@/hooks/useOrganization';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export interface Board { id: string; org_id: string; name: string; description: string | null; color: string; created_at: string; company_id: string | null; company?: { name: string } | null }
 export interface Client { id: string; name: string }
@@ -231,7 +232,8 @@ export function useUploadAttachment(cardId: string) {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['card-attachments', cardId] }); toast.success('Bijlage toegevoegd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Upload mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Upload mislukt')),
   });
 }
 

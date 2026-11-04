@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export type InvoiceStatus = 'open' | 'paid' | 'overdue';
 
@@ -74,7 +75,8 @@ export function useCreateInvoice() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }); toast.success('Factuur aangemaakt'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Aanmaken mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Aanmaken mislukt')),
   });
 }
 
@@ -89,7 +91,8 @@ export function useUpdateInvoice() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Bijwerken mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Bijwerken mislukt')),
   });
 }
 
@@ -101,6 +104,7 @@ export function useDeleteInvoice() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }); toast.success('Factuur verwijderd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Verwijderen mislukt')),
   });
 }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export interface Organization {
   id: string;
@@ -209,15 +210,23 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       user_id: user.id, organization_id: inserted.id, role: 'owner',
     });
 
-    // Seed a default Pipedrive-style pipeline so the new CRM is usable immediately.
-    await supabase.from('pipeline_stages').insert([
-      { org_id: inserted.id, name: 'Prospect', position: 1, color: '#6B7280' },
-      { org_id: inserted.id, name: 'Gecontacteerd', position: 2, color: '#3B82F6' },
-      { org_id: inserted.id, name: 'Voorstel', position: 3, color: '#F59E0B' },
-      { org_id: inserted.id, name: 'Onderhandeling', position: 4, color: '#EC4899' },
-      { org_id: inserted.id, name: 'Won', position: 5, color: '#10B981' },
-      { org_id: inserted.id, name: 'Verloren', position: 6, color: '#EF4444' },
-    ]);
+    // Seed a funnel and a default Pipedrive-style pipeline in it so the new CRM is usable immediately.
+    // funnels/stage_type are not in the generated types. If the funnel insert fails, the database
+    // trigger still assigns (or creates) the org's funnel for the stages.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any;
+    const { data: funnel } = await db.from('funnels')
+      .insert({ org_id: inserted.id, name: 'Sales pipeline', position: 0 }).select('id').single();
+    const funnelId: string | null = funnel?.id ?? null;
+    const { error: stagesError } = await db.from('pipeline_stages').insert([
+      { name: 'Prospect', position: 1, color: '#6B7280', stage_type: 'open' },
+      { name: 'Gecontacteerd', position: 2, color: '#3B82F6', stage_type: 'open' },
+      { name: 'Voorstel', position: 3, color: '#F59E0B', stage_type: 'open' },
+      { name: 'Onderhandeling', position: 4, color: '#EC4899', stage_type: 'open' },
+      { name: 'Won', position: 5, color: '#10B981', stage_type: 'won' },
+      { name: 'Verloren', position: 6, color: '#EF4444', stage_type: 'lost' },
+    ].map(st => ({ ...st, org_id: inserted.id, ...(funnelId ? { funnel_id: funnelId } : {}) })));
+    if (stagesError) toast.error(`Fases aanmaken mislukt: ${stagesError.message}`);
 
     // Seed default fee types so deals can be billed immediately.
     await supabase.from('billing_types').insert([

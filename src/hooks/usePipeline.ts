@@ -3,8 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { fireWebhook } from '@/lib/webhooks';
 import { toast } from 'sonner';
+import { outcomeEvent } from '@/lib/stages';
+import { errorMessage } from '@/lib/errors';
+import type { Stage, StageType } from '@/lib/crmTypes';
 
-export interface Stage { id: string; name: string; position: number; color: string }
+export type { Stage, StageType };
+
+// funnel_id / stage_type are not in the generated Supabase types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 export interface Deal {
   id: string; org_id: string; stage_id: string | null;
   title: string; value_eur: number | null;
@@ -26,9 +33,9 @@ export function useStages() {
     queryKey: ['stages', orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('pipeline_stages')
-        .select('*')
+        .select('id, org_id, name, position, color, funnel_id, stage_type')
         .eq('org_id', orgId!)
         .order('position');
       if (error) throw error;
@@ -74,9 +81,13 @@ export function useMoveDeal() {
   const qc = useQueryClient();
   const orgId = useOrgId();
   return useMutation({
-    mutationFn: async ({ dealId, stageId, fromStageName, toStageName }: {
-      dealId: string; stageId: string; fromStageName: string; toStageName: string
+    mutationFn: async ({ dealId, fromStage, toStage }: {
+      dealId: string; fromStage: Pick<Stage, 'name' | 'stage_type'> | null | undefined; toStage: Pick<Stage, 'id' | 'name' | 'stage_type'>
     }) => {
+      const stageId = toStage.id;
+      const fromStageName = fromStage?.name ?? '—';
+      const toStageName = toStage.name;
+      // Only stage_id changes here: the database sets won_at/lost_at from the stage type.
       const { error } = await supabase
         .from('deals')
         .update({ stage_id: stageId, stage_updated_at: new Date().toISOString() })
@@ -91,8 +102,8 @@ export function useMoveDeal() {
       // Fire webhook to Claude bot
       if (orgId) {
         await fireWebhook(orgId, 'deal.stage_changed', { deal_id: dealId, from_stage: fromStageName, to_stage: toStageName });
-        if (toStageName.toLowerCase() === 'won') await fireWebhook(orgId, 'deal.won', { deal_id: dealId });
-        if (toStageName.toLowerCase() === 'verloren') await fireWebhook(orgId, 'deal.lost', { deal_id: dealId });
+        const outcome = outcomeEvent(fromStage, toStage);
+        if (outcome) await fireWebhook(orgId, outcome, { deal_id: dealId });
       }
     },
     onSuccess: (_, v) => {
@@ -100,7 +111,8 @@ export function useMoveDeal() {
       qc.invalidateQueries({ queryKey: ['activities', v.dealId] });
       qc.invalidateQueries({ queryKey: ['company-activities'] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Stage wijzigen mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Stage wijzigen mislukt')),
   });
 }
 
@@ -145,7 +157,8 @@ export function useSaveDealFees() {
   const orgId = useOrgId();
   return useMutation({
     mutationFn: async ({ dealId, fees }: { dealId: string; fees: DealFee[] }) => {
-      await supabase.from('deal_fees').delete().eq('deal_id', dealId);
+      const { error: delError } = await supabase.from('deal_fees').delete().eq('deal_id', dealId);
+      if (delError) throw delError;
       if (fees.length) {
         const rows = fees.map((f, i) => ({
           deal_id: dealId, org_id: orgId, amount: Number(f.amount) || 0,
@@ -156,7 +169,8 @@ export function useSaveDealFees() {
         if (error) throw error;
       }
       const oneTime = fees.filter(f => f.kind === 'one_time').reduce((s, f) => s + (Number(f.amount) || 0), 0);
-      await supabase.from('deals').update({ value_eur: oneTime || null }).eq('id', dealId);
+      const { error: valueError } = await supabase.from('deals').update({ value_eur: oneTime || null }).eq('id', dealId);
+      if (valueError) throw valueError;
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['deal-fees', v.dealId] });
@@ -165,7 +179,7 @@ export function useSaveDealFees() {
   });
 }
 
-// Deletes a deal; fees and activities cascade in the database, invoices keep their row.
+// Moves a deal (with its activities and appointments) to the trash; invoices keep their row.
 export function useDeleteDeal() {
   const qc = useQueryClient();
   const orgId = useOrgId();
@@ -177,9 +191,10 @@ export function useDeleteDeal() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['deals', orgId] });
       qc.invalidateQueries({ queryKey: ['appointments'] });
-      toast.success('Deal verwijderd');
+      toast.success('Verplaatst naar prullenbak');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Verwijderen mislukt')),
   });
 }
 
@@ -194,7 +209,8 @@ export function useUpdateDeal() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['deals', orgId] }); toast.success('Deal bijgewerkt'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Bijwerken mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Bijwerken mislukt')),
   });
 }
 
@@ -249,7 +265,8 @@ export function useDeleteBillingType() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing-types', orgId] }); toast.success('Tarieftype verwijderd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Verwijderen mislukt')),
   });
 }
 
@@ -257,8 +274,11 @@ export function useCreateStage() {
   const qc = useQueryClient();
   const orgId = useOrgId();
   return useMutation({
-    mutationFn: async ({ name, color, position }: { name: string; color: string; position: number }) => {
-      const { error } = await supabase.from('pipeline_stages').insert({ org_id: orgId, name, color, position });
+    mutationFn: async ({ name, color, position, funnelId }: { name: string; color: string; position: number; funnelId?: string | null }) => {
+      // New stages are open; Gewonnen/Verloren already exist per funnel. Without a funnel id the database picks the org's funnel.
+      const row: Record<string, unknown> = { org_id: orgId, name, color, position, stage_type: 'open' };
+      if (funnelId) row.funnel_id = funnelId;
+      const { error } = await db.from('pipeline_stages').insert(row);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['stages', orgId] }); toast.success('Stage toegevoegd'); },
@@ -288,7 +308,9 @@ export function useDeleteStage() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['stages', orgId] }); toast.success('Stage verwijderd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Kon stage niet verwijderen'),
+    meta: { silent: true },
+    // Database refusals (e.g. 'Deze fase heeft nog deals (ook in de prullenbak)') are plain objects with .message.
+    onError: (e) => toast.error(errorMessage(e, 'Kon stage niet verwijderen')),
   });
 }
 
@@ -393,6 +415,7 @@ export function useAddActivity() {
       toast.success('Opgeslagen');
     },
     // Never fail silently: a lost note is worse than an error the user can retry.
-    onError: (e) => toast.error(`Notitie niet opgeslagen: ${e instanceof Error ? e.message : 'onbekende fout'}`),
+    meta: { silent: true },
+    onError: (e) => toast.error(`Notitie niet opgeslagen: ${errorMessage(e, 'onbekende fout')}`),
   });
 }

@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createQueryClient } from "@/lib/queryClient";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,6 +16,7 @@ import ContactsPage from "@/pages/ContactsPage";
 import AgendaPage from "@/pages/AgendaPage";
 import MeetingsPage from "@/pages/MeetingsPage";
 import MeetingReviewPage from "@/pages/MeetingReviewPage";
+import TrashPage from "@/pages/TrashPage";
 import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
@@ -32,7 +34,8 @@ import UserManagementPage from "@/pages/UserManagementPage";
 import AccountPage from "@/pages/AccountPage";
 import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient();
+// Every failed save shows a toast unless the mutation opts out with meta.silent.
+const queryClient = createQueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -61,6 +64,7 @@ function AppRoutes() {
         <Route path="/agenda" element={<AgendaPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/meetings/:id" element={<MeetingReviewPage />} />
+        <Route path="/prullenbak" element={<TrashPage />} />
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
         <Route path="/growth" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><GrowthPage /></ProtectedRoute>} />

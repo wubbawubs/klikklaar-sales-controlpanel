@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import type { Activity } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export type AppointmentType = 'call' | 'meeting';
 export type AppointmentStatus = 'planned' | 'done' | 'cancelled' | 'no_show';
@@ -15,7 +16,7 @@ export interface Appointment {
 export type AppointmentInput = Omit<Appointment, 'id' | 'org_id' | 'status' | 'outcome' | 'deal' | 'company' | 'contact'> & { id?: string };
 
 const SELECT = '*, deal:deals(title), company:companies(name), contact:contacts(name, email)';
-const errToast = (fallback: string) => (e: unknown) => toast.error(e instanceof Error ? e.message : fallback);
+const errToast = (fallback: string) => (e: unknown) => toast.error(errorMessage(e, fallback));
 
 export function useDealAppointments(dealId: string) {
   return useQuery({
@@ -67,6 +68,7 @@ export function useSaveAppointment() {
       if (error) throw error;
     },
     onSuccess: () => { invalidate(); toast.success('Afspraak opgeslagen'); },
+    meta: { silent: true },
     onError: errToast('Opslaan mislukt'),
   });
 }
@@ -93,6 +95,7 @@ export function useCompleteAppointment() {
       }
     },
     onSuccess: () => { invalidate(); toast.success('Afspraak afgerond'); },
+    meta: { silent: true },
     onError: errToast('Afronden mislukt'),
   });
 }
@@ -105,6 +108,7 @@ export function useCancelAppointment() {
       if (error) throw error;
     },
     onSuccess: () => { invalidate(); toast.success('Afspraak geannuleerd'); },
+    meta: { silent: true },
     onError: errToast('Annuleren mislukt'),
   });
 }

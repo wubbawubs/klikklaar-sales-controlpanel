@@ -89,7 +89,7 @@ export function DealOverviewTab({ deal, onSaved, onDeleted }: {
               <AlertDialogHeader>
                 <AlertDialogTitle>Deal verwijderen?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  "{deal.title}" wordt permanent verwijderd, inclusief tarieven en activiteiten. Gekoppelde facturen blijven bestaan.
+                  "{deal.title}" gaat met activiteiten en afspraken naar de prullenbak; daar kun je het terugzetten. Gekoppelde facturen blijven bestaan.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

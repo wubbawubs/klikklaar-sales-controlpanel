@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { useStages } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
+import { importStage } from '@/lib/stages';
+import { errorMessage } from '@/lib/errors';
 
 // Logical fields we can import into. The UI maps CSV columns onto these.
 export const IMPORT_FIELDS = [
@@ -60,10 +62,6 @@ export function useImportRows() {
       if (!orgId) throw new Error('Geen actief bedrijf geselecteerd');
       const get = (row: Record<string, string>, f: ImportFieldKey) => (mapping[f] ? (row[mapping[f]!] ?? '').trim() : '');
 
-      const firstStage = stages[0];
-      const stageByName = new Map(stages.map(s => [s.name.toLowerCase(), s]));
-      const wonStage = stages.find(s => /won|gewonnen/i.test(s.name));
-      const lostStage = stages.find(s => /lost|verloren/i.test(s.name));
 
       // Cache companies/contacts within this run to dedupe.
       const companyCache = new Map<string, string>(); // name(lower) -> id
@@ -109,22 +107,13 @@ export function useImportRows() {
           }
         }
 
-        // Stage + status
-        const status = get(row, 'status').toLowerCase();
-        const isWon = /won|gewonnen/.test(status);
-        const isLost = /lost|verloren/.test(status);
-        const stageName = get(row, 'stage').toLowerCase();
-        let stage = stageByName.get(stageName);
-        if (isWon && wonStage) stage = wonStage;
-        if (isLost && lostStage) stage = lostStage;
-        if (!stage) stage = firstStage;
+        // Stage by type (won/lost status) or name; only stage_id is set — the database sets won_at/lost_at.
+        const stage = importStage(stages, { status: get(row, 'status'), stageName: get(row, 'stage') });
 
         const deal: Record<string, unknown> = {
           org_id: orgId, title, value_eur: parseValue(get(row, 'value')),
           stage_id: stage?.id ?? null, company_id: companyId, contact_id: contactId,
         };
-        if (isWon) deal.won_at = new Date().toISOString();
-        if (isLost) deal.lost_at = new Date().toISOString();
 
         const { error } = await supabase.from('deals').insert(deal);
         if (error) result.skipped++; else result.deals++;
@@ -133,6 +122,7 @@ export function useImportRows() {
       return result;
     },
     onSuccess: (r) => toast.success(`Geïmporteerd: ${r.deals} deals, ${r.companies} bedrijven, ${r.contacts} contacten`),
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Import mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Import mislukt')),
   });
 }

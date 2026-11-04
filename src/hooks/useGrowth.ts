@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export type GoalMetric = 'revenue' | 'deals_won' | 'leads_added';
 
@@ -70,7 +71,8 @@ export function useCreateGoal() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['growth-goals', orgId] }); toast.success('Doel toegevoegd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Kon doel niet toevoegen'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Kon doel niet toevoegen')),
   });
 }
 

@@ -229,12 +229,7 @@ export default function PipelinePage() {
     const toStage = stages.find(s => s.id === destination.droppableId);
     if (!fromStage || !toStage) return;
 
-    moveDeal.mutate({
-      dealId: draggableId,
-      stageId: destination.droppableId,
-      fromStageName: fromStage.name,
-      toStageName: toStage.name,
-    });
+    moveDeal.mutate({ dealId: draggableId, fromStage, toStage });
   };
 
   return (

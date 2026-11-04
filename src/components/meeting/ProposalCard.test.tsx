@@ -3,8 +3,13 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ProposalCard } from './ProposalCard';
 import type { MeetingProposal, ProposalDraft } from '@/hooks/useMeetings';
 
-const stages = [{ id: 's1', name: 'Voorstel', position: 1, color: '#000' }, { id: 's2', name: 'Won', position: 2, color: '#000' }];
-const deals = [{ id: 'd1', title: 'Website', company_id: 'c1', stage_id: 's1', value_eur: 1000, assigned_to: 'u1' }];
+const stages = [
+  { id: 's1', name: 'Voorstel', position: 1, color: '#000', stage_type: 'open' as const },
+  { id: 's2', name: 'Won', position: 2, color: '#000', stage_type: 'open' as const },
+  { id: 's3', name: 'Afgehaakt', position: 3, color: '#000', stage_type: 'lost' as const },
+];
+const dealsOn = (stage_id: string) => [{ id: 'd1', title: 'Website', company_id: 'c1', stage_id, value_eur: 1000, assigned_to: 'u1' }];
+const deals = dealsOn('s1');
 const companies = [{ id: 'c1', name: 'Bakkerij Jansen' }];
 const team = [{ user_id: 'u1', full_name: 'Robin', email: null }];
 
@@ -16,11 +21,11 @@ function proposal(over: Partial<MeetingProposal>): MeetingProposal {
 }
 const draftOf = (p: MeetingProposal): ProposalDraft => ({ company_id: p.company_id, deal_id: p.deal_id, payload: p.payload, confirm_closed: false });
 
-function renderCard(p: MeetingProposal, handlers: Partial<{ onApply: () => void }> = {}) {
+function renderCard(p: MeetingProposal, handlers: Partial<{ onApply: () => void }> = {}, cardDeals = deals) {
   return render(
     <ProposalCard proposal={p} draft={draftOf(p)} onDraftChange={vi.fn()} onApply={handlers.onApply ?? vi.fn()}
       onDismiss={vi.fn()} onRestore={vi.fn()} applying={false}
-      companies={companies} deals={deals} stages={stages} team={team} />,
+      companies={companies} deals={cardDeals} stages={stages} team={team} />,
   );
 }
 
@@ -55,5 +60,17 @@ describe('ProposalCard', () => {
     renderCard(proposal({ company_id: null, deal_id: null, company_label: 'Jansen', candidates: ['c1'] }));
     expect(screen.getByText('Kies klant')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Toepassen' })).toBeDisabled();
+  });
+
+  it('asks to confirm a stage change on a deal in a lost-typed stage', () => {
+    renderCard(proposal({ kind: 'stage', payload: { stage_id: 's1' } }), {}, dealsOn('s3'));
+    expect(screen.getByText(/deze deal staat al op Afgehaakt/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Toepassen' })).toBeDisabled();
+  });
+
+  it('treats an open-typed stage named "Won" as open', () => {
+    renderCard(proposal({ kind: 'stage', payload: { stage_id: 's1' } }), {}, dealsOn('s2'));
+    expect(screen.queryByText(/deze deal staat al op/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Toepassen' })).toBeEnabled();
   });
 });

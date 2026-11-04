@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 
 export type ContractKind = 'one_time' | 'recurring';
 export type ContractStatus = 'active' | 'ended' | 'draft';
@@ -79,7 +80,8 @@ export function useSaveContract() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['contracts'] }); toast.success('Contract opgeslagen'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Opslaan mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Opslaan mislukt')),
   });
 }
 
@@ -91,6 +93,7 @@ export function useDeleteContract() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['contracts'] }); toast.success('Contract verwijderd'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Verwijderen mislukt'),
+    meta: { silent: true },
+    onError: (e) => toast.error(errorMessage(e, 'Verwijderen mislukt')),
   });
 }

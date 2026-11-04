@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { stageKind, type ProposalKind, type ProposalPayload } from '../../supabase/functions/_shared/meetingNormalize';
+import { stageKind, type ProposalKind, type ProposalPayload, type StageType } from '../../supabase/functions/_shared/meetingNormalize';
 
 export { stageKind };
 export type { ProposalKind, ProposalPayload };
@@ -18,7 +18,7 @@ export const CONFIRM_CLOSED = 'Deal is al gewonnen of verloren — bevestig';
 /** What still has to be filled in before a proposal can be applied. Empty = ready. */
 export function proposalBlockers(
   p: { kind: ProposalKind; company_id: string | null; deal_id: string | null; payload: ProposalPayload },
-  ctx: { dealStageName: string | null; confirmClosed: boolean },
+  ctx: { dealStage: { name?: string | null; stage_type?: StageType | null } | null | undefined; confirmClosed: boolean },
 ): string[] {
   const out: string[] = [];
   const pl = p.payload ?? {};
@@ -42,7 +42,7 @@ export function proposalBlockers(
       if (!pl.stage_id) out.push('Kies fase');
       break;
   }
-  if (['stage', 'won', 'lost'].includes(p.kind) && p.deal_id && stageKind(ctx.dealStageName) && !ctx.confirmClosed) {
+  if (['stage', 'won', 'lost'].includes(p.kind) && p.deal_id && stageKind(ctx.dealStage) && !ctx.confirmClosed) {
     out.push(CONFIRM_CLOSED);
   }
   return out;
