@@ -46,3 +46,24 @@ export interface TrashItem {
 
 /** crm_purge result: rows removed, and the storage paths (bucket company-documents) of removed documents. */
 export interface PurgeResult { rows: number; files: string[] }
+
+export type TaskType = 'call' | 'email' | 'todo';
+export type TaskPriority = 'high' | 'medium' | 'low';
+export type TaskStatus = 'open' | 'in_progress' | 'waiting' | 'done' | 'cancelled';
+
+export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+  open: 'Open', in_progress: 'Bezig', waiting: 'Wacht op reactie', done: 'Afgerond', cancelled: 'Vervallen',
+};
+export const TASK_TYPE_LABEL: Record<TaskType, string> = { call: 'Bellen', email: 'E-mail', todo: 'To-do' };
+export const TASK_PRIORITY_LABEL: Record<TaskPriority, string> = { high: 'Hoog', medium: 'Midden', low: 'Laag' };
+
+export interface Task {
+  id: string; org_id: string; title: string; notes: string | null;
+  type: TaskType; priority: TaskPriority; status: TaskStatus;
+  /** Plain date (yyyy-mm-dd), no timezone. */
+  due_date: string | null; due_time: string | null;
+  owner_id: string | null; deal_id: string | null; company_id: string | null; contact_id: string | null;
+  completed_at: string | null; completed_by: string | null;
+  created_by: string | null; created_at: string; updated_at: string;
+  deal?: { title: string } | null; company?: { name: string } | null; contact?: { name: string } | null;
+}
