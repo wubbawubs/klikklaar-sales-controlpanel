@@ -28,7 +28,7 @@
     --secondary-foreground: 220 20% 25%;
 
     --muted: 210 14% 95%;
-    --muted-foreground: 220 10% 46%;
+    --muted-foreground: 220 12% 40%;
 
     /* Teal accent lighter */
     --accent: 170 60% 94%;
@@ -175,7 +175,7 @@
     border-color: hsl(var(--border) / 0.6);
   }
 
-  @supports not (backdrop-filter: blur(1px)) {
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass { background: #f6f8f6; backdrop-filter: none; }
     .glass-card { background: #ffffff; backdrop-filter: none; }
     .dark .glass, .dark .glass-card { background: hsl(var(--card)); }
