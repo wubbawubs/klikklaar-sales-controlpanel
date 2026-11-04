@@ -329,6 +329,17 @@ DO $$ BEGIN
   IF is_org_admin('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000c') THEN
     RAISE EXCEPTION 'check org_admin: org admin of L must not be org admin of C';
   END IF;
+  -- owner (org creator, see useOrganization.tsx) counts as org admin of its own org only
+  UPDATE user_organizations SET role = 'owner'
+    WHERE user_id='00000000-0000-0000-0000-0000000000a2' AND organization_id='10000000-0000-0000-0000-00000000000a';
+  IF NOT is_org_admin('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a') THEN
+    RAISE EXCEPTION 'check org_admin: owner must be org admin of own org';
+  END IF;
+  IF is_org_admin('00000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000c') THEN
+    RAISE EXCEPTION 'check org_admin: owner of L must not be org admin of C';
+  END IF;
+  UPDATE user_organizations SET role = 'admin'
+    WHERE user_id='00000000-0000-0000-0000-0000000000a2' AND organization_id='10000000-0000-0000-0000-00000000000a';
 END $$;
 -- funnels RLS follows is_org_admin: client admin can create a funnel in own org only
 DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;

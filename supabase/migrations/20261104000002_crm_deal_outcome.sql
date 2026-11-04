@@ -1,6 +1,6 @@
 -- CRM foundation 2/n: the stage type drives won/lost, enforced in the database.
 --  * trigger deals_sync_outcome keeps won_at / lost_at / stage_updated_at in step with the stage's stage_type
---  * is_org_admin(): global admin, or user_organizations.role = 'admin' (client admin) for that org
+--  * is_org_admin(): global admin, or user_organizations.role IN ('admin','owner') (client admin / org creator) for that org
 --  * funnels insert/update policies use is_org_admin
 --  * apply_meeting_proposal picks won/lost targets by stage_type within the deal's funnel
 -- No data is changed: existing deals keep their won_at/lost_at (the trigger only fires on a stage change).
@@ -11,6 +11,8 @@ LOCK TABLE public.funnels IN ACCESS EXCLUSIVE MODE;      -- policies replaced be
 LOCK TABLE public.deals IN SHARE ROW EXCLUSIVE MODE;     -- trigger created below
 
 -- 1. Outcome follows the stage type ------------------------------------------------------------
+-- SECURITY DEFINER (like the other deals triggers): the stage_type lookup must not depend on the caller's RLS view
+-- of pipeline_stages, otherwise a hidden stage would silently skip the outcome sync.
 CREATE OR REPLACE FUNCTION public.deals_sync_outcome() RETURNS trigger
   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
@@ -45,14 +47,14 @@ CREATE TRIGGER deals_sync_outcome BEFORE INSERT OR UPDATE OF stage_id ON public.
 
 -- 2. Client admins ---------------------------------------------------------------------------------
 COMMENT ON COLUMN public.user_organizations.role IS
-  'member | owner | admin. ''admin'' = client admin: manages funnels and settings of this organisation (see is_org_admin).';
+  'member | owner | admin. ''admin'' (client admin) and ''owner'' (org creator) manage funnels and settings of this organisation (see is_org_admin).';
 
 CREATE OR REPLACE FUNCTION public.is_org_admin(_user uuid, _org uuid) RETURNS boolean
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
   SELECT public.is_admin(_user) OR EXISTS (
     SELECT 1 FROM public.user_organizations
-    WHERE user_id = _user AND organization_id = _org AND role = 'admin'
+    WHERE user_id = _user AND organization_id = _org AND role IN ('admin','owner')
   )
 $$;
 REVOKE ALL ON FUNCTION public.is_org_admin(uuid, uuid) FROM PUBLIC, anon;
