@@ -598,6 +598,157 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ===== Task 5: change history =====
+-- history_update: a member's title change writes exactly one compact row with the member as actor
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+UPDATE deals SET title = 'Website Jansen v2' WHERE id = '40000000-0000-0000-0000-0000000000a1';
+DO $$ DECLARE r record; BEGIN
+  IF to_regclass('public.crm_history') IS NULL THEN RAISE EXCEPTION 'check history_update: crm_history missing'; END IF;
+  IF (SELECT count(*) FROM crm_history WHERE record_id = '40000000-0000-0000-0000-0000000000a1') <> 1 THEN
+    RAISE EXCEPTION 'check history_update: expected 1 row, got %', (SELECT count(*) FROM crm_history WHERE record_id = '40000000-0000-0000-0000-0000000000a1');
+  END IF;
+  SELECT * INTO r FROM crm_history WHERE record_id = '40000000-0000-0000-0000-0000000000a1';
+  IF r.entity <> 'deals' OR r.action <> 'update' OR r.org_id <> '10000000-0000-0000-0000-00000000000a'
+     OR r.changes <> '{"title": {"from": "Website Jansen", "to": "Website Jansen v2"}}'::jsonb
+     OR r.actor IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid OR r.at IS NULL THEN
+    RAISE EXCEPTION 'check history_update: wrong row %', to_jsonb(r);
+  END IF;
+END $$;
+ROLLBACK;
+
+-- history_noop: touching only updated_at (or stage_updated_at) writes nothing
+BEGIN;
+UPDATE deals SET updated_at = now() - interval '1 day' WHERE id = '40000000-0000-0000-0000-0000000000a1';
+UPDATE deals SET stage_updated_at = now() - interval '1 day' WHERE id = '40000000-0000-0000-0000-0000000000a1';
+UPDATE companies SET name = name WHERE id = '30000000-0000-0000-0000-0000000000a1';
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM crm_history) THEN RAISE EXCEPTION 'check history_noop: % rows written', (SELECT count(*) FROM crm_history); END IF;
+END $$;
+ROLLBACK;
+
+-- history_readonly: members cannot write, delete or truncate history
+BEGIN;
+UPDATE deals SET title = 'iets' WHERE id = '40000000-0000-0000-0000-0000000000a1';   -- one org L row to attack
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE ok boolean := false; n int; BEGIN
+  IF (SELECT count(*) FROM crm_history) <> 1 THEN RAISE EXCEPTION 'check history_readonly: member does not see own org row'; END IF;
+  BEGIN
+    INSERT INTO crm_history (org_id, entity, record_id, action, changes)
+    VALUES ('10000000-0000-0000-0000-00000000000a','deals','40000000-0000-0000-0000-0000000000a1','update','{}');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;   -- no grant (42501) or RLS rejection (also 42501)
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check history_readonly: member INSERT accepted'; END IF;
+  n := 0;
+  BEGIN DELETE FROM crm_history; GET DIAGNOSTICS n = ROW_COUNT;
+  EXCEPTION WHEN insufficient_privilege THEN n := 0;
+  END;
+  IF n <> 0 THEN RAISE EXCEPTION 'check history_readonly: member DELETE removed % rows', n; END IF;
+  n := 0;
+  BEGIN UPDATE crm_history SET changes = '{}'; GET DIAGNOSTICS n = ROW_COUNT;
+  EXCEPTION WHEN insufficient_privilege THEN n := 0;
+  END;
+  IF n <> 0 THEN RAISE EXCEPTION 'check history_readonly: member UPDATE changed % rows', n; END IF;
+  ok := false;
+  BEGIN TRUNCATE crm_history; EXCEPTION WHEN insufficient_privilege THEN ok := true; END;
+  IF NOT ok THEN RAISE EXCEPTION 'check history_readonly: member TRUNCATE accepted'; END IF;
+  IF (SELECT count(*) FROM crm_history) <> 1 OR (SELECT changes FROM crm_history) = '{}'::jsonb THEN
+    RAISE EXCEPTION 'check history_readonly: history row altered';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- history_rls: a member of org L sees no history of org C
+BEGIN;
+UPDATE deals SET title = 'Client lead v2' WHERE id = '40000000-0000-0000-0000-0000000000c1';
+DO $$ BEGIN
+  IF (SELECT count(*) FROM crm_history WHERE org_id = '10000000-0000-0000-0000-00000000000c') <> 1 THEN
+    RAISE EXCEPTION 'check history_rls: org C row not written';
+  END IF;
+  IF (SELECT actor FROM crm_history WHERE org_id = '10000000-0000-0000-0000-00000000000c') IS NOT NULL THEN
+    RAISE EXCEPTION 'check history_rls: actor must be null without a logged-in user';
+  END IF;
+END $$;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM crm_history) THEN RAISE EXCEPTION 'check history_rls: member sees org C history'; END IF;
+END $$;
+ROLLBACK;
+
+-- history_capture: insert/delete keep the full row, related tables are captured, deal_fees churn is recorded,
+-- deal_contacts rows hang under their deal (rolled back)
+DO $$ DECLARE v_id uuid; v_fee uuid; r record; BEGIN
+  BEGIN
+    INSERT INTO companies (org_id, name) VALUES ('10000000-0000-0000-0000-00000000000a','Nieuw BV') RETURNING id INTO v_id;
+    SELECT * INTO r FROM crm_history WHERE entity = 'companies' AND record_id = v_id;
+    IF r.action <> 'insert' OR r.changes->>'name' <> 'Nieuw BV' OR r.changes->>'org_id' <> '10000000-0000-0000-0000-00000000000a'
+       OR NOT r.changes ? 'updated_at' THEN
+      RAISE EXCEPTION 'check history_capture: insert row %', to_jsonb(r);
+    END IF;
+    DELETE FROM companies WHERE id = v_id;
+    SELECT * INTO r FROM crm_history WHERE entity = 'companies' AND record_id = v_id AND action = 'delete';
+    IF r.changes->>'name' <> 'Nieuw BV' THEN RAISE EXCEPTION 'check history_capture: delete row %', to_jsonb(r); END IF;
+    -- app save path: delete + re-insert fees
+    SELECT id INTO v_fee FROM deal_fees WHERE label = 'Opstart';
+    DELETE FROM deal_fees WHERE deal_id = '40000000-0000-0000-0000-0000000000a5';
+    INSERT INTO deal_fees (deal_id, org_id, amount, kind, interval, label, position) VALUES
+      ('40000000-0000-0000-0000-0000000000a5','10000000-0000-0000-0000-00000000000a',150,'one_time',NULL,'Opstart',0);
+    IF (SELECT count(*) FROM crm_history WHERE entity = 'deal_fees' AND action = 'delete') <> 2
+       OR (SELECT changes->>'amount' FROM crm_history WHERE entity = 'deal_fees' AND record_id = v_fee) <> '100.00'
+          AND (SELECT changes->>'amount' FROM crm_history WHERE entity = 'deal_fees' AND record_id = v_fee) <> '100'
+       OR (SELECT count(*) FROM crm_history WHERE entity = 'deal_fees' AND action = 'insert'
+           AND changes->>'deal_id' = '40000000-0000-0000-0000-0000000000a5') <> 1 THEN
+      RAISE EXCEPTION 'check history_capture: deal_fees churn not recorded';
+    END IF;
+    -- deal_contacts: record_id is the deal, contact_id always present
+    INSERT INTO deal_contacts (deal_id, contact_id, role) VALUES ('40000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a3','Gebruiker');
+    UPDATE deal_contacts SET role = 'Beslisser' WHERE deal_id = '40000000-0000-0000-0000-0000000000a1' AND contact_id = '31000000-0000-0000-0000-0000000000a3';
+    SELECT * INTO r FROM crm_history WHERE entity = 'deal_contacts' AND action = 'update';
+    IF r.record_id <> '40000000-0000-0000-0000-0000000000a1'
+       OR r.changes <> '{"role": {"from": "Gebruiker", "to": "Beslisser"}, "contact_id": {"from": "31000000-0000-0000-0000-0000000000a3", "to": "31000000-0000-0000-0000-0000000000a3"}}'::jsonb THEN
+      RAISE EXCEPTION 'check history_capture: deal_contacts update %', to_jsonb(r);
+    END IF;
+    -- every listed table carries the trigger
+    IF (SELECT count(DISTINCT c.relname) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_proc p ON p.oid = t.tgfoid WHERE p.proname = 'crm_history_capture' AND NOT t.tgisinternal
+          AND c.relname IN ('deals','companies','contacts','deal_activities','crm_appointments','deal_fees','deal_contacts',
+                            'pipeline_stages','funnels','crm_fields','company_items')) <> 11 THEN
+      RAISE EXCEPTION 'check history_capture: not all 11 tables have the history trigger';
+    END IF;
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
+  IF EXISTS (SELECT 1 FROM crm_history) OR (SELECT count(*) FROM deal_fees) <> 2 THEN
+    RAISE EXCEPTION 'check history_capture: fixtures changed';
+  END IF;
+END $$;
+
+-- history_soft_delete: deleted_at null->set is 'delete', set->null is 'restore' (generic; probed on a temp table)
+DO $$ DECLARE v_id uuid := gen_random_uuid(); BEGIN
+  BEGIN
+    CREATE TABLE public._hist_probe (id uuid PRIMARY KEY, org_id uuid NOT NULL, name text, deleted_at timestamptz);
+    CREATE TRIGGER crm_history AFTER INSERT OR UPDATE OR DELETE ON public._hist_probe
+      FOR EACH ROW EXECUTE FUNCTION public.crm_history_capture();
+    INSERT INTO public._hist_probe VALUES (v_id, '10000000-0000-0000-0000-00000000000a', 'x', NULL);
+    UPDATE public._hist_probe SET deleted_at = now() WHERE id = v_id;
+    UPDATE public._hist_probe SET deleted_at = NULL WHERE id = v_id;
+    UPDATE public._hist_probe SET name = 'y' WHERE id = v_id;
+    IF (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history WHERE record_id = v_id) <> 'insert,delete,restore,update' THEN
+      RAISE EXCEPTION 'check history_soft_delete: got %', (SELECT string_agg(action, ',' ORDER BY id) FROM crm_history WHERE record_id = v_id);
+    END IF;
+    RAISE EXCEPTION 'rollback_sentinel';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM <> 'rollback_sentinel' THEN RAISE; END IF;
+  END;
+  IF to_regclass('public._hist_probe') IS NOT NULL OR EXISTS (SELECT 1 FROM crm_history) THEN
+    RAISE EXCEPTION 'check history_soft_delete: probe not rolled back';
+  END IF;
+END $$;
+
 -- (later tasks append checks here)
 
 DO $$ BEGIN RAISE NOTICE 'CRM FOUNDATION CHECKS PASSED'; END $$;
