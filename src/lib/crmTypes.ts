@@ -35,7 +35,8 @@ export interface DealCrm {
   funnel_id?: string | null;
 }
 
-export type TrashEntity = 'deals' | 'companies' | 'contacts' | 'deal_activities' | 'crm_appointments' | 'company_items';
+export type TrashEntity = 'deals' | 'companies' | 'contacts' | 'deal_activities' | 'crm_appointments' | 'company_items'
+  | 'crm_tasks';
 
 export interface TrashItem {
   entity: TrashEntity; record_id: string; label: string | null;

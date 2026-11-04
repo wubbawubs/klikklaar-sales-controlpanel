@@ -73,4 +73,24 @@ describe('historyLine', () => {
     expect(historyLine(row({ changes: { company_id: { from: 'c9', to: 'c1' } } }), fields, stages, names))
       .toBe('Robin wijzigde Bedrijf van onbekend naar onbekend');
   });
+
+  describe('crm_tasks', () => {
+    const task = (p: Partial<HistoryRow>) => row({ entity: 'crm_tasks', record_id: 't1', ...p });
+    it('describes create, complete, reopen and edit with the title', () => {
+      expect(historyLine(task({ action: 'insert', changes: { title: 'Bel Jan', status: 'open' } }), fields, stages, names))
+        .toBe('Taak aangemaakt: Bel Jan');
+      expect(historyLine(task({ changes: { status: { from: 'open', to: 'done' }, completed_at: { from: null, to: 'x' } } }),
+        fields, stages, names, { tasks: { t1: 'Bel Jan' } })).toBe('Taak afgerond: Bel Jan');
+      expect(historyLine(task({ changes: { status: { from: 'done', to: 'open' } } }), fields, stages, names, { tasks: { t1: 'Bel Jan' } }))
+        .toBe('Taak heropend: Bel Jan');
+      expect(historyLine(task({ changes: { title: { from: 'Bel Jan', to: 'Bel Piet' } } }), fields, stages, names))
+        .toBe('Taak gewijzigd: Bel Piet');
+      expect(historyLine(task({ changes: { status: { from: 'open', to: 'waiting' } } }), fields, stages, names, { tasks: { t1: 'X' } }))
+        .toBe('Taak gewijzigd: X');
+    });
+    it('describes trash and restore', () => {
+      expect(historyLine(task({ action: 'delete', changes: {} }), fields, stages, names)).toBe('Taak naar prullenbak');
+      expect(historyLine(task({ action: 'restore', changes: {} }), fields, stages, names)).toBe('Taak teruggezet');
+    });
+  });
 });

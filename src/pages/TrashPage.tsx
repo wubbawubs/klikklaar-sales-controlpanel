@@ -14,14 +14,15 @@ import type { TrashEntity, TrashItem } from '@/lib/crmTypes';
 
 const ENTITY_LABEL: Record<TrashEntity, string> = {
   companies: 'Bedrijf', deals: 'Deal', contacts: 'Contact', deal_activities: 'Activiteit',
-  crm_appointments: 'Afspraak', company_items: 'Document of notitie',
+  crm_appointments: 'Afspraak', company_items: 'Document of notitie', crm_tasks: 'Taak',
 };
 
 // Singular / plural, in the order the breakdown is shown.
 const COUNT_LABEL: [keyof TrashItem['batch_counts'], string, string][] = [
   ['companies', 'bedrijf', 'bedrijven'], ['deals', 'deal', 'deals'], ['contacts', 'contact', 'contacten'],
   ['company_items', 'document of notitie', 'documenten of notities'], ['deal_activities', 'activiteit', 'activiteiten'],
-  ['crm_appointments', 'afspraak', 'afspraken'], ['deal_fees', 'tarief', 'tarieven'],
+  ['crm_appointments', 'afspraak', 'afspraken'], ['crm_tasks', 'taak', 'taken'],
+  ['deal_fees', 'tarief', 'tarieven'],
 ];
 
 /** "3 deals, 2 contacten, 1 document of notitie" — what was deleted together with the item; '' when nothing. */

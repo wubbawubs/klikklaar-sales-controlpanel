@@ -98,9 +98,14 @@ export function useDealHistory(dealId: string) {
     queryKey: ['deal-history', dealId],
     enabled: !!dealId,
     queryFn: async () => {
+      // Task updates only carry the changed columns (no deal_id): match the deal's tasks by record id as well.
+      const { data: tasks, error: tErr } = await db.from('crm_tasks').select('id').eq('deal_id', dealId);
+      if (tErr) throw tErr;
+      const taskIds = ((tasks ?? []) as { id: string }[]).map(t => t.id);
+      const byTask = taskIds.length ? `,record_id.in.(${taskIds.join(',')})` : '';
       const { data, error } = await db.from('crm_history').select('*')
-        .in('entity', ['deals', 'deal_contacts', 'deal_activities', 'deal_fees'])
-        .or(`record_id.eq.${dealId},changes->>deal_id.eq.${dealId}`)
+        .in('entity', ['deals', 'deal_contacts', 'deal_activities', 'deal_fees', 'crm_tasks'])
+        .or(`record_id.eq.${dealId},changes->>deal_id.eq.${dealId}${byTask}`)
         .order('at', { ascending: false }).limit(200);
       if (error) throw error;
       return (data ?? []) as HistoryRow[];

@@ -30,6 +30,8 @@ export interface HistoryLookups {
   billingTypes?: Record<string, string>;
   companies?: Record<string, string>;
   people?: Record<string, string>;
+  /** Task titles by id: an update row only carries the title when it changed. */
+  tasks?: Record<string, string>;
 }
 
 export function actorName(actor: string | null, names: ActorNames = {}): string {
@@ -126,6 +128,19 @@ export function historyLine(
       if (row.action === 'insert') return 'Tarief toegevoegd';
       if (row.action === 'delete') return 'Tarief verwijderd';
       return 'Tarief gewijzigd';
+    case 'crm_tasks': {
+      if (row.action === 'delete') return 'Taak naar prullenbak';
+      if (row.action === 'restore') return 'Taak teruggezet';
+      // insert carries the full row; an update only the changed columns (title only when it changed)
+      const t = changes.title;
+      const title = (isChange(t) ? t.to : t) ?? lookups.tasks?.[row.record_id];
+      const tail = empty(title) ? '' : `: ${String(title)}`;
+      if (row.action === 'insert') return `Taak aangemaakt${tail}`;
+      const s = changes.status;
+      if (isChange(s) && s.to === 'done') return `Taak afgerond${tail}`;
+      if (isChange(s) && s.from === 'done') return `Taak heropend${tail}`;
+      return `Taak gewijzigd${tail}`;
+    }
     default:
       return `${row.entity}: ${row.action}`;
   }

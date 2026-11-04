@@ -4,6 +4,7 @@ import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useDealHistory } from '@/hooks/useFunnels';
+import { useTasks } from '@/hooks/useTasks';
 import { historyLine, actorName, type ActorNames, type HistoryLookups } from '@/lib/historyText';
 import { useBillingTypes } from '@/hooks/usePipeline';
 import type { CrmField, Stage } from '@/lib/crmTypes';
@@ -65,10 +66,12 @@ export function HistoryTab({ dealId, fields, stages }: { dealId: string; fields:
   ]);
   const { data: companies = {} } = useCompanyNames(changedIds(rows, 'company_id'));
   const { data: billingTypeList = [] } = useBillingTypes();
+  const { data: tasks = [] } = useTasks({ dealId, includeClosed: true });
   const lookups = useMemo<HistoryLookups>(() => ({
     companies,
     billingTypes: Object.fromEntries(billingTypeList.map(b => [b.id, b.name])),
-  }), [companies, billingTypeList]);
+    tasks: Object.fromEntries(tasks.map(t => [t.id, t.title])),
+  }), [companies, billingTypeList, tasks]);
 
   const groups = useMemo(() => {
     const out: { day: string; items: { id: string; text: string; who: string; time: string }[] }[] = [];
