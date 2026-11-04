@@ -65,5 +65,5 @@ export interface Task {
   owner_id: string | null; deal_id: string | null; company_id: string | null; contact_id: string | null;
   completed_at: string | null; completed_by: string | null;
   created_by: string | null; created_at: string; updated_at: string;
-  deal?: { title: string } | null; company?: { name: string } | null; contact?: { name: string } | null;
+  deal?: { title: string; funnel_id?: string | null } | null; company?: { name: string } | null; contact?: { name: string } | null;
 }

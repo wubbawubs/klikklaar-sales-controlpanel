@@ -1,18 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload, Euro, CalendarDays, FileText, Trash2 } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Users, Layout, Settings, LogOut, Sun, Moon, UserCog, TrendingUp, Upload, Euro, CalendarDays, FileText, Trash2, CheckSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useFunnelDealCount, useFunnels } from '@/hooks/useFunnels';
+import { useMyOpenTaskCount } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
 
-interface NavItem { to: string; icon: any; label: string; adminOnly?: boolean }
+interface NavItem { to: string; icon: any; label: string; adminOnly?: boolean; badge?: 'tasks' }
 
 const TOP_NAV: NavItem[] = [
   { to: '/',         icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/agenda',   icon: CalendarDays,    label: 'Agenda' },
+  { to: '/taken',    icon: CheckSquare,     label: 'Taken', badge: 'tasks' },
 ];
 
 const RELATIES_NAV: NavItem[] = [
@@ -76,6 +78,8 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
 
   const { isAllView } = useOrganization();
   const { data: funnels = [] } = useFunnels();
+  // My open tasks due today or overdue (disabled in the group view: no org id).
+  const { data: dueTasks = 0 } = useMyOpenTaskCount();
 
   const isActive = (to: string) => to === '/'
     ? location.pathname === '/'
@@ -89,11 +93,24 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
           onClick={onCloseMobile}
           className={cn(itemCls(collapsed), isActive(item.to) ? ACTIVE : IDLE)}
         >
-          <item.icon className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>{item.label}</span>}
+          <span className="relative shrink-0">
+            <item.icon className="h-4 w-4" />
+            {collapsed && item.badge && dueTasks > 0 && (
+              <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-sidebar" aria-hidden />
+            )}
+          </span>
+          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {!collapsed && item.badge && dueTasks > 0 && (
+            <span
+              className="min-w-[1.25rem] rounded-full bg-rose-500/10 px-1.5 text-center text-[11px] font-semibold tabular-nums text-rose-600 dark:bg-rose-400/15 dark:text-rose-300"
+              aria-label={`${dueTasks} taken voor vandaag of achterstallig`}
+            >
+              {dueTasks}
+            </span>
+          )}
         </NavLink>
       </TooltipTrigger>
-      {collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+      {collapsed && <TooltipContent side="right">{item.label}{item.badge && dueTasks > 0 ? ` (${dueTasks})` : ''}</TooltipContent>}
     </Tooltip>
   );
 

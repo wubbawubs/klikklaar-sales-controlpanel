@@ -19,6 +19,9 @@ vi.mock('@/hooks/useFunnels', () => ({
   useFunnelDealCount: () => ({ data: 2 }),
 }));
 
+let taskCount: number | undefined = 3;
+vi.mock('@/hooks/useTasks', () => ({ useMyOpenTaskCount: () => ({ data: taskCount }) }));
+
 const renderAt = (path: string) => render(<MemoryRouter initialEntries={[path]}><AppSidebar /></MemoryRouter>);
 
 describe('AppSidebar', () => {
@@ -39,5 +42,19 @@ describe('AppSidebar', () => {
     renderAt('/');
     expect(screen.queryByText('Funnels')).toBeNull();
     expect(screen.queryByText('Projecten')).toBeNull();
+  });
+  it('shows Taken after Agenda with a due-count badge', () => {
+    isAllView = false; taskCount = 3;
+    renderAt('/');
+    const link = screen.getByText('Taken').closest('a')!;
+    expect(link).toHaveAttribute('href', '/taken');
+    expect(link).toHaveTextContent('3');
+    const agenda = screen.getByText('Agenda').closest('a')!;
+    expect(agenda.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it('hides the badge when nothing is due', () => {
+    isAllView = false; taskCount = 0;
+    renderAt('/');
+    expect(screen.getByText('Taken').closest('a')).not.toHaveTextContent('0');
   });
 });

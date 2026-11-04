@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrgId } from '@/hooks/useOrgId';
+import { useAllCompanies } from '@/hooks/useMeetings';
+import { useOrgContactOptions } from '@/hooks/useDealContacts';
 import { useAuth } from '@/hooks/useAuth';
 import { localToday } from '@/lib/tasks';
 import type { Task, TaskStatus } from '@/lib/crmTypes';
@@ -14,7 +16,7 @@ export interface TaskFilter {
   ownerId?: string; dealId?: string; companyId?: string; contactId?: string; includeClosed?: boolean;
 }
 
-const TASK_SELECT = '*, deal:deals(title), company:companies(name), contact:contacts(name)';
+const TASK_SELECT = '*, deal:deals(title, funnel_id), company:companies(name), contact:contacts(name)';
 
 /** Tasks of the active organisation (disabled in the group view). Trashed rows are hidden by RLS. */
 export function useTasks(filter: TaskFilter = {}) {
@@ -102,4 +104,21 @@ export function useMyOpenTaskCount() {
       return (count ?? 0) as number;
     },
   });
+}
+
+/** Pick lists for a task's deal/company/contact links (only fetched while `enabled`). */
+export function useTaskLinkOptions(enabled = true) {
+  const orgId = useOrgId();
+  const deals = useQuery({
+    queryKey: ['deal-options', orgId],
+    enabled: !!orgId && enabled,
+    queryFn: async () => {
+      const { data, error } = await db.from('deals').select('id, title, funnel_id').eq('org_id', orgId!).order('title');
+      if (error) throw error;
+      return (data ?? []) as { id: string; title: string; funnel_id: string | null }[];
+    },
+  });
+  const companies = useAllCompanies();
+  const contacts = useOrgContactOptions(enabled);
+  return { deals: deals.data ?? [], companies: companies.data ?? [], contacts: contacts.data ?? [] };
 }

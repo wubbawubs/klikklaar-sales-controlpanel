@@ -33,7 +33,7 @@ describe('task hooks', () => {
   it('useTasks: org, embeds, filters, hides closed by default', async () => {
     const { result } = renderHook(() => useTasks({ ownerId: 'u1', dealId: 'd1' }), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(has('select', ['*, deal:deals(title), company:companies(name), contact:contacts(name)'])).toBe(true);
+    expect(has('select', ['*, deal:deals(title, funnel_id), company:companies(name), contact:contacts(name)'])).toBe(true);
     expect(has('eq', ['org_id', 'org1'])).toBe(true);
     expect(has('eq', ['owner_id', 'u1'])).toBe(true);
     expect(has('eq', ['deal_id', 'd1'])).toBe(true);

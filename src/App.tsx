@@ -17,6 +17,7 @@ import AgendaPage from "@/pages/AgendaPage";
 import MeetingsPage from "@/pages/MeetingsPage";
 import MeetingReviewPage from "@/pages/MeetingReviewPage";
 import TrashPage from "@/pages/TrashPage";
+import TasksPage from "@/pages/TasksPage";
 import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
@@ -63,6 +64,7 @@ function AppRoutes() {
         <Route path="/pipeline/:funnelId" element={<FunnelPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/agenda" element={<AgendaPage />} />
+        <Route path="/taken" element={<TasksPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/meetings/:id" element={<MeetingReviewPage />} />
         <Route path="/prullenbak" element={<TrashPage />} />
