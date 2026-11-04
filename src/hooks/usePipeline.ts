@@ -54,7 +54,7 @@ export function useDeals(funnelId?: string | null) {
       // '*' includes the CRM columns (amounts, win_chance, custom, funnel_id, ...).
       let q = db
         .from('deals')
-        .select('*, company:companies(name), contact:contacts(name, email, phone), billing_type:billing_types(name, kind, interval)')
+        .select('*, company:companies(name), contact:contacts!deals_contact_id_fkey(name, email, phone), billing_type:billing_types(name, kind, interval)')
         .eq('org_id', orgId!);
       if (funnelId) q = q.eq('funnel_id', funnelId);
       const { data, error } = await q.order('created_at', { ascending: false });
