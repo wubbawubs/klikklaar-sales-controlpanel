@@ -21,6 +21,21 @@ export function useFunnels() {
   });
 }
 
+/** Number of deals in a funnel (head-only count; trashed deals are hidden by RLS). Keyed under 'deals' so deal mutations refresh it. */
+export function useFunnelDealCount(funnelId: string) {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ['deals', orgId, funnelId, 'count'],
+    enabled: !!orgId && !!funnelId,
+    queryFn: async () => {
+      const { count, error } = await db.from('deals').select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId!).eq('funnel_id', funnelId);
+      if (error) throw error;
+      return (count ?? 0) as number;
+    },
+  });
+}
+
 export function useFunnel(funnelId: string | null | undefined) {
   const { data, ...rest } = useFunnels();
   return { ...rest, data: funnelId ? data?.find(f => f.id === funnelId) : undefined };

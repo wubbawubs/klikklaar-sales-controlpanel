@@ -5,8 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher';
 import { useOrganization } from '@/hooks/useOrganization';
-import { useFunnels } from '@/hooks/useFunnels';
-import { useDeals } from '@/hooks/usePipeline';
+import { useFunnelDealCount, useFunnels } from '@/hooks/useFunnels';
 import { cn } from '@/lib/utils';
 
 interface NavItem { to: string; icon: any; label: string; adminOnly?: boolean }
@@ -45,7 +44,7 @@ function GroupLabel({ children, collapsed }: { children: React.ReactNode; collap
 }
 
 function FunnelLink({ id, name, collapsed, onClick }: { id: string; name: string; collapsed: boolean; onClick?: () => void }) {
-  const { data: deals } = useDeals(id);
+  const { data: count } = useFunnelDealCount(id);
   const to = `/pipeline/${id}`;
   // Radix Slot (TooltipTrigger asChild) drops a function className, so resolve the active state here.
   const isActive = useLocation().pathname === to;
@@ -60,7 +59,7 @@ function FunnelLink({ id, name, collapsed, onClick }: { id: string; name: string
         >
           <KanbanSquare className="h-4 w-4 shrink-0" />
           {!collapsed && <span className="flex-1 truncate">{name}</span>}
-          {!collapsed && deals && <span className="text-[11px] tabular-nums text-sidebar-foreground/50">{deals.length}</span>}
+          {!collapsed && count !== undefined && <span className="text-[11px] tabular-nums text-sidebar-foreground/50">{count}</span>}
         </NavLink>
       </TooltipTrigger>
       {collapsed && <TooltipContent side="right">{name}</TooltipContent>}

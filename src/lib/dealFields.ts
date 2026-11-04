@@ -117,6 +117,7 @@ export function fieldValue(deal: DealLike, field: CrmField): unknown {
 
 export function displayValue(field: CrmField, raw: unknown): string | null {
   if (raw === null || raw === undefined || raw === '') return null;
+  if (field.builtin && field.key === 'billing_type') return null; // an id; use dealDisplayValue for the name
   switch (field.type) {
     case 'choice': {
       const o = field.options.find(x => x.id === raw);
@@ -137,6 +138,12 @@ export function displayValue(field: CrmField, raw: unknown): string | null {
     default:
       return String(raw);
   }
+}
+
+/** A deal's field as text; resolves the billing type to its name instead of its id. */
+export function dealDisplayValue(deal: DealLike & { billing_type?: { name: string } | null }, field: CrmField): string | null {
+  if (field.builtin && field.key === 'billing_type') return deal.billing_type?.name ?? null;
+  return displayValue(field, fieldValue(deal, field));
 }
 
 // ---------- Patch ----------

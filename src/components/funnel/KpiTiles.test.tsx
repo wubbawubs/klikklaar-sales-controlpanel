@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { KpiTiles } from './KpiTiles';
-import { deals, fields, mkFunnel, stages } from './testFixtures';
+import { deals, fields, mkDeal, mkFunnel, stages } from './testFixtures';
 
 describe('KpiTiles', () => {
   it('shows open count, range and weighted value for a range funnel', () => {
@@ -32,5 +32,13 @@ describe('KpiTiles', () => {
     const off = fields.map(f => (f.key === 'win_chance' ? { ...f, enabled: false } : f));
     render(<KpiTiles deals={deals} stages={stages} funnel={mkFunnel('range')} fields={off} />);
     expect(screen.queryByText('Gewogen')).toBeNull();
+  });
+
+  it('shows "–" instead of €0 when no deal has both amount and win chance', () => {
+    const none = [mkDeal({ title: 'A', win_chance: 40 }), mkDeal({ title: 'B', value_min_eur: 1e5, value_max_eur: 1e5, value_eur: 1e5 })];
+    const { container } = render(<KpiTiles deals={none} stages={stages} funnel={mkFunnel('range')} fields={fields} />);
+    expect(screen.getByText('Gewogen')).toBeInTheDocument();
+    expect(screen.getByText('–')).toBeInTheDocument();
+    expect(container.textContent).not.toContain('€0');
   });
 });

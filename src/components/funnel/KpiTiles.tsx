@@ -34,7 +34,7 @@ export function KpiTiles({ deals, stages, funnel, fields }: {
       {t.weighted && (
         <Tile
           label="Gewogen"
-          value={formatEuroCompact(t.weighted.value)}
+          value={t.weighted.covered > 0 ? formatEuroCompact(t.weighted.value) : '–'}
           hint={`${t.weighted.covered} van ${t.count} deals`}
         />
       )}

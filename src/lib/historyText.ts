@@ -25,6 +25,13 @@ const empty = (v: unknown) => v === null || v === undefined || v === '';
 
 export type ActorNames = Record<string, string>;
 
+/** Names for id columns, so a history line never prints a raw UUID. */
+export interface HistoryLookups {
+  billingTypes?: Record<string, string>;
+  companies?: Record<string, string>;
+  people?: Record<string, string>;
+}
+
 export function actorName(actor: string | null, names: ActorNames = {}): string {
   if (!actor) return 'Systeem';
   return names[actor] || 'Onbekende gebruiker';
@@ -43,7 +50,9 @@ function sentence(who: string, label: string, from: string, to: string, wasEmpty
   return `${who} wijzigde ${label} van ${from} naar ${to}`;
 }
 
-function dealUpdate(row: HistoryRow, fields: CrmField[], stages: Stage[], who: string): string {
+function dealUpdate(
+  row: HistoryRow, fields: CrmField[], stages: Stage[], who: string, names: ActorNames, lookups: HistoryLookups,
+): string {
   const changes = (row.changes ?? {}) as Record<string, unknown>;
   const parts: string[] = [];
   const rangeEdit = 'value_min_eur' in changes || 'value_max_eur' in changes;
@@ -66,12 +75,18 @@ function dealUpdate(row: HistoryRow, fields: CrmField[], stages: Stage[], who: s
       }
       continue;
     }
+    const idLookup = col === 'billing_type_id' ? lookups.billingTypes ?? {}
+      : col === 'company_id' ? lookups.companies ?? {}
+      : col === 'assigned_to' ? { ...names, ...lookups.people } : null;
     const key = COLUMN_KEY[col];
     const f = key ? fields.find(x => x.builtin && x.key === key) : undefined;
     let label = f?.label ?? FIXED_LABEL[col] ?? col;
     if (col === 'value_min_eur') label = `${label} (minimum)`;
     if (col === 'value_max_eur') label = `${label} (maximum)`;
-    parts.push(sentence(who, label, fmt(f, col, raw.from), fmt(f, col, raw.to), empty(raw.from), empty(raw.to)));
+    const show = (v: unknown) => (idLookup
+      ? (empty(v) ? 'leeg' : idLookup[String(v)] || 'onbekend')
+      : fmt(f, col, v));
+    parts.push(sentence(who, label, show(raw.from), show(raw.to), empty(raw.from), empty(raw.to)));
   }
   return parts.join('. ');
 }
@@ -80,7 +95,9 @@ function dealUpdate(row: HistoryRow, fields: CrmField[], stages: Stage[], who: s
  * One Dutch sentence for a crm_history row of a deal (or its contacts, activities and fees).
  * Returns '' for rows that carry nothing worth showing (e.g. the activity mirror of a stage move).
  */
-export function historyLine(row: HistoryRow, fields: CrmField[], stages: Stage[], names: ActorNames = {}): string {
+export function historyLine(
+  row: HistoryRow, fields: CrmField[], stages: Stage[], names: ActorNames = {}, lookups: HistoryLookups = {},
+): string {
   const who = actorName(row.actor, names);
   const changes = (row.changes ?? {}) as Record<string, unknown>;
 
@@ -90,7 +107,7 @@ export function historyLine(row: HistoryRow, fields: CrmField[], stages: Stage[]
       if (row.action === 'delete') return 'Deal naar prullenbak verplaatst';
       if (row.action === 'restore') return 'Teruggezet uit prullenbak';
       if (row.action === 'purge') return 'Deal definitief verwijderd';
-      return dealUpdate(row, fields, stages, who);
+      return dealUpdate(row, fields, stages, who, names, lookups);
     case 'deal_activities': {
       const type = String(changes.type ?? '');
       if (row.action === 'insert') return type === 'stage_change' ? '' : ACTIVITY[type] ?? 'Activiteit toegevoegd';

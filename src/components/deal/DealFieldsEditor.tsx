@@ -50,7 +50,11 @@ export function DealFieldsEditor({ deal, funnel, fields, onSaved }: {
   };
   const current = (f: CrmField) => (f.id in edits ? edits[f.id] : fieldValue(deal, f));
   const currentRange = (f: CrmField): { min: string; max: string } =>
-    (edits[f.id] as { min: string; max: string } | undefined) ?? { min: numText(deal.value_min_eur), max: numText(deal.value_max_eur) };
+    (edits[f.id] as { min: string; max: string } | undefined) ?? (
+      deal.value_min_eur == null && deal.value_max_eur == null && deal.value_eur != null
+        // A deal from before range mode: start the range at its single amount.
+        ? { min: numText(deal.value_eur), max: numText(deal.value_eur) }
+        : { min: numText(deal.value_min_eur), max: numText(deal.value_max_eur) });
 
   const save = () => {
     const parsed: Record<string, unknown> = {};

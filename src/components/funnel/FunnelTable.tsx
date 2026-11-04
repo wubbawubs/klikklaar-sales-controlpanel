@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import type { Deal } from '@/hooks/usePipeline';
 import type { CrmField, Funnel, Stage } from '@/lib/crmTypes';
-import { displayValue, fieldValue, formatAmount, visibleFields } from '@/lib/dealFields';
+import { dealDisplayValue, displayValue, fieldValue, formatAmount, visibleFields } from '@/lib/dealFields';
 import { cn } from '@/lib/utils';
 import { accentChip, initials } from './funnelFormat';
 
@@ -73,11 +73,12 @@ function fieldColumn(f: CrmField, funnel: Funnel): Column | null {
   return {
     id: f.id, label: f.label, numeric,
     raw: d => {
+      if (f.builtin && f.key === 'billing_type') return dealDisplayValue(d, f);
       const v = fieldValue(d, f);
       if (f.type === 'choice') return displayValue(f, v); // sort by the current option label
       return v as Raw;
     },
-    cell: d => displayValue(f, fieldValue(d, f)) ?? <Muted />,
+    cell: d => dealDisplayValue(d, f) ?? <Muted />,
     className: f.type === 'long_text' ? 'max-w-[260px] truncate' : undefined,
   };
 }

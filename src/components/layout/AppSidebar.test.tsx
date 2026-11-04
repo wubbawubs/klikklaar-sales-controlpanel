@@ -16,8 +16,8 @@ vi.mock('@/hooks/useOrganization', () => ({
 }));
 vi.mock('@/hooks/useFunnels', () => ({
   useFunnels: () => ({ data: [{ id: 'f1', name: 'Projecten' }, { id: 'f2', name: 'Partnerschappen' }] }),
+  useFunnelDealCount: () => ({ data: 2 }),
 }));
-vi.mock('@/hooks/usePipeline', () => ({ useDeals: () => ({ data: [{}, {}] }) }));
 
 const renderAt = (path: string) => render(<MemoryRouter initialEntries={[path]}><AppSidebar /></MemoryRouter>);
 

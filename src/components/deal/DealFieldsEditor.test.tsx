@@ -48,6 +48,13 @@ describe('DealFieldsEditor', () => {
     expect(mutate.mock.calls[0][0]).toMatchObject({ id: 'd1', value_min_eur: 150000, value_max_eur: 400000, value_eur: 275000 });
   });
 
+  it('pre-fills a range from value_eur when min and max are empty', () => {
+    render(<DealFieldsEditor deal={deal({ value_eur: 250000 })} funnel={funnel('range')} fields={fields} />);
+    expect((screen.getByLabelText('Bedrag minimum') as HTMLInputElement).value).not.toBe('');
+    expect((screen.getByLabelText('Bedrag maximum') as HTMLInputElement).value)
+      .toBe((screen.getByLabelText('Bedrag minimum') as HTMLInputElement).value);
+  });
+
   it('refuses a minimum above the maximum', () => {
     render(<DealFieldsEditor deal={deal()} funnel={funnel('range')} fields={fields} />);
     fireEvent.change(screen.getByLabelText('Bedrag minimum'), { target: { value: '500000' } });

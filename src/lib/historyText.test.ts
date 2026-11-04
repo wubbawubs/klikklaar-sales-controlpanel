@@ -60,4 +60,17 @@ describe('historyLine', () => {
   it('hides the activity mirror of a stage move', () => {
     expect(historyLine(row({ entity: 'deal_activities', action: 'insert', changes: { type: 'stage_change' } }), fields, stages, names)).toBe('');
   });
+
+  it('resolves billing type, company and owner ids to names, never raw ids', () => {
+    const lookups = { billingTypes: { b1: 'Eenmalig', b2: 'Maandelijks' }, companies: { c1: 'Stekken BV' }, people: { u2: 'Sanne' } };
+    const bt = field({ id: 'fb', key: 'billing_type', label: 'Facturatie', type: 'choice', builtin: true });
+    expect(historyLine(row({ changes: { billing_type_id: { from: 'b1', to: 'b2' } } }), [...fields, bt], stages, names, lookups))
+      .toBe('Robin wijzigde Facturatie van Eenmalig naar Maandelijks');
+    expect(historyLine(row({ changes: { company_id: { from: null, to: 'c1' } } }), fields, stages, names, lookups))
+      .toBe('Robin vulde Bedrijf in: Stekken BV');
+    expect(historyLine(row({ changes: { assigned_to: { from: 'u2', to: 'u1' } } }), fields, stages, names, lookups))
+      .toBe('Robin wijzigde Eigenaar van Sanne naar Robin');
+    expect(historyLine(row({ changes: { company_id: { from: 'c9', to: 'c1' } } }), fields, stages, names))
+      .toBe('Robin wijzigde Bedrijf van onbekend naar onbekend');
+  });
 });

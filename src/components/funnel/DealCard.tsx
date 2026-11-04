@@ -3,7 +3,7 @@ import { CalendarClock, Phone } from 'lucide-react';
 import type { Deal } from '@/hooks/usePipeline';
 import type { Appointment } from '@/hooks/useAppointments';
 import type { CrmField, Funnel } from '@/lib/crmTypes';
-import { displayValue, fieldValue, formatAmount, visibleFields } from '@/lib/dealFields';
+import { dealDisplayValue, displayValue, formatAmount, visibleFields } from '@/lib/dealFields';
 import { cn } from '@/lib/utils';
 import { accentChip, initials } from './funnelFormat';
 
@@ -35,7 +35,7 @@ export const DealCard = forwardRef<HTMLDivElement, DealCardProps>(function DealC
   const chance = chanceF && typeof deal.win_chance === 'number' ? Math.max(0, Math.min(100, deal.win_chance)) : null;
 
   const prioF = on('priority');
-  const priority = prioF ? displayValue(prioF, fieldValue(deal, prioF)) : null;
+  const priority = prioF ? dealDisplayValue(deal, prioF) : null;
 
   const overdue = next ? new Date(next.starts_at) < new Date() : false;
   const hasFooter = !!priority || !!next || !!ownerName;
@@ -51,7 +51,7 @@ export const DealCard = forwardRef<HTMLDivElement, DealCardProps>(function DealC
         'hover:shadow-[0_8px_22px_-8px_rgba(30,50,40,0.22)] hover:border-white',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'dark:bg-card/80 dark:border-border/60',
-        'supports-[not(backdrop-filter:blur(1px))]:bg-white',
+        'supports-[not((backdrop-filter:blur(1px))_or_(-webkit-backdrop-filter:blur(1px)))]:bg-white',
         dragging && 'rotate-[1.5deg] shadow-[0_16px_36px_-10px_rgba(30,50,40,0.35)] motion-reduce:rotate-0',
         className,
       )}

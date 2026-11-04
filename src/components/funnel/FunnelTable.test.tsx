@@ -67,3 +67,17 @@ describe('FunnelTable', () => {
     expect(onOpenDeal).toHaveBeenCalledWith('c');
   });
 });
+
+describe('FunnelTable billing type', () => {
+  it('shows the billing type name, never its id', () => {
+    const billingF = { ...fields[0]!, id: 'billing_type', key: 'billing_type', label: 'Facturatie', type: 'choice' as const, options: [], position: 1 };
+    render(
+      <FunnelTable
+        deals={[mkDeal({ id: 'x', title: 'Met facturatie', billing_type_id: 'bt-uuid-1', billing_type: { name: 'Maandelijks', kind: 'recurring', interval: 'month' } })]}
+        stages={stages} funnel={mkFunnel('range')} fields={[billingF]} ownerName={() => null} onOpenDeal={() => {}}
+      />,
+    );
+    expect(screen.getByText('Maandelijks')).toBeInTheDocument();
+    expect(screen.queryByText('bt-uuid-1')).toBeNull();
+  });
+});
