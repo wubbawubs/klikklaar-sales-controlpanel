@@ -43,15 +43,15 @@
 
     --radius: 0.75rem;
 
-    /* Sidebar — dark navy matching KlikKlaar nav */
-    --sidebar-background: 220 28% 12%;
-    --sidebar-foreground: 210 15% 85%;
+    /* Sidebar — light glass (dark mode keeps its own values below) */
+    --sidebar-background: 120 14% 95%;
+    --sidebar-foreground: 215 28% 15%;
     --sidebar-primary: 168 70% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 60% 22%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-hover: 220 25% 18%;
-    --sidebar-border: 220 20% 18%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-accent-foreground: 215 28% 15%;
+    --sidebar-hover: 0 0% 100%;
+    --sidebar-border: 0 0% 100%;
     --sidebar-ring: 168 70% 48%;
 
     /* Semantic colors */

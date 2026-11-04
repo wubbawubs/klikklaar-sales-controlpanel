@@ -47,13 +47,16 @@ function GroupLabel({ children, collapsed }: { children: React.ReactNode; collap
 function FunnelLink({ id, name, collapsed, onClick }: { id: string; name: string; collapsed: boolean; onClick?: () => void }) {
   const { data: deals } = useDeals(id);
   const to = `/pipeline/${id}`;
+  // Radix Slot (TooltipTrigger asChild) drops a function className, so resolve the active state here.
+  const isActive = useLocation().pathname === to;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <NavLink
           to={to}
           onClick={onClick}
-          className={({ isActive }) => cn(itemCls(collapsed), isActive ? ACTIVE : IDLE)}
+          aria-current={isActive ? 'page' : undefined}
+          className={cn(itemCls(collapsed), isActive ? ACTIVE : IDLE)}
         >
           <KanbanSquare className="h-4 w-4 shrink-0" />
           {!collapsed && <span className="flex-1 truncate">{name}</span>}

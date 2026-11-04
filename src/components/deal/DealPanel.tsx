@@ -38,7 +38,7 @@ function useDeal(dealId: string | null) {
     enabled: !!orgId && !!dealId,
     queryFn: async () => {
       const { data, error } = await db.from('deals')
-        .select('*, company:companies(name), contact:contacts(name, email, phone), billing_type:billing_types(name, kind, interval)')
+        .select('*, company:companies(name), contact:contacts!deals_contact_id_fkey(name, email, phone), billing_type:billing_types(name, kind, interval)')
         .eq('id', dealId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as Deal | null;
