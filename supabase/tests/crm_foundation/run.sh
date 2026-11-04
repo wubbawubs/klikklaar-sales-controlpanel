@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: bash supabase/tests/crm_foundation/run.sh  (needs Docker). Loads the LIVE public schema (no data) into a
-# throwaway Supabase postgres, then fixtures, new migrations (20261104000*.sql) and checks.sql.
+# throwaway Supabase postgres, then fixtures, new migrations (20261104*.sql, 20261105*.sql) and checks.sql.
 set -e
 cd "$(dirname "$0")/../../.."
 ROOT=$(pwd)
@@ -39,14 +39,14 @@ for t in deals pipeline_stages companies contacts deal_activities crm_appointmen
 done
 
 echo ">> guard: migrations carry their own BEGIN/COMMIT"
-for f in supabase/migrations/20261104000*.sql; do
+for f in supabase/migrations/2026110[45]*.sql; do
   first=$(grep -v -E '^[[:space:]]*(--.*)?$' "$f" | head -1 | tr -d '[:space:]')
   last=$(grep -v -E '^[[:space:]]*(--.*)?$' "$f" | tail -1 | tr -d '[:space:]')
   [ "$first" = "BEGIN;" ] && [ "$last" = "COMMIT;" ] || { echo "GUARD FAILED: $f must start with BEGIN; and end with COMMIT;"; exit 1; }
 done
 echo ">> fixtures"
 psqlx -v ON_ERROR_STOP=1 < $DIR/fixtures.sql
-for f in supabase/migrations/2026110400000*.sql; do
+for f in supabase/migrations/2026110[45]*.sql; do
   [ -e "$f" ] || continue
   echo ">> migration $f"
   psqlx -v ON_ERROR_STOP=1 < "$f"   # plain, like the Supabase CLI (no wrapping transaction): files carry their own BEGIN/COMMIT

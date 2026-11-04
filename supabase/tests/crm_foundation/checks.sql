@@ -579,9 +579,10 @@ END $$;
 -- counts_unchanged_2: integrity counts still the fixture totals (the migration itself asserts before = after);
 -- existing deal/contact/company rows untouched (contact_id, updated_at vs. backup)
 DO $$ BEGIN
-  IF crm_integrity_counts('10000000-0000-0000-0000-00000000000a') <> '{"deals":5,"deals_value_sum":11500,"deals_won":0,"deals_lost":1,
+  -- keys added by later migrations (crm_tasks) are ignored here; they have their own checks
+  IF (crm_integrity_counts('10000000-0000-0000-0000-00000000000a') - 'crm_tasks') <> '{"deals":5,"deals_value_sum":11500,"deals_won":0,"deals_lost":1,
        "companies":2,"contacts":3,"deal_activities":4,"crm_appointments":2,"deal_fees":2,"deal_fees_sum":450,"company_items":1,"stages":4}'::jsonb
-     OR (crm_integrity_counts('10000000-0000-0000-0000-00000000000c') - 'stages') <> '{"deals":3,"deals_value_sum":2000,"deals_won":0,"deals_lost":0,
+     OR (crm_integrity_counts('10000000-0000-0000-0000-00000000000c') - 'stages' - 'crm_tasks') <> '{"deals":3,"deals_value_sum":2000,"deals_won":0,"deals_lost":0,
        "companies":0,"contacts":0,"deal_activities":0,"crm_appointments":0,"deal_fees":0,"deal_fees_sum":0,"company_items":0}'::jsonb THEN
     RAISE EXCEPTION 'check counts_unchanged_2: % / %', crm_integrity_counts('10000000-0000-0000-0000-00000000000a'),
       crm_integrity_counts('10000000-0000-0000-0000-00000000000c');
@@ -1260,6 +1261,301 @@ DO $$ BEGIN
   IF coalesce(obj_description('public.crm_purge(text, uuid)'::regprocedure, 'pg_proc'), '') NOT LIKE '%set_config(''crm.purge''%'
      OR coalesce(obj_description('public.crm_soft_delete()'::regprocedure, 'pg_proc'), '') NOT LIKE '%set_config(''crm.purge''%' THEN
     RAISE EXCEPTION 'check purge_guc_documented: warning missing';
+  END IF;
+END $$;
+
+-- ===== Plan 3 task 1: crm_tasks (table, completion, link guard, history, trash) =====
+-- Every check adds its own task rows inside BEGIN ... ROLLBACK; the fixtures hold no tasks.
+-- Ids: org L 10..0a, org C 10..0c, member u_member 00..a2 (org L only), super admin u_admin 00..a1,
+-- deal a1 40..a1 (org L), deal c1 40..c1 (org C), company Cafe De Hoek 30..a2, contact Losse Lars 31..a3.
+
+-- tasks_counts_key: crm_integrity_counts gains crm_tasks (all rows, trashed included)
+DO $$ DECLARE l jsonb; BEGIN
+  l := crm_integrity_counts('10000000-0000-0000-0000-00000000000a');
+  IF NOT l ? 'crm_tasks' OR (l->>'crm_tasks')::int IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'check tasks_counts_key: %', l; END IF;
+END $$;
+
+-- tasks_rls: a member sees only own-org tasks, can create in own org, not in another org (rolled back)
+BEGIN;
+INSERT INTO crm_tasks (id, org_id, title) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Taak L'),
+ ('50000000-0000-0000-0000-0000000000c1','10000000-0000-0000-0000-00000000000c','Taak C');
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE v uuid; ok boolean := false; BEGIN
+  IF (SELECT count(*) FROM crm_tasks) IS DISTINCT FROM 1::bigint
+     OR NOT EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1') THEN
+    RAISE EXCEPTION 'check tasks_rls: member sees % tasks', (SELECT count(*) FROM crm_tasks);
+  END IF;
+  INSERT INTO crm_tasks (org_id, title, type, priority) VALUES ('10000000-0000-0000-0000-00000000000a','Bellen met Jan','call','high')
+    RETURNING created_by INTO v;
+  IF v IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid THEN RAISE EXCEPTION 'check tasks_rls: created_by %', v; END IF;
+  BEGIN
+    INSERT INTO crm_tasks (org_id, title) VALUES ('10000000-0000-0000-0000-00000000000c','Inbraak');
+  EXCEPTION WHEN insufficient_privilege THEN ok := true;
+  END;
+  IF NOT ok THEN RAISE EXCEPTION 'check tasks_rls: member created a task in another org'; END IF;
+  UPDATE crm_tasks SET title = 'Gekaapt' WHERE id = '50000000-0000-0000-0000-0000000000c1';
+  DELETE FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000c1';
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000c1' AND title = 'Taak C' AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'check tasks_rls: member changed another org''s task';
+  END IF;
+  IF has_table_privilege('anon', 'public.crm_tasks', 'SELECT') THEN RAISE EXCEPTION 'check tasks_rls: anon can read tasks'; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_defaults_and_checks: defaults, empty title and unknown values refused (rolled back)
+BEGIN;
+DO $$ DECLARE r crm_tasks%ROWTYPE; n int := 0; BEGIN
+  INSERT INTO crm_tasks (org_id, title) VALUES ('10000000-0000-0000-0000-00000000000a','Standaard') RETURNING * INTO r;
+  IF r.type IS DISTINCT FROM 'todo' OR r.priority IS DISTINCT FROM 'medium' OR r.status IS DISTINCT FROM 'open'
+     OR r.completed_at IS NOT NULL OR r.created_at IS NULL OR r.updated_at IS NULL THEN
+    RAISE EXCEPTION 'check tasks_defaults: %', to_jsonb(r);
+  END IF;
+  BEGIN INSERT INTO crm_tasks (org_id, title) VALUES ('10000000-0000-0000-0000-00000000000a','   '); EXCEPTION WHEN check_violation THEN n := n + 1; END;
+  BEGIN INSERT INTO crm_tasks (org_id, title, type) VALUES ('10000000-0000-0000-0000-00000000000a','x','meeting'); EXCEPTION WHEN check_violation THEN n := n + 1; END;
+  BEGIN INSERT INTO crm_tasks (org_id, title, priority) VALUES ('10000000-0000-0000-0000-00000000000a','x','urgent'); EXCEPTION WHEN check_violation THEN n := n + 1; END;
+  BEGIN INSERT INTO crm_tasks (org_id, title, status) VALUES ('10000000-0000-0000-0000-00000000000a','x','later'); EXCEPTION WHEN check_violation THEN n := n + 1; END;
+  IF n IS DISTINCT FROM 4 THEN RAISE EXCEPTION 'check tasks_defaults: only % of 4 bad values refused', n; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_completion: open -> done sets completed_at/by (the member), done -> open clears both (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r crm_tasks%ROWTYPE; v_at timestamptz; BEGIN
+  INSERT INTO crm_tasks (id, org_id, title, completed_at, completed_by)
+  VALUES ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Offerte sturen', now(), gen_random_uuid())
+  RETURNING * INTO r;
+  IF r.completed_at IS NOT NULL OR r.completed_by IS NOT NULL THEN RAISE EXCEPTION 'check tasks_completion: open task inserted as completed'; END IF;
+  UPDATE crm_tasks SET status = 'done' WHERE id = r.id RETURNING * INTO r;
+  IF NOT FOUND OR r.completed_at IS NULL OR r.completed_by IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid THEN
+    RAISE EXCEPTION 'check tasks_completion: done gave % / %', r.completed_at, r.completed_by;
+  END IF;
+  v_at := r.completed_at;
+  UPDATE crm_tasks SET status = 'done', title = 'Offerte verstuurd' WHERE id = r.id RETURNING * INTO r;
+  IF r.completed_at IS DISTINCT FROM v_at THEN RAISE EXCEPTION 'check tasks_completion: done -> done moved completed_at'; END IF;
+  UPDATE crm_tasks SET status = 'open' WHERE id = r.id RETURNING * INTO r;
+  IF r.completed_at IS NOT NULL OR r.completed_by IS NOT NULL THEN RAISE EXCEPTION 'check tasks_completion: reopen kept completion'; END IF;
+  UPDATE crm_tasks SET completed_at = now() WHERE id = r.id RETURNING * INTO r;
+  IF r.completed_at IS NOT NULL THEN RAISE EXCEPTION 'check tasks_completion: open task got completed_at by hand'; END IF;
+  INSERT INTO crm_tasks (org_id, title, status) VALUES ('10000000-0000-0000-0000-00000000000a','Al gedaan','done') RETURNING * INTO r;
+  IF r.completed_at IS NULL OR r.completed_by IS NULL THEN RAISE EXCEPTION 'check tasks_completion: insert as done not completed'; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_links_guard: a cross-org deal link and a trashed contact link are refused; same-org links pass (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DELETE FROM contacts WHERE id = '31000000-0000-0000-0000-0000000000a3';
+DO $$ DECLARE e1 text; e2 text; e3 text; e4 text; BEGIN
+  BEGIN INSERT INTO crm_tasks (org_id, title, deal_id) VALUES ('10000000-0000-0000-0000-00000000000a','x','40000000-0000-0000-0000-0000000000c1');
+  EXCEPTION WHEN others THEN e1 := SQLERRM; END;
+  BEGIN INSERT INTO crm_tasks (org_id, title, contact_id) VALUES ('10000000-0000-0000-0000-00000000000a','x','31000000-0000-0000-0000-0000000000a3');
+  EXCEPTION WHEN others THEN e2 := SQLERRM; END;
+  BEGIN INSERT INTO crm_tasks (org_id, title, company_id) VALUES ('10000000-0000-0000-0000-00000000000a','x',gen_random_uuid());
+  EXCEPTION WHEN others THEN e3 := SQLERRM; END;
+  IF e1 IS DISTINCT FROM 'Gekoppeld item hoort niet bij deze organisatie' THEN RAISE EXCEPTION 'check tasks_links_guard: cross-org deal: %', e1; END IF;
+  IF e2 IS DISTINCT FROM 'Dit item staat in de prullenbak' THEN RAISE EXCEPTION 'check tasks_links_guard: trashed contact: %', e2; END IF;
+  IF e3 IS DISTINCT FROM 'Gekoppeld item hoort niet bij deze organisatie' THEN RAISE EXCEPTION 'check tasks_links_guard: unknown company: %', e3; END IF;
+  INSERT INTO crm_tasks (id, org_id, title, deal_id, company_id, contact_id)
+  VALUES ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Goed','40000000-0000-0000-0000-0000000000a1',
+          '30000000-0000-0000-0000-0000000000a1','31000000-0000-0000-0000-0000000000a1');
+  BEGIN UPDATE crm_tasks SET deal_id = '40000000-0000-0000-0000-0000000000c1' WHERE id = '50000000-0000-0000-0000-0000000000a1';
+  EXCEPTION WHEN others THEN e4 := SQLERRM; END;
+  IF e4 IS DISTINCT FROM 'Gekoppeld item hoort niet bij deze organisatie' THEN RAISE EXCEPTION 'check tasks_links_guard: relink cross-org: %', e4; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_trash_cascade: trashing a deal trashes its tasks (open and done) in the same batch, crm_restore brings
+-- all back; trashing a company takes its own tasks and those of its deals (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title, deal_id, status) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Open taak deal','40000000-0000-0000-0000-0000000000a1','open'),
+ ('50000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','Klaar taak deal','40000000-0000-0000-0000-0000000000a1','done');
+INSERT INTO crm_tasks (id, org_id, title, company_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-00000000000a','Taak bedrijf','30000000-0000-0000-0000-0000000000a2');
+INSERT INTO crm_tasks (id, org_id, title, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a4','10000000-0000-0000-0000-00000000000a','Taak deal a5','40000000-0000-0000-0000-0000000000a5');
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+DELETE FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a2';
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM crm_tasks) THEN RAISE EXCEPTION 'check tasks_trash_cascade: trashed tasks still visible'; END IF;
+END $$;
+RESET ROLE;
+DO $$ DECLARE v_deal uuid; v_comp uuid; v_n int; BEGIN
+  SELECT delete_batch INTO v_deal FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+  IF NOT FOUND OR v_deal IS NULL THEN RAISE EXCEPTION 'check tasks_trash_cascade: deal not trashed'; END IF;
+  IF (SELECT count(*) FROM crm_tasks WHERE delete_batch = v_deal AND deleted_at IS NOT NULL
+        AND id IN ('50000000-0000-0000-0000-0000000000a1','50000000-0000-0000-0000-0000000000a2')) IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check tasks_trash_cascade: deal tasks not in the deal batch';
+  END IF;
+  SELECT delete_batch INTO v_comp FROM companies WHERE id = '30000000-0000-0000-0000-0000000000a2';
+  IF NOT FOUND OR v_comp IS NULL THEN RAISE EXCEPTION 'check tasks_trash_cascade: company not trashed'; END IF;
+  IF (SELECT count(*) FROM crm_tasks WHERE delete_batch = v_comp
+        AND id IN ('50000000-0000-0000-0000-0000000000a3','50000000-0000-0000-0000-0000000000a4')) IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check tasks_trash_cascade: company tasks not in the company batch';
+  END IF;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true);
+  v_n := crm_restore(v_deal);
+  IF EXISTS (SELECT 1 FROM crm_tasks WHERE id IN ('50000000-0000-0000-0000-0000000000a1','50000000-0000-0000-0000-0000000000a2')
+             AND (deleted_at IS NOT NULL OR delete_batch IS NOT NULL))
+     OR EXISTS (SELECT 1 FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1' AND deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks_trash_cascade: restore did not bring deal + tasks back (% rows)', v_n;
+  END IF;
+  IF (SELECT status FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a2') IS DISTINCT FROM 'done' THEN
+    RAISE EXCEPTION 'check tasks_trash_cascade: restore changed a task status';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a3' AND deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks_trash_cascade: deal restore touched the company batch';
+  END IF;
+  PERFORM crm_restore(v_comp);
+  IF EXISTS (SELECT 1 FROM crm_tasks WHERE deleted_at IS NOT NULL) THEN RAISE EXCEPTION 'check tasks_trash_cascade: company restore incomplete'; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_restore_guard: a trashed task cannot be restored while its deal is still in the trash (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Eerst los weg','40000000-0000-0000-0000-0000000000a1');
+DELETE FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1';
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+DO $$ DECLARE v_err text; BEGIN
+  BEGIN PERFORM crm_restore((SELECT t.delete_batch FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') t WHERE t.entity = 'crm_tasks'));
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Dit item staat in de prullenbak' THEN RAISE EXCEPTION 'check tasks_restore_guard: %', v_err; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_purge_guard: a live task on a trashed deal blocks the purge, nothing is deleted; without it the purge
+-- removes the deal's tasks and scrubs their history (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Gaat mee','40000000-0000-0000-0000-0000000000a1');
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1';
+RESET ROLE;
+SET LOCAL session_replication_role = replica;   -- superuser bypasses the guard trigger to force the bad state
+INSERT INTO crm_tasks (id, org_id, title, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','Levende taak','40000000-0000-0000-0000-0000000000a1');
+SET LOCAL session_replication_role = origin;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE v_err text; BEGIN
+  BEGIN PERFORM crm_purge('deals', '40000000-0000-0000-0000-0000000000a1');
+  EXCEPTION WHEN others THEN v_err := SQLERRM; END;
+  IF v_err IS DISTINCT FROM 'Er hangen nog actieve gegevens aan dit item; zet die eerst in de prullenbak' THEN
+    RAISE EXCEPTION 'check tasks_purge_guard: purge not refused: %', v_err;
+  END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a1')
+     OR (SELECT count(*) FROM crm_tasks WHERE deal_id = '40000000-0000-0000-0000-0000000000a1') IS DISTINCT FROM 2::bigint
+     OR EXISTS (SELECT 1 FROM crm_history WHERE action = 'purge' OR changes = '{"purged": true}'::jsonb) THEN
+    RAISE EXCEPTION 'check tasks_purge_guard: something was deleted or scrubbed';
+  END IF;
+END $$;
+DELETE FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a2';   -- trash the live one (own batch)
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE v_res jsonb; BEGIN
+  v_res := crm_purge('deals', '40000000-0000-0000-0000-0000000000a1');
+  IF (v_res ->> 'rows')::int IS DISTINCT FROM 5 THEN RAISE EXCEPTION 'check tasks_purge_guard: purge returned %', v_res; END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1')
+     OR EXISTS (SELECT 1 FROM crm_history WHERE entity = 'crm_tasks' AND record_id = '50000000-0000-0000-0000-0000000000a1'
+                AND changes IS DISTINCT FROM '{"purged": true}'::jsonb) THEN
+    RAISE EXCEPTION 'check tasks_purge_guard: purged task or its history left';
+  END IF;
+  -- the separately trashed task stays in the trash, unlinked by the FK (ON DELETE SET NULL)
+  IF NOT EXISTS (SELECT 1 FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a2' AND deleted_at IS NOT NULL AND deal_id IS NULL) THEN
+    RAISE EXCEPTION 'check tasks_purge_guard: other batch task lost';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_purge_task: an admin can purge a task batch by itself (rolled back)
+BEGIN;
+INSERT INTO crm_tasks (id, org_id, title) VALUES ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Weg ermee');
+DELETE FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1';
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a1','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE v_res jsonb; BEGIN
+  v_res := crm_purge('crm_tasks', '50000000-0000-0000-0000-0000000000a1');
+  IF v_res IS DISTINCT FROM '{"rows": 1, "files": []}'::jsonb THEN RAISE EXCEPTION 'check tasks_purge_task: %', v_res; END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM crm_tasks) THEN RAISE EXCEPTION 'check tasks_purge_task: task still there'; END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_history: an update writes a crm_history row with entity 'crm_tasks' and the member as actor (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title) VALUES ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Oud');
+UPDATE crm_tasks SET title = 'Nieuw', status = 'done' WHERE id = '50000000-0000-0000-0000-0000000000a1';
+DO $$ DECLARE r crm_history%ROWTYPE; BEGIN
+  SELECT * INTO r FROM crm_history WHERE entity = 'crm_tasks' AND record_id = '50000000-0000-0000-0000-0000000000a1' AND action = 'update';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check tasks_history: no update row'; END IF;
+  IF r.actor IS DISTINCT FROM '00000000-0000-0000-0000-0000000000a2'::uuid
+     OR r.changes -> 'title' IS DISTINCT FROM '{"from": "Oud", "to": "Nieuw"}'::jsonb
+     OR r.changes -> 'status' IS DISTINCT FROM '{"from": "open", "to": "done"}'::jsonb
+     OR NOT r.changes ? 'completed_at' THEN
+    RAISE EXCEPTION 'check tasks_history: row %', to_jsonb(r);
+  END IF;
+  IF (SELECT count(*) FROM crm_history WHERE entity = 'crm_tasks') IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check tasks_history: expected insert + update rows';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- tasks_trash_list: a trashed task is its own batch head (label = title); a deal batch counts its tasks (rolled back)
+BEGIN;
+DO $$ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000a2','role','authenticated')::text, true); END $$;
+SET LOCAL ROLE authenticated;
+INSERT INTO crm_tasks (id, org_id, title, deal_id) VALUES
+ ('50000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-00000000000a','Losse taak',NULL),
+ ('50000000-0000-0000-0000-0000000000a2','10000000-0000-0000-0000-00000000000a','Taak van deal','40000000-0000-0000-0000-0000000000a5');
+DELETE FROM crm_tasks WHERE id = '50000000-0000-0000-0000-0000000000a1';
+DELETE FROM deals WHERE id = '40000000-0000-0000-0000-0000000000a5';
+DO $$ DECLARE r record; BEGIN
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'crm_tasks';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check tasks_trash_list: task head missing'; END IF;
+  IF r.record_id IS DISTINCT FROM '50000000-0000-0000-0000-0000000000a1'::uuid OR r.label IS DISTINCT FROM 'Losse taak'
+     OR r.batch_size IS DISTINCT FROM 1 OR r.batch_counts IS DISTINCT FROM '{}'::jsonb THEN
+    RAISE EXCEPTION 'check tasks_trash_list: task head %', to_jsonb(r);
+  END IF;
+  SELECT * INTO r FROM crm_trash_list('10000000-0000-0000-0000-00000000000a') WHERE entity = 'deals';
+  IF NOT FOUND THEN RAISE EXCEPTION 'check tasks_trash_list: deal head missing'; END IF;
+  IF r.batch_counts IS DISTINCT FROM '{"crm_tasks": 1, "deal_fees": 2, "deal_activities": 1, "crm_appointments": 1}'::jsonb THEN
+    RAISE EXCEPTION 'check tasks_trash_list: deal %', r.batch_counts;
+  END IF;
+  IF (SELECT count(*) FROM crm_trash_list('10000000-0000-0000-0000-00000000000a')) IS DISTINCT FROM 2::bigint THEN
+    RAISE EXCEPTION 'check tasks_trash_list: expected 2 batch heads';
+  END IF;
+END $$;
+ROLLBACK;
+
+-- task checks left the fixtures as they were
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM crm_tasks) OR EXISTS (SELECT 1 FROM crm_history) OR (SELECT count(*) FROM deals) <> 8
+     OR EXISTS (SELECT 1 FROM deals WHERE deleted_at IS NOT NULL) OR EXISTS (SELECT 1 FROM contacts WHERE deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'check tasks: fixtures changed';
   END IF;
 END $$;
 
