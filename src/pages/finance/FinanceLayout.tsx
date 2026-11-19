@@ -67,7 +67,7 @@ function Shell() {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-6 pt-4">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-6 pt-4 print:hidden">
         <div className="flex flex-wrap items-start justify-between gap-x-4">
           <h1 className="text-lg font-semibold mb-2">Finance</h1>
           {!empty && <FilterBar />}

@@ -202,3 +202,19 @@
     @apply text-2xl font-bold tabular-nums tracking-tight;
   }
 }
+
+/* Finance-rapportage: print/PDF zonder app-chrome (zijbalk, topbalk, tabs en filters zijn print:hidden). */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  #finance-report {
+    width: 100% !important;
+    break-inside: avoid;
+  }
+}

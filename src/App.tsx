@@ -28,6 +28,7 @@ import OmzetResultaatPage from "@/pages/finance/OmzetResultaatPage";
 import CashLiquiditeitPage from "@/pages/finance/CashLiquiditeitPage";
 import DebiteurenPage from "@/pages/finance/DebiteurenPage";
 import BedrijvenPage from "@/pages/finance/BedrijvenPage";
+import RapportagePage from "@/pages/finance/RapportagePage";
 import OverzichtPage from "@/pages/finance/OverzichtPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -77,7 +78,7 @@ function AppRoutes() {
           <Route path="liquiditeit" element={<CashLiquiditeitPage />} />
           <Route path="debiteuren" element={<DebiteurenPage />} />
           <Route path="bedrijven" element={<BedrijvenPage />} />
-          <Route path="rapportage" element={<FinancePlaceholder title="Rapportage" />} />
+          <Route path="rapportage" element={<RapportagePage />} />
         </Route>
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
