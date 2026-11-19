@@ -34,9 +34,15 @@ export function forecast13Weeks(input: {
     let idx = 0;
     if (item.due_date) {
       // Laatste week waarvan de start <= vervaldatum; ISO-datums vergelijken als string.
-      idx = starts.findLastIndex((s) => s <= item.due_date!);
-      if (idx < 0) idx = 0; // te laat: week 1
-      else if (idx === WEEKS - 1 && item.due_date >= fmt(addWeeks(first, WEEKS))) continue; // voorbij horizon
+      let found = -1;
+      for (let i = WEEKS - 1; i >= 0; i--) {
+        if (starts[i] <= item.due_date) {
+          found = i;
+          break;
+        }
+      }
+      idx = found < 0 ? 0 : found; // te laat: week 1
+      if (found === WEEKS - 1 && item.due_date >= fmt(addWeeks(first, WEEKS))) continue; // voorbij horizon
     }
     if (item.kind === 'receivable') inflow[idx] += item.amount;
     else outflow[idx] += item.amount;
