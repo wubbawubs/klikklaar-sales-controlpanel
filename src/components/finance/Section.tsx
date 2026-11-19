@@ -22,11 +22,11 @@ export function Section({
     <section data-testid={testId} className={cn('min-w-0 rounded-xl border bg-card shadow-sm', className)}>
       {hasHeader && (
         <header className={cn('flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-5 pt-5', flush ? 'pb-4' : 'pb-0')}>
-          <div className="min-w-0 space-y-0.5">
+          <div className="min-w-[12rem] flex-1 space-y-0.5">
             {title !== undefined && <h3 className="text-[15px] font-semibold leading-6 text-foreground">{title}</h3>}
             {description !== undefined && <p className="text-[13px] leading-5 text-muted-foreground">{description}</p>}
           </div>
-          {actions !== undefined && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          {actions !== undefined && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
       <div

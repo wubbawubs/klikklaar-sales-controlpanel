@@ -63,3 +63,8 @@ export const TABLE = {
 
 /** Hoogte voor alle bedieningselementen in een rij (header, rapportage). */
 export const CONTROL_H = 'h-9';
+
+/** Compacte bedragen voor koppen en assen: "€ 270k". */
+export function eurK(n: number): string {
+  return `${n < 0 ? '−' : ''}€ ${Math.round(Math.abs(n) / 1000)}k`;
+}

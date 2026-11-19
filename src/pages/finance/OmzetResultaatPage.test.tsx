@@ -38,7 +38,7 @@ const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => 
 describe('OmzetResultaatPage', () => {
   it('toont kolomkoppen en twaalf maandrijen', () => {
     render(<OmzetResultaatPage />);
-    for (const h of ['Omzet', 'Target', 'Kosten', 'Resultaat', 'Vorig jaar']) {
+    for (const h of ['Omzet', 'Target', 'vs target', 'Kosten', 'Resultaat', 'Vorig jaar']) {
       expect(screen.getByRole('columnheader', { name: h })).toBeInTheDocument();
     }
     expect(screen.getAllByTestId(/^maand-/)).toHaveLength(12);
@@ -48,24 +48,24 @@ describe('OmzetResultaatPage', () => {
   it('resultaat = omzet min kosten, met target en vorig jaar; uitgesloten bedrijf telt niet', () => {
     render(<OmzetResultaatPage />);
     const jan = cells(screen.getByTestId('maand-2026-01'));
-    expect(jan.slice(1)).toEqual(['€ 10.000', '€ 12.000', '€ 4.000', '€ 6.000', '€ 8.000']);
+    expect(jan.slice(1)).toEqual(['€ 10.000', '€ 12.000', '83%', '€ 4.000', '€ 6.000', '€ 8.000']);
   });
 
   it('totaalrij YTD telt t/m geselecteerde maand', () => {
     render(<OmzetResultaatPage />);
     const tot = cells(screen.getByTestId('totaal-ytd'));
-    expect(tot.slice(1)).toEqual(['€ 30.000', '€ 12.000', '€ 9.000', '€ 21.000', '€ 8.000']);
+    expect(tot.slice(1)).toEqual(['€ 30.000', '€ 12.000', '250%', '€ 9.000', '€ 21.000', '€ 8.000']);
   });
 
   it('past aandeel toe', () => {
     companies = [co({ id: 'a', ownership_pct: 50 })];
     filter.mode = 'share';
     render(<OmzetResultaatPage />);
-    expect(cells(screen.getByTestId('totaal-ytd')).slice(1)).toEqual(['€ 15.000', '€ 6.000', '€ 4.500', '€ 10.500', '€ 4.000']);
+    expect(cells(screen.getByTestId('totaal-ytd')).slice(1)).toEqual(['€ 15.000', '€ 6.000', '250%', '€ 4.500', '€ 10.500', '€ 4.000']);
   });
 
   it('maand zonder data toont streepje', () => {
     render(<OmzetResultaatPage />);
-    expect(cells(screen.getByTestId('maand-2026-06')).slice(1)).toEqual(['—', '—', '—', '—', '—']);
+    expect(cells(screen.getByTestId('maand-2026-06')).slice(1)).toEqual(['—', '—', '—', '—', '—', '—']);
   });
 });

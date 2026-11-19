@@ -1,14 +1,20 @@
 import { useMemo, useState } from 'react';
 import { differenceInCalendarDays, format, getISOWeek, parseISO } from 'date-fns';
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChevronDown } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { FixedCostDialog, FIXED_COST_CATEGORIES } from '@/components/finance/FixedCostDialog';
+import { Section } from '@/components/finance/Section';
+import { StatusDot } from '@/components/finance/StatusDot';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   useFinanceBank, useFinanceCompanies, useFinanceFixedCosts, useFinanceMe, useFinanceOpenItems, useFinanceSupplierSpend,
 } from '@/hooks/useFinance';
 import { applyShare } from '@/lib/finance/aggregate';
 import { forecast13Weeks } from '@/lib/finance/forecast';
 import { eur } from '@/lib/finance/format';
+import { eurK, TABLE, TONE_HEX, TONE_TEXT } from '@/lib/finance/ui';
+import { cn } from '@/lib/utils';
 import { useFinanceFilter } from './FinanceFilter';
 
 const STALE_STATEMENT_DAYS = 7;
@@ -65,108 +71,182 @@ export default function CashLiquiditeitPage() {
     });
     const fixedTotal = fixed.filter((f) => f.active).reduce((s, f) => s + f.monthly_amount, 0);
     const runway = fixedTotal > 0 ? Math.floor(bankTotal / fixedTotal) : null;
-    return { visible, bank, bankTotal, chart, fixedRows, fixedTotal, runway, today, byId };
+    // Banktabel gegroepeerd per bedrijf, in de volgorde van de bedrijvenlijst.
+    const bankGroups = visible
+      .map((c) => {
+        const accounts = bank.filter((b) => b.company_id === c.id);
+        return { company: c, accounts, subtotal: accounts.reduce((s, b) => s + applyShare(b.balance, c, mode), 0) };
+      })
+      .filter((g) => g.accounts.length > 0);
+    return { visible, bankGroups, bankTotal, buffer, chart, fixedRows, fixedTotal, runway, today };
   }, [companiesQ.data, bankQ.data, receivablesQ.data, payablesQ.data, fixedQ.data, spendQ.data, companyId, mode]);
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Laden…</div>;
 
-  const { visible, bank, chart, fixedRows, fixedTotal, runway, today, byId } = view;
+  const { visible, bankGroups, bankTotal, buffer, chart, fixedRows, fixedTotal, runway, today } = view;
   const catLabel = (v: string) => FIXED_COST_CATEGORIES.find((c) => c.value === v)?.label ?? v;
-  const th = 'px-3 py-2 font-medium text-muted-foreground';
+  const last = chart[chart.length - 1];
+  const RUNWAY_SCALE = 24; // maanden: volle meter
+  const runwayTone = runway === null ? 'muted' : runway < 3 ? 'danger' : runway < 6 ? 'warning' : 'success';
 
   return (
     <div className="space-y-6 p-6">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border bg-card p-4">
-          <h3 className="mb-3 text-sm font-medium">Prognose banksaldo, 13 weken</h3>
-          <div style={{ height: 260 }}>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Section
+          title="Prognose banksaldo, 13 weken"
+          description={last
+            ? <span className="tabular-nums">nu <span className="font-medium text-foreground">{eurK(bankTotal)}</span> → week 13 <span className={cn('font-medium', last.balance < buffer ? TONE_TEXT.danger : 'text-foreground')}>{eurK(last.balance)}</span></span>
+            : undefined}
+        >
+          <div style={{ height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `€${Math.round(v / 1000)}k`} />
+              <AreaChart data={chart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={52} tickFormatter={(v: number) => `€${Math.round(v / 1000)}k`} />
                 <Tooltip formatter={(v: number) => eur(v)} />
-                <Legend />
-                <Line type="monotone" dataKey="balance" name="Banksaldo" stroke="#14a38b" strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="buffer" name="Minimumbuffer" stroke="#b5452f" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-              </LineChart>
+                <Area type="monotone" dataKey="balance" name="Banksaldo" stroke="hsl(var(--primary))" strokeWidth={2} fill="hsl(var(--primary))" fillOpacity={0.1} dot={false} isAnimationActive={false} />
+                {buffer > 0 && (
+                  <ReferenceLine
+                    y={buffer}
+                    stroke={TONE_HEX.danger}
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{ value: 'buffer', position: 'insideTopRight', fontSize: 11, fill: TONE_HEX.danger }}
+                  />
+                )}
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-          <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-            <li>= banksaldo nu</li>
-            <li>+ open debiteuren op hun vervaldatum. Te late debiteuren tellen mee in week 1.</li>
-            <li>− open crediteuren op hun vervaldatum</li>
-            <li>− vaste lasten en abonnementen per maand</li>
-            <li>rode streep = minimumbuffer per bedrijf</li>
-          </ul>
-        </section>
+          <Collapsible className="mt-3">
+            <CollapsibleTrigger className="group inline-flex items-center gap-1 text-[13px] font-medium text-muted-foreground hover:text-foreground">
+              <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+              Hoe wordt dit berekend?
+            </CollapsibleTrigger>
+            <CollapsibleContent forceMount className="data-[state=closed]:hidden">
+              <ul className="mt-2 space-y-1 rounded-md bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
+                <li>= banksaldo nu</li>
+                <li>+ open debiteuren op hun vervaldatum. Te late debiteuren tellen mee in week 1.</li>
+                <li>− open crediteuren op hun vervaldatum</li>
+                <li>− vaste lasten en abonnementen per maand</li>
+                <li>rode stippellijn = minimumbuffer, opgeteld over de bedrijven</li>
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        </Section>
 
-        <section className="rounded-xl border bg-card p-4">
-          <h3 className="mb-3 text-sm font-medium">Banksaldo per bedrijf</h3>
-          <table className="w-full text-sm">
+        <Section
+          title="Banksaldo per bedrijf"
+          description={`Afschrift ouder dan ${STALE_STATEMENT_DAYS} dagen is rood gemarkeerd.`}
+          actions={<span className="text-[15px] font-semibold tabular-nums">{eur(bankTotal)}</span>}
+          flush
+        >
+          <table className={TABLE.table}>
             <thead>
-              <tr className="border-b text-left">
-                <th className={th}>Bedrijf</th><th className={th}>Rekening</th>
-                <th className={`${th} text-right`}>Saldo</th><th className={th}>Laatste afschrift</th>
+              <tr className={TABLE.headRow}>
+                <th className={TABLE.th}>Bedrijf / rekening</th>
+                <th className={TABLE.thNum}>Saldo</th>
+                <th className={TABLE.th}>Laatste afschrift</th>
               </tr>
             </thead>
             <tbody>
-              {bank.map((b) => {
-                const st = statementLabel(b.last_statement_date, today);
-                const c = byId.get(b.company_id)!;
+              {bankGroups.map(({ company: c, accounts, subtotal }) => {
+                const multi = accounts.length > 1;
+                return [
+                  multi && (
+                    <tr key={`${c.id}-head`} className="h-10 border-b bg-muted/30">
+                      <td className={cn(TABLE.td, 'font-medium')}>{c.name}</td>
+                      <td className={cn(TABLE.tdNum, 'font-semibold')}>{eur(subtotal)}</td>
+                      <td className={TABLE.td} />
+                    </tr>
+                  ),
+                  ...accounts.map((b) => {
+                    const st = statementLabel(b.last_statement_date, today);
+                    return (
+                      <tr key={b.id} className={TABLE.row}>
+                        <td className={TABLE.td}>
+                          {multi
+                            ? <span className="pl-3 text-muted-foreground">{b.name}</span>
+                            : <><span className="font-medium">{c.name}</span><span className="ml-2 text-muted-foreground">{b.name}</span></>}
+                        </td>
+                        <td className={cn(TABLE.tdNum, !multi && 'font-semibold')}>{eur(applyShare(b.balance, c, mode))}</td>
+                        <td data-testid={`afschrift-${b.id}`} className={cn(TABLE.td, st.stale ? TONE_TEXT.danger : 'text-muted-foreground')}>
+                          {b.last_statement_date
+                            ? <StatusDot tone={st.stale ? 'danger' : 'success'}>{st.text}</StatusDot>
+                            : st.text}
+                        </td>
+                      </tr>
+                    );
+                  }),
+                ];
+              })}
+            </tbody>
+          </table>
+        </Section>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <Section
+          title="Abonnementen & vaste lasten"
+          description="Echt betaald = laatste inkoopfactuur van die leverancier in Exact. Afwijking boven 5% is gemarkeerd."
+          actions={canManage && <Button size="sm" className="h-9 rounded-md shadow-none" onClick={() => setDialogOpen(true)}>+ Nieuwe maandlast</Button>}
+          flush
+        >
+          <table className={TABLE.table}>
+            <thead>
+              <tr className={TABLE.headRow}>
+                <th className={TABLE.th}>Wat</th><th className={TABLE.th}>Bedrijf</th><th className={TABLE.th}>Categorie</th>
+                <th className={TABLE.thNum}>p/m</th><th className={TABLE.thNum}>Echt betaald</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fixedRows.map(({ f, paid, deviates, company }) => {
+                const diff = paid !== null ? paid - f.monthly_amount : 0;
                 return (
-                  <tr key={b.id} className="border-b last:border-0">
-                    <td className="px-3 py-2">{c.name}</td>
-                    <td className="px-3 py-2">{b.name}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{eur(applyShare(b.balance, c, mode))}</td>
-                    <td data-testid={`afschrift-${b.id}`} className={`px-3 py-2 ${st.stale ? 'text-rose-600 dark:text-rose-300' : ''}`}>{st.text}</td>
+                  <tr key={f.id} data-testid={`vast-${f.id}`} data-afwijking={String(deviates)} className={TABLE.row}>
+                    <td className={cn(TABLE.td, 'font-medium')}>{f.name}</td>
+                    <td className={cn(TABLE.td, 'text-muted-foreground')}>{company}</td>
+                    <td className={TABLE.td}>
+                      <span className="inline-flex rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{catLabel(f.category)}</span>
+                    </td>
+                    <td className={TABLE.tdNum}>{eur(f.monthly_amount)}</td>
+                    <td className={TABLE.tdNum}>
+                      {paid === null
+                        ? <span className="text-muted-foreground">nog niet</span>
+                        : <span className="inline-flex items-baseline gap-2">
+                            {deviates && (
+                              <span className={cn('text-xs font-medium', diff > 0 ? TONE_TEXT.danger : TONE_TEXT.warning)}>
+                                {diff > 0 ? '▲' : '▼'} {eur(Math.abs(diff))}
+                              </span>
+                            )}
+                            <span>{eur(paid)}</span>
+                          </span>}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-muted-foreground">Laatste afschrift wordt rood als het saldo ouder is dan {STALE_STATEMENT_DAYS} dagen.</p>
-        </section>
-      </div>
+        </Section>
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <section className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-medium">Abonnementen &amp; vaste lasten</h3>
-            {canManage && <Button size="sm" onClick={() => setDialogOpen(true)}>+ Nieuwe maandlast</Button>}
+        <Section title="Totaal vaste lasten" description="per maand, actieve posten">
+          <div data-testid="totaal-vast" className="text-[28px] font-semibold leading-9 tracking-tight tabular-nums">{eur(fixedTotal)}</div>
+          <div className="mt-5 border-t pt-4">
+            <div data-testid="runway" className="flex items-baseline justify-between gap-2 text-[13px]">
+              <span className="text-muted-foreground">Runway zonder nieuwe omzet:</span>
+              <span className="font-semibold tabular-nums">{runway === null ? '—' : `${runway} maanden`}</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-md bg-muted" aria-hidden>
+              <div
+                className="h-full rounded-md"
+                style={{ width: `${runway === null ? 0 : Math.min(100, (runway / RUNWAY_SCALE) * 100)}%`, background: TONE_HEX[runwayTone] }}
+              />
+            </div>
+            <div className="mt-1 flex justify-between text-[11px] tabular-nums text-muted-foreground">
+              <span>0</span><span>6</span><span>12</span><span>18</span><span>{RUNWAY_SCALE}+ mnd</span>
+            </div>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className={th}>Wat</th><th className={th}>Bedrijf</th><th className={th}>Categorie</th>
-                <th className={`${th} text-right`}>p/m</th><th className={`${th} text-right`}>Echt betaald*</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fixedRows.map(({ f, paid, deviates, company }) => (
-                <tr key={f.id} data-testid={`vast-${f.id}`} data-afwijking={String(deviates)} className="border-b last:border-0">
-                  <td className="px-3 py-2">{f.name}</td>
-                  <td className="px-3 py-2">{company}</td>
-                  <td className="px-3 py-2">{catLabel(f.category)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{eur(f.monthly_amount)}</td>
-                  <td className={`px-3 py-2 text-right tabular-nums ${deviates ? 'font-medium text-amber-600 dark:text-amber-300' : ''}`}>
-                    {paid === null ? 'nog niet' : eur(paid)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-xs text-muted-foreground">* uit Exact: de laatste inkoopfactuur van die leverancier. Wijkt meer dan 5% af = oranje.</p>
-        </section>
-
-        <section className="rounded-xl border bg-card p-4">
-          <h3 className="text-sm font-medium">Totaal vaste lasten</h3>
-          <div data-testid="totaal-vast" className="mt-1 text-2xl font-semibold tabular-nums">{eur(fixedTotal)}</div>
-          <div className="text-xs text-muted-foreground">per maand</div>
-          <div data-testid="runway" className="mt-3 text-sm">
-            Runway zonder nieuwe omzet: {runway === null ? '—' : `${runway} maanden`}
-          </div>
-        </section>
+        </Section>
       </div>
 
       {canManage && <FixedCostDialog open={dialogOpen} onOpenChange={setDialogOpen} companies={visible.map((c) => ({ id: c.id, name: c.name }))} />}

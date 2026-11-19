@@ -14,7 +14,7 @@ vi.mock('recharts', async (orig) => {
   return {
     ...actual,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    LineChart: ({ data }: { data: unknown[] }) => <div data-testid="forecast-chart" data-json={JSON.stringify(data)} />,
+    AreaChart: ({ data }: { data: unknown[] }) => <div data-testid="forecast-chart" data-json={JSON.stringify(data)} />,
   };
 });
 

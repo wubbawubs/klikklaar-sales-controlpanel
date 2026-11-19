@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FreshnessBadge } from '@/components/finance/FreshnessBadge';
 import { Segmented } from '@/components/finance/Segmented';
+import type { ShareMode } from '@/lib/finance/types';
 import { useFinanceCompanies, useFinanceMe, useRefreshExact } from '@/hooks/useFinance';
 import { FinanceFilterProvider, useFinanceFilter } from './FinanceFilter';
 
@@ -40,7 +41,7 @@ function FilterBar() {
           {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
         </SelectContent>
       </Select>
-      <Segmented
+      <Segmented<ShareMode>
         label="Weergave"
         value={mode}
         onChange={setMode}

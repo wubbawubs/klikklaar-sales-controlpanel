@@ -48,9 +48,9 @@ describe('DebiteurenPage', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('filter Alleen te laat', () => {
+  it('filter Te laat', () => {
     render(<DebiteurenPage />);
-    fireEvent.click(screen.getByLabelText('Alleen te laat'));
+    fireEvent.click(screen.getByRole('radio', { name: 'Te laat' }));
     expect(invoiceOrder()).toEqual(['factuur-3', 'factuur-2']);
   });
 
