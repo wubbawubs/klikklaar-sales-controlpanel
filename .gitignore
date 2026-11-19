@@ -29,3 +29,4 @@ dist-ssr
 supabase/tests/crm_foundation/.live_schema.sql
 supabase/tests/crm_foundation/.schema_load.log
 supabase/tests/finance/.schema_load.log
+.superpowers/finance-local/
