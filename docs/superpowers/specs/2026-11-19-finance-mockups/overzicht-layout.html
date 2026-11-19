@@ -1,0 +1,141 @@
+<style>
+  .fx { font-family: -apple-system, system-ui, sans-serif; color:#1d2b25; }
+  .fx .shell { display:flex; background:#eef2ee; border-radius:10px; overflow:hidden; border:1px solid #d6ddd6; }
+  .fx .side { width:170px; background:#f2f5f2; border-right:1px solid #d6ddd6; padding:12px 10px; font-size:12px; }
+  .fx .side .grp { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#7a8a82; margin:10px 6px 4px; }
+  .fx .side .it { padding:5px 8px; border-radius:6px; color:#33443c; }
+  .fx .side .it.on { background:#d9f2ec; color:#0f6b5a; font-weight:600; }
+  .fx .side .gone { padding:3px 8px; color:#b0928a; text-decoration:line-through; font-size:11px; }
+  .fx .main { flex:1; padding:14px 16px; min-width:0; }
+  .fx h4 { margin:0 0 2px; font-size:16px; }
+  .fx .sub { font-size:11px; color:#7a8a82; margin-bottom:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .fx .pill { background:#fff; border:1px solid #d6ddd6; border-radius:99px; padding:2px 8px; font-size:10px; }
+  .fx .pill.on { background:#0f6b5a; color:#fff; border-color:#0f6b5a; }
+  .fx .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:10px; }
+  .fx .kpi { background:#fff; border:1px solid #dde4dd; border-radius:8px; padding:8px 10px; }
+  .fx .kpi .l { font-size:10px; color:#7a8a82; }
+  .fx .kpi .v { font-size:16px; font-weight:650; margin-top:2px; }
+  .fx .kpi .d { font-size:10px; color:#7a8a82; }
+  .fx .kpi .d.bad { color:#b5452f; } .fx .kpi .d.ok { color:#0f6b5a; }
+  .fx .panel { background:#fff; border:1px solid #dde4dd; border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .fx .panel .t { font-size:12px; font-weight:600; margin-bottom:8px; }
+  .fx table { width:100%; border-collapse:collapse; font-size:11px; }
+  .fx th { text-align:left; color:#7a8a82; font-weight:500; padding:4px 6px; border-bottom:1px solid #e6ebe6; }
+  .fx td { padding:5px 6px; border-bottom:1px solid #f0f3f0; }
+  .fx td.n, .fx th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .fx .bar { height:6px; background:#e6ebe6; border-radius:3px; position:relative; width:90px; display:inline-block; vertical-align:middle; }
+  .fx .bar i { position:absolute; left:0; top:0; bottom:0; background:#14a38b; border-radius:3px; }
+  .fx .bar i.lo { background:#d9822b; }
+  .fx .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; }
+  .fx .fresh { font-size:10px; color:#7a8a82; }
+  .fx .tvb { display:flex; flex-direction:column; gap:7px; font-size:11px; }
+  .fx .tvb .row { display:grid; grid-template-columns:90px 1fr 70px; gap:8px; align-items:center; }
+  .fx .tvb .track { height:12px; background:#eef2ee; border-radius:3px; position:relative; }
+  .fx .tvb .track i { position:absolute; top:0; bottom:0; left:0; background:#14a38b; border-radius:3px; }
+  .fx .tvb .track b { position:absolute; top:-3px; bottom:-3px; width:2px; background:#1d2b25; }
+  .fx .cards2 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .fx .cc { background:#fff; border:1px solid #dde4dd; border-radius:8px; padding:9px 10px; font-size:11px; }
+  .fx .cc .nm { font-weight:600; font-size:12px; margin-bottom:6px; display:flex; justify-content:space-between; }
+  .fx .cc .ln { display:flex; justify-content:space-between; color:#55655d; padding:1px 0; }
+</style>
+
+<h2>Finance in de CRM: menu en de Overzicht-pagina</h2>
+<p class="subtitle">Links: het nieuwe menu (doorgestreept = gaat eruit). De samenvatting staat alléén op Overzicht. Welke indeling van Overzicht leest het best? Klik er een aan.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content" style="width:100%">
+      <h3>Cijfers bovenaan, daaronder één tabel met alle bedrijven</h3>
+      <p>Alles per bedrijf op één regel, makkelijk vergelijken en sorteren. Voelt als een rapport.</p>
+      <div class="fx" style="margin-top:10px">
+        <div class="shell">
+          <div class="side">
+            <div class="grp">Finance</div>
+            <div class="it on">Overzicht</div>
+            <div class="it">Omzet &amp; Resultaat</div>
+            <div class="it">Cash &amp; Liquiditeit</div>
+            <div class="it">Facturen &amp; Debiteuren</div>
+            <div class="it">Bedrijven</div>
+            <div class="it">Rapportage</div>
+            <div class="grp">Gaat eruit</div>
+            <div class="gone">Groepsdashboard</div>
+            <div class="gone">Deals &amp; Offertes</div>
+            <div class="gone">Contracten</div>
+            <div class="gone">Stripe</div>
+            <div class="gone">Prognose (los)</div>
+          </div>
+          <div class="main">
+            <h4>Overzicht</h4>
+            <div class="sub">november 2026 · 6 bedrijven <span class="pill on">100%</span><span class="pill">aandeel OneGroup</span> <span class="fresh">Exact bijgewerkt 14:05</span></div>
+            <div class="kpis">
+              <div class="kpi"><div class="l">Banksaldo</div><div class="v">€ 412k</div><div class="d">alle rekeningen</div></div>
+              <div class="kpi"><div class="l">Omzet nov vs target</div><div class="v">€ 186k</div><div class="d bad">78% van € 238k</div></div>
+              <div class="kpi"><div class="l">Omzet YTD</div><div class="v">€ 2,14m</div><div class="d ok">+12% vs vorig jaar</div></div>
+              <div class="kpi"><div class="l">Resultaat YTD</div><div class="v">€ 318k</div><div class="d">15% marge</div></div>
+              <div class="kpi"><div class="l">Open debiteuren</div><div class="v">€ 264k</div><div class="d bad">€ 61k te laat</div></div>
+            </div>
+            <div class="panel">
+              <div class="t">Per bedrijf</div>
+              <table>
+                <tr><th>Bedrijf</th><th class="n">Bank</th><th>Omzet nov vs target</th><th class="n">Resultaat YTD</th><th class="n">Open deb.</th><th class="n">Te laat</th></tr>
+                <tr><td><span class="dot" style="background:#14a38b"></span>KlikKlaar SEO</td><td class="n">€ 128k</td><td><span class="bar"><i style="width:94%"></i></span> 94%</td><td class="n">€ 141k</td><td class="n">€ 72k</td><td class="n">€ 4k</td></tr>
+                <tr><td><span class="dot" style="background:#d9822b"></span>Mandate</td><td class="n">€ 96k</td><td><span class="bar"><i class="lo" style="width:61%"></i></span> 61%</td><td class="n">€ 88k</td><td class="n">€ 91k</td><td class="n">€ 38k</td></tr>
+                <tr><td><span class="dot" style="background:#14a38b"></span>LabelLift</td><td class="n">€ 74k</td><td><span class="bar"><i style="width:88%"></i></span> 88%</td><td class="n">€ 52k</td><td class="n">€ 41k</td><td class="n">€ 9k</td></tr>
+                <tr><td><span class="dot" style="background:#14a38b"></span>LeadLayer</td><td class="n">€ 58k</td><td><span class="bar"><i style="width:82%"></i></span> 82%</td><td class="n">€ 27k</td><td class="n">€ 33k</td><td class="n">€ 6k</td></tr>
+                <tr><td><span class="dot" style="background:#b5452f"></span>Wantveld</td><td class="n">€ 31k</td><td><span class="bar"><i class="lo" style="width:48%"></i></span> 48%</td><td class="n">€ 6k</td><td class="n">€ 19k</td><td class="n">€ 4k</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content" style="width:100%">
+      <h3>Cijfers bovenaan, grafiek target vs omzet, dan een kaart per bedrijf</h3>
+      <p>Meer beeld, sneller zien wie achterloopt. Minder geschikt om veel bedrijven naast elkaar te leggen.</p>
+      <div class="fx" style="margin-top:10px">
+        <div class="shell">
+          <div class="side">
+            <div class="grp">Finance</div>
+            <div class="it on">Overzicht</div>
+            <div class="it">Omzet &amp; Resultaat</div>
+            <div class="it">Cash &amp; Liquiditeit</div>
+            <div class="it">Facturen &amp; Debiteuren</div>
+            <div class="it">Bedrijven</div>
+            <div class="it">Rapportage</div>
+          </div>
+          <div class="main">
+            <h4>Overzicht</h4>
+            <div class="sub">november 2026 · 6 bedrijven <span class="pill on">100%</span><span class="pill">aandeel OneGroup</span> <span class="fresh">Exact bijgewerkt 14:05</span></div>
+            <div class="kpis">
+              <div class="kpi"><div class="l">Banksaldo</div><div class="v">€ 412k</div><div class="d">alle rekeningen</div></div>
+              <div class="kpi"><div class="l">Omzet nov vs target</div><div class="v">€ 186k</div><div class="d bad">78% van € 238k</div></div>
+              <div class="kpi"><div class="l">Omzet YTD</div><div class="v">€ 2,14m</div><div class="d ok">+12% vs vorig jaar</div></div>
+              <div class="kpi"><div class="l">Resultaat YTD</div><div class="v">€ 318k</div><div class="d">15% marge</div></div>
+              <div class="kpi"><div class="l">Open debiteuren</div><div class="v">€ 264k</div><div class="d bad">€ 61k te laat</div></div>
+            </div>
+            <div class="panel">
+              <div class="t">Omzet november tegenover target <span class="fresh">(streep = target)</span></div>
+              <div class="tvb">
+                <div class="row"><span>KlikKlaar SEO</span><div class="track"><i style="width:75%"></i><b style="left:80%"></b></div><span>94%</span></div>
+                <div class="row"><span>Mandate</span><div class="track"><i style="width:43%;background:#d9822b"></i><b style="left:70%"></b></div><span>61%</span></div>
+                <div class="row"><span>LabelLift</span><div class="track"><i style="width:44%"></i><b style="left:50%"></b></div><span>88%</span></div>
+                <div class="row"><span>Wantveld</span><div class="track"><i style="width:14%;background:#b5452f"></i><b style="left:30%"></b></div><span>48%</span></div>
+              </div>
+            </div>
+            <div class="cards2">
+              <div class="cc"><div class="nm">KlikKlaar SEO <span class="dot" style="background:#14a38b"></span></div><div class="ln"><span>Bank</span><span>€ 128k</span></div><div class="ln"><span>Resultaat YTD</span><span>€ 141k</span></div><div class="ln"><span>Open deb.</span><span>€ 72k</span></div></div>
+              <div class="cc"><div class="nm">Mandate <span class="dot" style="background:#d9822b"></span></div><div class="ln"><span>Bank</span><span>€ 96k</span></div><div class="ln"><span>Resultaat YTD</span><span>€ 88k</span></div><div class="ln"><span>Open deb.</span><span>€ 91k · <b style="color:#b5452f">€ 38k te laat</b></span></div></div>
+              <div class="cc"><div class="nm">LabelLift <span class="dot" style="background:#14a38b"></span></div><div class="ln"><span>Bank</span><span>€ 74k</span></div><div class="ln"><span>Resultaat YTD</span><span>€ 52k</span></div><div class="ln"><span>Open deb.</span><span>€ 41k</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="subtitle" style="margin-top:14px">Bedragen en bedrijfsnamen zijn verzonnen, alleen om de indeling te tonen.</p>
