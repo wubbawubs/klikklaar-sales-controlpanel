@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
+import { QueryCacheReset } from "@/components/QueryCacheReset";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
@@ -23,7 +24,6 @@ import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
 import FinanceLayout from "@/pages/finance/FinanceLayout";
 import FinanceRoute from "@/pages/finance/FinanceRoute";
-import FinancePlaceholder from "@/pages/finance/FinancePlaceholder";
 import OmzetResultaatPage from "@/pages/finance/OmzetResultaatPage";
 import CashLiquiditeitPage from "@/pages/finance/CashLiquiditeitPage";
 import DebiteurenPage from "@/pages/finance/DebiteurenPage";
@@ -97,6 +97,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <QueryCacheReset />
           <OrganizationProvider>
             <AppRoutes />
           </OrganizationProvider>
