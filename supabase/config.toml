@@ -21,3 +21,5 @@ project_id = "boxmdblzhuyfontwibdj"
     verify_jwt = false
   [functions.pipeline-summary]
     verify_jwt = false
+  [functions.exact-auth]
+    verify_jwt = false
