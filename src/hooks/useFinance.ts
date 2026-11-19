@@ -180,3 +180,59 @@ export function useRefreshExact() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Verversen mislukt'),
   });
 }
+
+export interface FinanceAccessRow { user_id: string; level: 'view' | 'manage' }
+export interface FinanceCompanyAccessRow { user_id: string; company_id: string }
+
+/** Beheer: alle toegangsrijen (RLS laat alleen super_admin dit zien/schrijven). */
+export function useFinanceAccessAll() {
+  return useQuery({
+    queryKey: ['finance', 'access-admin'],
+    queryFn: async () => {
+      const [a, c] = await Promise.all([
+        supabase.from('finance_access').select('user_id, level'),
+        supabase.from('finance_company_access').select('user_id, company_id'),
+      ]);
+      if (a.error) throw a.error;
+      if (c.error) throw c.error;
+      return {
+        access: (a.data ?? []) as FinanceAccessRow[],
+        companyAccess: (c.data ?? []) as FinanceCompanyAccessRow[],
+      };
+    },
+  });
+}
+
+/** 'none' verwijdert finance_access en alle finance_company_access-rijen van de gebruiker. */
+export function useSetFinanceLevel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, level }: { userId: string; level: 'none' | 'view' | 'manage' }) => {
+      if (level === 'none') {
+        const c = await supabase.from('finance_company_access').delete().eq('user_id', userId);
+        if (c.error) throw c.error;
+        const a = await supabase.from('finance_access').delete().eq('user_id', userId);
+        if (a.error) throw a.error;
+      } else {
+        const { error } = await supabase.from('finance_access').upsert({ user_id: userId, level }, { onConflict: 'user_id' });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance'] }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Opslaan mislukt'),
+  });
+}
+
+export function useSetCompanyAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, companyId, enabled }: { userId: string; companyId: string; enabled: boolean }) => {
+      const { error } = enabled
+        ? await supabase.from('finance_company_access').insert({ user_id: userId, company_id: companyId })
+        : await supabase.from('finance_company_access').delete().eq('user_id', userId).eq('company_id', companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance'] }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Opslaan mislukt'),
+  });
+}
