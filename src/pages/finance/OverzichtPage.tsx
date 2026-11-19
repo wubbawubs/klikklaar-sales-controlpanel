@@ -2,28 +2,21 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Bar, CartesianGrid, ComposedChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { KpiTile } from '@/components/finance/KpiTile';
+import { Chip, KpiStrip } from '@/components/finance/KpiStrip';
+import { Section } from '@/components/finance/Section';
 import {
   useFinanceBank, useFinanceCompanies, useFinanceMonthly, useFinanceOpenItems, useFinanceTargets,
 } from '@/hooks/useFinance';
 import { applyShare, companySummary, groupSummary, type CompanySummary } from '@/lib/finance/aggregate';
 import { eur } from '@/lib/finance/format';
+import { pct, targetColor, targetTone, TONE_CHIP, TONE_HEX, TONE_TEXT, type Tone } from '@/lib/finance/ui';
 import { useFinanceFilter } from './FinanceFilter';
 
-// Kleuren volgen de CRM-thematokens (--success, --primary, --warning, --destructive).
-const C = {
-  success: '#25a87a',
-  primary: '#8ccfb8', // lichtere tint: bijna op target, duidelijk anders dan "gehaald"
-  warning: '#f2801f',
-  danger: '#dc3c3c',
-  muted: '#9ca3af',
-};
-
-const HEALTH: Record<CompanySummary['health'], { color: string; label: string; badge: string }> = {
-  good: { color: C.success, label: 'Op koers', badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' },
-  warning: { color: C.warning, label: 'Let op', badge: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300' },
-  critical: { color: C.danger, label: 'Actie nodig', badge: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' },
-  unknown: { color: C.muted, label: 'Geen data', badge: 'bg-muted text-muted-foreground' },
+const HEALTH: Record<CompanySummary['health'], { tone: Tone; label: string }> = {
+  good: { tone: 'success', label: 'Op koers' },
+  warning: { tone: 'warning', label: 'Let op' },
+  critical: { tone: 'danger', label: 'Actie nodig' },
+  unknown: { tone: 'muted', label: 'Geen data' },
 };
 
 /** Korte reden achter de status, zodat "Let op" niet raadselachtig is. Volgt de drempels uit aggregate.ts. */
@@ -36,16 +29,6 @@ function healthReason(s: CompanySummary, minBuffer: number): string | null {
   return reasons.length ? reasons.join(' · ') : s.health === 'critical' ? 'sync mislukt' : null;
 }
 
-/** Kleur van een omzetbalk: hoe ver ten opzichte van de target. */
-function targetColor(p: number | null): string {
-  if (p === null) return C.muted;
-  if (p >= 1) return C.success;
-  if (p >= 0.85) return C.primary;
-  if (p >= 0.6) return C.warning;
-  return C.danger;
-}
-
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export default function OverzichtPage() {
   const { companyId, mode, month } = useFinanceFilter();
@@ -99,44 +82,61 @@ export default function OverzichtPage() {
 
   return (
     <div className="space-y-6 p-6">
-      {isGroup && (
-        <div className="text-xs text-muted-foreground">
-          Groepstotaal excl. intercompany · {summaries.length} {summaries.length === 1 ? 'bedrijf' : 'bedrijven'}
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiTile label="Banksaldo" value={eur(g.bank)} hint="alle rekeningen" />
-        <KpiTile
-          label={`Omzet ${monthName} vs target`}
-          value={eur(g.revenueMonth)}
-          hint={g.targetMonth !== null ? `${g.targetPct !== null ? `${pct(g.targetPct)} van ` : ''}${eur(g.targetMonth)}` : 'geen target'}
+      <div className="space-y-2.5">
+        {isGroup && (
+          <div className="text-[13px] text-muted-foreground">
+            <span className="font-medium text-foreground">Groepstotaal</span> excl. intercompany · {summaries.length} {summaries.length === 1 ? 'bedrijf' : 'bedrijven'}
+          </div>
+        )}
+        <KpiStrip
+          items={[
+            { label: 'Banksaldo', value: eur(g.bank), context: 'alle rekeningen' },
+            {
+              label: `Omzet ${monthName} vs target`,
+              value: eur(g.revenueMonth),
+              context: g.targetMonth !== null
+                ? g.targetPct !== null
+                  ? <><Chip tone={targetTone(g.targetPct)}>{pct(g.targetPct)}</Chip><span>van {eur(g.targetMonth)}</span></>
+                  : <span>target {eur(g.targetMonth)}</span>
+                : 'geen target',
+            },
+            {
+              label: 'Omzet YTD',
+              value: eur(g.revenueYtd),
+              context: ytdGrowth !== null
+                ? <><Chip tone={ytdGrowth >= 0 ? 'success' : 'danger'}>{ytdGrowth >= 0 ? '+' : '−'}{Math.abs(Math.round(ytdGrowth * 100))}%</Chip><span>vs vorig jaar</span></>
+                : 'geen vergelijking',
+            },
+            {
+              label: 'Resultaat YTD',
+              value: eur(g.resultYtd),
+              valueTone: g.resultYtd !== null && g.resultYtd < 0 ? 'danger' : undefined,
+              context: margin !== null ? `${Math.round(margin * 100)}% marge` : undefined,
+            },
+            {
+              label: 'Open debiteuren',
+              value: eur(g.receivables),
+              context: g.overdue > 0
+                ? <span className={`font-medium tabular-nums ${TONE_TEXT.danger}`}>{eur(g.overdue)} te laat</span>
+                : 'niets te laat',
+            },
+          ]}
         />
-        <KpiTile
-          label="Omzet YTD"
-          value={eur(g.revenueYtd)}
-          hint={ytdGrowth !== null ? `${ytdGrowth >= 0 ? '+' : ''}${Math.round(ytdGrowth * 100)}% vs vorig jaar` : 'geen vergelijking'}
-        />
-        <KpiTile
-          label="Resultaat YTD"
-          value={eur(g.resultYtd)}
-          tone={g.resultYtd !== null && g.resultYtd < 0 ? 'negative' : 'default'}
-          hint={margin !== null ? `${Math.round(margin * 100)}% marge` : undefined}
-        />
-        <KpiTile label="Open debiteuren" value={eur(g.receivables)} hint={`${eur(g.overdue)} te laat`} />
       </div>
 
-      <section className="rounded-xl border bg-card p-4">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-medium">Omzet {monthName} tegenover target</h3>
+      <Section
+        title={`Omzet ${monthName} tegenover target`}
+        description="Per bedrijf; de streep is de target."
+        actions={
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <LegendDot color={C.success} label="≥ 100%" />
-            <LegendDot color={C.primary} label="85–100%" />
-            <LegendDot color={C.warning} label="60–85%" />
-            <LegendDot color={C.danger} label="< 60%" />
+            <LegendDot color={TONE_HEX.success} label="≥ 100%" />
+            <LegendDot color={TONE_HEX.near} label="85–100%" />
+            <LegendDot color={TONE_HEX.warning} label="60–85%" />
+            <LegendDot color={TONE_HEX.danger} label="< 60%" />
             <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-foreground" />target</span>
           </div>
-        </div>
+        }
+      >
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">Geen omzet of target voor deze maand.</p>
         ) : (
@@ -173,7 +173,7 @@ export default function OverzichtPage() {
             </ResponsiveContainer>
           </div>
         )}
-      </section>
+      </Section>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {rows.map(({ s, c }) => {
@@ -185,11 +185,11 @@ export default function OverzichtPage() {
               key={s.companyId}
               data-testid={`company-card-${s.companyId}`}
               className="overflow-hidden rounded-xl border border-l-4 bg-card text-sm shadow-sm"
-              style={{ borderLeftColor: h.color }}
+              style={{ borderLeftColor: TONE_HEX[h.tone] }}
             >
               <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2.5">
                 <span className="font-semibold">{s.name}</span>
-                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${h.badge}`}>
+                <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium ${TONE_CHIP[h.tone]}`}>
                   {h.label}{reason && <span className="font-normal opacity-80"> · {reason}</span>}
                 </span>
               </div>
@@ -231,7 +231,7 @@ export default function OverzichtPage() {
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
+      <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: color }} />
       {label}
     </span>
   );
@@ -242,8 +242,8 @@ function Line({ label, value, sub, negative }: { label: string; value: React.Rea
     <div className="flex items-start justify-between gap-3 py-2">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-right">
-        <div className={`font-semibold tabular-nums ${negative ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>{value}</div>
-        {sub && <div className="text-xs font-medium tabular-nums text-red-600 dark:text-red-400">{sub}</div>}
+        <div className={`font-semibold tabular-nums ${negative ? TONE_TEXT.danger : 'text-foreground'}`}>{value}</div>
+        {sub && <div className={`text-xs font-medium tabular-nums ${TONE_TEXT.danger}`}>{sub}</div>}
       </dd>
     </div>
   );
