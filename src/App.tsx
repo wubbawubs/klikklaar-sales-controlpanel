@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
+import { QueryCacheReset } from "@/components/QueryCacheReset";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
@@ -22,13 +23,13 @@ import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
 import FinanceLayout from "@/pages/finance/FinanceLayout";
-import FinancePage from "@/pages/FinancePage";
-import FacturenPage from "@/pages/FacturenPage";
-import OmzetResultaatPage from "@/pages/OmzetResultaatPage";
-import LiquiditeitPage from "@/pages/LiquiditeitPage";
-import ContractenPage from "@/pages/ContractenPage";
-import StripePage from "@/pages/StripePage";
-import PrognosePage from "@/pages/PrognosePage";
+import FinanceRoute from "@/pages/finance/FinanceRoute";
+import OmzetResultaatPage from "@/pages/finance/OmzetResultaatPage";
+import CashLiquiditeitPage from "@/pages/finance/CashLiquiditeitPage";
+import DebiteurenPage from "@/pages/finance/DebiteurenPage";
+import BedrijvenPage from "@/pages/finance/BedrijvenPage";
+import RapportagePage from "@/pages/finance/RapportagePage";
+import OverzichtPage from "@/pages/finance/OverzichtPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
@@ -71,14 +72,13 @@ function AppRoutes() {
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
         <Route path="/growth" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><GrowthPage /></ProtectedRoute>} />
-        <Route path="/finance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinanceLayout /></ProtectedRoute>}>
-          <Route index element={<FinancePage />} />
-          <Route path="facturen" element={<FacturenPage />} />
+        <Route path="/finance" element={<FinanceRoute><FinanceLayout /></FinanceRoute>}>
+          <Route index element={<OverzichtPage />} />
           <Route path="omzet" element={<OmzetResultaatPage />} />
-          <Route path="liquiditeit" element={<LiquiditeitPage />} />
-          <Route path="contracten" element={<ContractenPage />} />
-          <Route path="stripe" element={<StripePage />} />
-          <Route path="prognose" element={<PrognosePage />} />
+          <Route path="liquiditeit" element={<CashLiquiditeitPage />} />
+          <Route path="debiteuren" element={<DebiteurenPage />} />
+          <Route path="bedrijven" element={<BedrijvenPage />} />
+          <Route path="rapportage" element={<RapportagePage />} />
         </Route>
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
@@ -97,6 +97,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <QueryCacheReset />
           <OrganizationProvider>
             <AppRoutes />
           </OrganizationProvider>

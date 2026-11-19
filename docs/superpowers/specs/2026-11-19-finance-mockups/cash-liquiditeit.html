@@ -1,0 +1,93 @@
+<style>
+  .fx { font-family: -apple-system, system-ui, sans-serif; color:#1d2b25; }
+  .fx .main { background:#eef2ee; border:1px solid #d6ddd6; border-radius:10px; padding:14px 16px; }
+  .fx h4 { margin:0 0 2px; font-size:16px; }
+  .fx .sub { font-size:11px; color:#7a8a82; margin-bottom:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .fx .pill { background:#fff; border:1px solid #d6ddd6; border-radius:99px; padding:2px 8px; font-size:10px; }
+  .fx .pill.on { background:#0f6b5a; color:#fff; border-color:#0f6b5a; }
+  .fx .grid2 { display:grid; grid-template-columns: 1.2fr 1fr; gap:10px; }
+  .fx .panel { background:#fff; border:1px solid #dde4dd; border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .fx .panel .t { font-size:12px; font-weight:600; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .fx table { width:100%; border-collapse:collapse; font-size:11px; }
+  .fx th { text-align:left; color:#7a8a82; font-weight:500; padding:4px 6px; border-bottom:1px solid #e6ebe6; }
+  .fx td { padding:5px 6px; border-bottom:1px solid #f0f3f0; }
+  .fx td.n, .fx th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .fx .muted { color:#7a8a82; font-size:10px; }
+  .fx .warn { color:#b5452f; }
+  .fx .btn { background:#0f6b5a; color:#fff; border-radius:6px; padding:3px 9px; font-size:10px; font-weight:600; }
+  .fx .new { background:#fff6e5; }
+  .fx .tag { font-size:9px; background:#fde7c2; color:#8a5a12; border-radius:4px; padding:1px 5px; margin-left:4px; }
+  .fx .chart { height:120px; display:flex; align-items:flex-end; gap:4px; padding:4px 0 0; border-bottom:1px solid #e6ebe6; position:relative; }
+  .fx .chart .c { flex:1; background:#14a38b; border-radius:2px 2px 0 0; opacity:.85; }
+  .fx .chart .c.lo { background:#d9822b; }
+  .fx .chart .min { position:absolute; left:0; right:0; border-top:1px dashed #b5452f; }
+  .fx .axis { display:flex; justify-content:space-between; font-size:9px; color:#7a8a82; margin-top:3px; }
+  .fx .legend { font-size:10px; color:#55655d; margin-top:6px; line-height:1.5; }
+</style>
+
+<h2>Cash &amp; Liquiditeit</h2>
+<p class="subtitle">Banksaldi uit Exact, een prognose voor de komende 13 weken, en de lijst met abonnementen en vaste lasten. Klopt dit, en is dit wat jullie met "forecast" bedoelden?</p>
+
+<div class="fx">
+  <div class="main">
+    <h4>Cash &amp; Liquiditeit</h4>
+    <div class="sub">Alle bedrijven ▾ <span class="pill on">100%</span><span class="pill">aandeel OneGroup</span> <span class="muted">Exact bijgewerkt 14:05</span></div>
+
+    <div class="grid2">
+      <div>
+        <div class="panel">
+          <div class="t">Prognose banksaldo, 13 weken <span class="muted">groep, alle rekeningen</span></div>
+          <div class="chart">
+            <div class="min" style="bottom:28%"></div>
+            <div class="c" style="height:72%"></div><div class="c" style="height:75%"></div><div class="c" style="height:69%"></div><div class="c" style="height:64%"></div>
+            <div class="c" style="height:70%"></div><div class="c" style="height:66%"></div><div class="c" style="height:58%"></div><div class="c" style="height:52%"></div>
+            <div class="c" style="height:49%"></div><div class="c" style="height:41%"></div><div class="c lo" style="height:33%"></div><div class="c lo" style="height:26%"></div><div class="c lo" style="height:29%"></div>
+          </div>
+          <div class="axis"><span>nu € 412k</span><span>wk 52</span><span>wk 7: € 118k</span></div>
+          <div class="legend">
+            = banksaldo nu<br>
+            + open debiteuren op hun vervaldatum (te laat = in week 1, of niet meetellen)<br>
+            − open crediteuren op hun vervaldatum<br>
+            − vaste lasten en abonnementen per maand<br>
+            <span class="warn">rode streep = minimumbuffer die jullie per bedrijf instellen</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="t">Banksaldo per bedrijf</div>
+          <table>
+            <tr><th>Bedrijf</th><th>Rekening</th><th class="n">Saldo</th><th class="n">Laatste afschrift</th></tr>
+            <tr><td>KlikKlaar SEO</td><td>ING ··4821</td><td class="n">€ 128.410</td><td class="n">vandaag</td></tr>
+            <tr><td>Mandate</td><td>ING ··1170</td><td class="n">€ 96.002</td><td class="n">vandaag</td></tr>
+            <tr><td>LabelLift</td><td>ING ··9035</td><td class="n">€ 74.250</td><td class="n warn">12 dagen geleden</td></tr>
+            <tr><td>Wantveld</td><td>ING ··3318</td><td class="n">€ 31.180</td><td class="n">gisteren</td></tr>
+          </table>
+          <div class="muted" style="margin-top:6px">"Laatste afschrift" wordt rood zodra ING niet aan Exact gekoppeld is en het saldo dus oud is.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="t">Abonnementen &amp; vaste lasten <span class="btn">+ Nieuwe maandlast</span></div>
+          <table>
+            <tr><th>Wat</th><th>Bedrijf</th><th class="n">p/m</th><th class="n">Echt betaald*</th></tr>
+            <tr class="new"><td>HubSpot Sales Pro <span class="tag">nieuw</span></td><td>KlikKlaar</td><td class="n">€ 450</td><td class="n muted">nog niet</td></tr>
+            <tr><td>Kantoorhuur</td><td>Mandate</td><td class="n">€ 3.200</td><td class="n">€ 3.200</td></tr>
+            <tr><td>Google Workspace</td><td>Alle</td><td class="n">€ 312</td><td class="n">€ 318</td></tr>
+            <tr><td>Lovable</td><td>LabelLift</td><td class="n">€ 100</td><td class="n">€ 100</td></tr>
+            <tr><td>Exact Online</td><td>Alle</td><td class="n">€ 540</td><td class="n warn">€ 612</td></tr>
+          </table>
+          <div class="muted" style="margin-top:6px">* uit Exact: de laatste inkoopfactuur van die leverancier. Wijkt af = oranje/rood.</div>
+          <div style="margin-top:8px; padding:7px 9px; background:#f4f7f4; border-radius:6px; font-size:10px; color:#33443c">
+            🔔 <b>Melding</b> naar iedereen met Finance-toegang tot KlikKlaar: "Robin heeft een nieuwe maandlast toegevoegd: HubSpot Sales Pro, € 450 p/m."
+          </div>
+        </div>
+        <div class="panel">
+          <div class="t">Totaal vaste lasten <span class="muted">groep</span></div>
+          <div style="font-size:18px; font-weight:650">€ 41.380 <span class="muted">per maand</span></div>
+          <div class="muted">Runway zonder nieuwe omzet: 10 maanden</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="subtitle" style="margin-top:14px">Bedragen, namen en rekeningnummers zijn verzonnen.</p>

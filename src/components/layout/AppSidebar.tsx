@@ -7,9 +7,10 @@ import { BrandSwitcher } from '@/components/layout/BrandSwitcher';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useFunnelDealCount, useFunnels } from '@/hooks/useFunnels';
 import { useMyOpenTaskCount } from '@/hooks/useTasks';
+import { useFinanceMe } from '@/hooks/useFinance';
 import { cn } from '@/lib/utils';
 
-interface NavItem { to: string; icon: any; label: string; adminOnly?: boolean; badge?: 'tasks' }
+interface NavItem { to: string; icon: any; label: string; adminOnly?: boolean; finance?: boolean; badge?: 'tasks' }
 
 const TOP_NAV: NavItem[] = [
   { to: '/',         icon: LayoutDashboard, label: 'Dashboard' },
@@ -26,7 +27,7 @@ const RELATIES_NAV: NavItem[] = [
 const NAV: NavItem[] = [
   { to: '/boards',   icon: Layout,          label: 'Boards' },
   { to: '/growth',   icon: TrendingUp,      label: 'Groeidoelen', adminOnly: true },
-  { to: '/finance',  icon: Euro,            label: 'Finance', adminOnly: true },
+  { to: '/finance',  icon: Euro,            label: 'Finance', finance: true },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
@@ -80,6 +81,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
   const { data: funnels = [] } = useFunnels();
   // My open tasks due today or overdue (disabled in the group view: no org id).
   const { data: dueTasks = 0 } = useMyOpenTaskCount();
+  const hasFinance = useFinanceMe().data?.has_access === true;
 
   const isActive = (to: string) => to === '/'
     ? location.pathname === '/'
@@ -139,7 +141,7 @@ export function AppSidebar({ onCloseMobile, collapsed = false }: AppSidebarProps
           {RELATIES_NAV.map(renderItem)}
 
           <GroupLabel collapsed={collapsed}>&nbsp;</GroupLabel>
-          {NAV.filter(i => !i.adminOnly || isAdmin).map(renderItem)}
+          {NAV.filter(i => i.finance ? hasFinance : (!i.adminOnly || isAdmin)).map(renderItem)}
         </nav>
 
         {/* Bottom nav */}

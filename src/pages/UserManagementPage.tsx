@@ -14,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import { Users, Shield, ShieldCheck, GraduationCap, Briefcase, Handshake, Plus, Trash2, Building2, UserPlus, Mail } from 'lucide-react';
 import type { AppRole } from '@/types/database';
+import { FinanceAccessCell } from '@/components/finance/FinanceAccessCell';
+import { useFinanceMe } from '@/hooks/useFinance';
 
 interface Org { id: string; name: string; slug: string }
 interface Membership { organization_id: string; role: string }
@@ -41,6 +43,7 @@ const INVITE_ROLES: AppRole[] = ['admin', 'coach', 'sales_executive', 'closer'];
 
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
+  const showFinance = useFinanceMe().data?.is_super_admin === true;
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,6 +255,7 @@ export default function UserManagementPage() {
                     <TableHead>E-mail</TableHead>
                     <TableHead>Rollen</TableHead>
                     <TableHead>Bedrijven (pipeline-toegang)</TableHead>
+                    {showFinance && <TableHead>Finance</TableHead>}
                     <TableHead className="w-[180px]">Acties</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -309,6 +313,11 @@ export default function UserManagementPage() {
                           )}
                         </div>
                       </TableCell>
+                      {showFinance && (
+                        <TableCell>
+                          <FinanceAccessCell userId={u.user_id} isSuperAdminUser={u.roles.includes('super_admin')} />
+                        </TableCell>
+                      )}
                       <TableCell>
                         {addingRole === u.user_id ? (
                           <div className="flex items-center gap-2">

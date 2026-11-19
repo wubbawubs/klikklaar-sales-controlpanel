@@ -10,7 +10,7 @@ export default defineConfig({
     // jsdom + Radix tests take 2-4s when 10 workers contend for CPU; the 5s default is too tight.
     testTimeout: 15000,
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "supabase/functions/**/*.test.ts"],
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

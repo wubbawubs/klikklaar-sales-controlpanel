@@ -37,7 +37,7 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="app-backdrop flex h-screen lg:p-3 lg:gap-3">
+    <div className="app-backdrop flex h-screen lg:p-3 lg:gap-3 print:block print:h-auto print:p-0">
       <OrgAccent />
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -50,7 +50,7 @@ export function AppLayout() {
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 p-3 lg:p-0 lg:static lg:z-auto
+          fixed inset-y-0 left-0 z-50 p-3 lg:p-0 lg:static lg:z-auto print:hidden
           transform transition-transform duration-200 ease-in-out
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -58,9 +58,9 @@ export function AppLayout() {
         <AppSidebar onCloseMobile={() => setMobileOpen(false)} collapsed={collapsed} />
       </div>
 
-      <main className="flex-1 overflow-y-auto min-w-0 lg:rounded-2xl">
+      <main className="flex-1 overflow-y-auto min-w-0 lg:rounded-2xl print:overflow-visible">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 flex items-center justify-between h-12 px-3 mx-3 mt-3 lg:mx-0 lg:mt-0 glass !rounded-full">
+        <div className="sticky top-0 z-30 flex items-center justify-between h-12 px-3 mx-3 mt-3 lg:mx-0 lg:mt-0 glass !rounded-full print:hidden">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileOpen(true)}

@@ -644,6 +644,338 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_access: {
+        Row: {
+          user_id: string
+          level: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          level: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          level?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      finance_bank_accounts: {
+        Row: {
+          id: string
+          company_id: string
+          account_code: string
+          name: string
+          balance: number
+          last_statement_date: string | null
+          synced_at: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          account_code: string
+          name: string
+          balance: number
+          last_statement_date?: string | null
+          synced_at?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          account_code?: string
+          name?: string
+          balance?: number
+          last_statement_date?: string | null
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_bank_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_companies: {
+        Row: {
+          id: string
+          exact_division: number | null
+          name: string
+          legal_name: string | null
+          ownership_pct: number
+          min_buffer: number
+          excluded: boolean
+          last_synced_at: string | null
+          sync_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          exact_division?: number | null
+          name: string
+          legal_name?: string | null
+          ownership_pct?: number
+          min_buffer?: number
+          excluded?: boolean
+          last_synced_at?: string | null
+          sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          exact_division?: number | null
+          name?: string
+          legal_name?: string | null
+          ownership_pct?: number
+          min_buffer?: number
+          excluded?: boolean
+          last_synced_at?: string | null
+          sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      finance_company_access: {
+        Row: {
+          user_id: string
+          company_id: string
+        }
+        Insert: {
+          user_id: string
+          company_id: string
+        }
+        Update: {
+          user_id?: string
+          company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_company_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_exact_connection: {
+        Row: {
+          id: number
+          access_token: string | null
+          refresh_token: string | null
+          expires_at: string | null
+          connected_by: string | null
+          connected_at: string | null
+        }
+        Insert: {
+          id: number
+          access_token?: string | null
+          refresh_token?: string | null
+          expires_at?: string | null
+          connected_by?: string | null
+          connected_at?: string | null
+        }
+        Update: {
+          id?: number
+          access_token?: string | null
+          refresh_token?: string | null
+          expires_at?: string | null
+          connected_by?: string | null
+          connected_at?: string | null
+        }
+        Relationships: []
+      }
+      finance_fixed_costs: {
+        Row: {
+          id: string
+          company_id: string
+          name: string
+          category: string
+          monthly_amount: number
+          exact_supplier_code: string | null
+          active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          name: string
+          category: string
+          monthly_amount: number
+          exact_supplier_code?: string | null
+          active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          name?: string
+          category?: string
+          monthly_amount?: number
+          exact_supplier_code?: string | null
+          active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_fixed_costs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_monthly: {
+        Row: {
+          company_id: string
+          month: string
+          revenue: number
+          costs: number
+          synced_at: string | null
+        }
+        Insert: {
+          company_id: string
+          month: string
+          revenue?: number
+          costs?: number
+          synced_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          month?: string
+          revenue?: number
+          costs?: number
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_monthly_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_open_items: {
+        Row: {
+          id: string
+          company_id: string
+          kind: string | null
+          exact_id: string
+          invoice_number: string | null
+          counterparty: string
+          amount: number
+          invoice_date: string | null
+          due_date: string | null
+          synced_at: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          kind?: string | null
+          exact_id: string
+          invoice_number?: string | null
+          counterparty: string
+          amount: number
+          invoice_date?: string | null
+          due_date?: string | null
+          synced_at?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          kind?: string | null
+          exact_id?: string
+          invoice_number?: string | null
+          counterparty?: string
+          amount?: number
+          invoice_date?: string | null
+          due_date?: string | null
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_open_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_supplier_spend: {
+        Row: {
+          company_id: string
+          supplier_code: string
+          supplier_name: string | null
+          last_invoice_date: string | null
+          last_amount: number | null
+        }
+        Insert: {
+          company_id: string
+          supplier_code: string
+          supplier_name?: string | null
+          last_invoice_date?: string | null
+          last_amount?: number | null
+        }
+        Update: {
+          company_id?: string
+          supplier_code?: string
+          supplier_name?: string | null
+          last_invoice_date?: string | null
+          last_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_supplier_spend_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_targets: {
+        Row: {
+          company_id: string
+          month: string
+          target: number
+        }
+        Insert: {
+          company_id: string
+          month: string
+          target: number
+        }
+        Update: {
+          company_id?: string
+          month?: string
+          target?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_targets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "finance_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnel_events: {
         Row: {
           closer_appointment_id: string | null
@@ -1820,6 +2152,14 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      finance_me: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          has_access: boolean
+          level: string | null
+          is_super_admin: boolean
+        }[]
       }
       has_role: {
         Args: {
