@@ -2,78 +2,55 @@
 // gepagineerde GET's met rate-limitbewaking. Bronnen: Exact "REST API" en "OAuth 2.0" developer-docs.
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import {
+  createRefresher,
+  ExactAuthError,
+  type ExactOAuthConfig,
+  requestTokenWith,
+  resolveAccessToken,
+  type TokenResponse,
+  type TokenRow,
+} from "./token.ts";
+
+export { ExactAuthError, ExactNotConnectedError, expiresAt } from "./token.ts";
+
 export const EXACT_BASE_URL = (Deno.env.get("EXACT_BASE_URL") ?? "https://start.exactonline.nl").replace(/\/+$/, "");
 
-export class ExactAuthError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ExactAuthError";
-  }
-}
-
-export class ExactNotConnectedError extends Error {
-  constructor() {
-    super("Exact niet gekoppeld");
-    this.name = "ExactNotConnectedError";
-  }
-}
-
-interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number | string; // Exact geeft seconden als string ("600")
+function oauthConfig(): ExactOAuthConfig {
+  return {
+    baseUrl: EXACT_BASE_URL,
+    clientId: Deno.env.get("EXACT_CLIENT_ID") ?? "",
+    clientSecret: Deno.env.get("EXACT_CLIENT_SECRET") ?? "",
+  };
 }
 
 /** Wisselt een authorization code of refresh token in bij `/api/oauth2/token`. */
-// VERIFY tegen echte administratie: tokenpad, form-velden en foutstatus (400 invalid_grant) bij verlopen refresh token.
-export async function requestToken(params: Record<string, string>): Promise<TokenResponse> {
-  const body = new URLSearchParams({
-    ...params,
-    client_id: Deno.env.get("EXACT_CLIENT_ID") ?? "",
-    client_secret: Deno.env.get("EXACT_CLIENT_SECRET") ?? "",
-  });
-  const res = await fetch(`${EXACT_BASE_URL}/api/oauth2/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body,
-  });
-  const text = await res.text();
-  // Exact geeft 400 (invalid_grant) bij een verlopen/al gebruikte refresh token.
-  if (res.status === 400 || res.status === 401) throw new ExactAuthError(`Exact token → ${res.status} ${text.slice(0, 200)}`);
-  if (!res.ok) throw new Error(`Exact token → ${res.status} ${text.slice(0, 200)}`);
-  const json = JSON.parse(text) as TokenResponse;
-  if (!json.access_token || !json.refresh_token) throw new ExactAuthError("Exact token-antwoord zonder tokens");
-  return json;
-}
-
-export function expiresAt(expiresIn: number | string): string {
-  const secs = Number(expiresIn) || 600;
-  return new Date(Date.now() + secs * 1000).toISOString();
+export function requestToken(params: Record<string, string>): Promise<TokenResponse> {
+  return requestTokenWith(oauthConfig(), fetch, params);
 }
 
 /**
- * Geeft een geldig access token. Ververst als `expires_at` binnen 60 s valt en slaat het nieuwe
- * refresh token direct op (Exact roteert refresh tokens; het oude is daarna ongeldig).
+ * Geeft een geldig access token (zie resolveAccessToken in token.ts): ververst binnen 60 s van
+ * expiry, slaat het geroteerde refresh token op en vangt een gelijktijdige refresh door een andere
+ * run op door de verbinding opnieuw te lezen.
  */
-export async function getAccessToken(admin: SupabaseClient): Promise<string> {
-  const { data, error } = await admin
-    .from("finance_exact_connection")
-    .select("access_token, refresh_token, expires_at")
-    .eq("id", 1)
-    .maybeSingle();
-  if (error) throw new Error(`finance_exact_connection: ${error.message}`);
-  if (!data?.refresh_token) throw new ExactNotConnectedError();
-
-  const exp = data.expires_at ? new Date(data.expires_at).getTime() : 0;
-  if (data.access_token && exp > Date.now() + 60_000) return data.access_token;
-
-  const tok = await requestToken({ grant_type: "refresh_token", refresh_token: data.refresh_token });
-  const { error: upErr } = await admin
-    .from("finance_exact_connection")
-    .update({ access_token: tok.access_token, refresh_token: tok.refresh_token, expires_at: expiresAt(tok.expires_in) })
-    .eq("id", 1);
-  if (upErr) throw new Error(`finance_exact_connection opslaan: ${upErr.message}`);
-  return tok.access_token;
+export function getAccessToken(admin: SupabaseClient): Promise<string> {
+  const store = {
+    async read(): Promise<TokenRow | null> {
+      const { data, error } = await admin
+        .from("finance_exact_connection")
+        .select("access_token, refresh_token, expires_at")
+        .eq("id", 1)
+        .maybeSingle();
+      if (error) throw new Error(`finance_exact_connection: ${error.message}`);
+      return data as TokenRow | null;
+    },
+    async save(row: TokenRow): Promise<void> {
+      const { error } = await admin.from("finance_exact_connection").update(row).eq("id", 1);
+      if (error) throw new Error(`finance_exact_connection opslaan: ${error.message}`);
+    },
+  };
+  return resolveAccessToken(store, createRefresher(oauthConfig(), fetch));
 }
 
 export interface ExactGetOptions {
