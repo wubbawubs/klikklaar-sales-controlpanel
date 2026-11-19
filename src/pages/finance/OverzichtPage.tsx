@@ -1,21 +1,49 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Bar, CartesianGrid, ComposedChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, CartesianGrid, ComposedChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { KpiTile } from '@/components/finance/KpiTile';
 import {
   useFinanceBank, useFinanceCompanies, useFinanceMonthly, useFinanceOpenItems, useFinanceTargets,
 } from '@/hooks/useFinance';
-import { companySummary, groupSummary, type CompanySummary } from '@/lib/finance/aggregate';
+import { applyShare, companySummary, groupSummary, type CompanySummary } from '@/lib/finance/aggregate';
 import { eur } from '@/lib/finance/format';
 import { useFinanceFilter } from './FinanceFilter';
 
-const HEALTH_COLOR: Record<CompanySummary['health'], string> = {
-  good: '#14a38b',
-  warning: '#d9822b',
-  critical: '#b5452f',
-  unknown: '#9ca3af',
+// Kleuren volgen de CRM-thematokens (--success, --primary, --warning, --destructive).
+const C = {
+  success: '#25a87a',
+  primary: '#8ccfb8', // lichtere tint: bijna op target, duidelijk anders dan "gehaald"
+  warning: '#f2801f',
+  danger: '#dc3c3c',
+  muted: '#9ca3af',
 };
+
+const HEALTH: Record<CompanySummary['health'], { color: string; label: string; badge: string }> = {
+  good: { color: C.success, label: 'Op koers', badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' },
+  warning: { color: C.warning, label: 'Let op', badge: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300' },
+  critical: { color: C.danger, label: 'Actie nodig', badge: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' },
+  unknown: { color: C.muted, label: 'Geen data', badge: 'bg-muted text-muted-foreground' },
+};
+
+/** Korte reden achter de status, zodat "Let op" niet raadselachtig is. Volgt de drempels uit aggregate.ts. */
+function healthReason(s: CompanySummary, minBuffer: number): string | null {
+  if (s.health === 'unknown' || s.health === 'good') return null;
+  const reasons: string[] = [];
+  if (s.health === 'critical' && s.bank !== null && s.bank < minBuffer) reasons.push('onder buffer');
+  if (s.targetPct !== null && s.targetPct < (s.health === 'critical' ? 0.6 : 0.85)) reasons.push('achter op target');
+  if (s.receivables > 0 && s.overdue > 0.25 * s.receivables) reasons.push('veel te laat');
+  return reasons.length ? reasons.join(' · ') : s.health === 'critical' ? 'sync mislukt' : null;
+}
+
+/** Kleur van een omzetbalk: hoe ver ten opzichte van de target. */
+function targetColor(p: number | null): string {
+  if (p === null) return C.muted;
+  if (p >= 1) return C.success;
+  if (p >= 0.85) return C.primary;
+  if (p >= 0.6) return C.warning;
+  return C.danger;
+}
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -65,7 +93,8 @@ export default function OverzichtPage() {
       name: s.name,
       revenue: s.revenueMonth ?? 0,
       target: s.targetMonth ?? 0,
-      color: HEALTH_COLOR[s.health],
+      pct: s.targetPct,
+      color: targetColor(s.targetPct),
     }));
 
   return (
@@ -98,30 +127,46 @@ export default function OverzichtPage() {
       </div>
 
       <section className="rounded-xl border bg-card p-4">
-        <h3 className="mb-3 text-sm font-medium">
-          Omzet {monthName} tegenover target <span className="text-xs text-muted-foreground">(streep = target)</span>
-        </h3>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-medium">Omzet {monthName} tegenover target</h3>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <LegendDot color={C.success} label="≥ 100%" />
+            <LegendDot color={C.primary} label="85–100%" />
+            <LegendDot color={C.warning} label="60–85%" />
+            <LegendDot color={C.danger} label="< 60%" />
+            <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-foreground" />target</span>
+          </div>
+        </div>
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">Geen omzet of target voor deze maand.</p>
         ) : (
           <div style={{ height: Math.max(120, chartData.length * 44 + 30) }}>
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} layout="vertical" barGap={-14} margin={{ left: 8, right: 16 }}>
-                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(v: number) => eur(v)} fontSize={11} />
-                <YAxis type="category" dataKey="name" width={110} fontSize={11} />
-                <Tooltip formatter={(v: number) => eur(v)} />
-                <Bar dataKey="revenue" name="Omzet" barSize={14} isAnimationActive={false}>
+              <ComposedChart data={chartData} layout="vertical" barGap={-16} margin={{ left: 8, right: 64 }}>
+                <CartesianGrid horizontal={false} stroke="hsl(var(--border))" />
+                <XAxis type="number" tickFormatter={(v: number) => eur(v)} fontSize={11} stroke="hsl(var(--muted-foreground))" />
+                <YAxis type="category" dataKey="name" width={110} fontSize={12} stroke="hsl(var(--muted-foreground))" tickLine={false} />
+                <Tooltip formatter={(v: number) => eur(v)} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }} />
+                {/* Grijze achtergrondbalk tot de target: het gat tot de target is zo direct zichtbaar */}
+                <Bar dataKey="target" name="Target" barSize={16} fill="hsl(var(--muted))" radius={3} isAnimationActive={false} />
+                <Bar dataKey="revenue" name="Omzet" barSize={16} radius={3} isAnimationActive={false}>
                   {chartData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                  <LabelList
+                    dataKey="pct"
+                    position="right"
+                    fontSize={11}
+                    fill="hsl(var(--muted-foreground))"
+                    formatter={(v: number | null) => (v === null ? 'geen target' : pct(v))}
+                  />
                 </Bar>
                 <Bar
                   dataKey="target"
                   name="Target"
-                  barSize={14}
+                  barSize={16}
                   fill="transparent"
                   isAnimationActive={false}
                   shape={(p: { x: number; y: number; width: number; height: number }) => (
-                    <line x1={p.x + p.width} x2={p.x + p.width} y1={p.y - 3} y2={p.y + p.height + 3} stroke="currentColor" strokeWidth={2} />
+                    <line x1={p.x + p.width} x2={p.x + p.width} y1={p.y - 4} y2={p.y + p.height + 4} stroke="hsl(var(--foreground))" strokeWidth={2} />
                   )}
                 />
               </ComposedChart>
@@ -131,36 +176,75 @@ export default function OverzichtPage() {
       </section>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {summaries.map((s) => (
-          <div key={s.companyId} data-testid={`company-card-${s.companyId}`} className="rounded-xl border bg-card p-4 text-sm">
-            <div className="mb-2 flex items-center justify-between font-medium">
-              {s.name}
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: HEALTH_COLOR[s.health] }} title={s.health} />
+        {rows.map(({ s, c }) => {
+          const h = HEALTH[s.health];
+          const p = s.targetPct;
+          const reason = healthReason(s, applyShare(c.min_buffer, c, mode));
+          return (
+            <div
+              key={s.companyId}
+              data-testid={`company-card-${s.companyId}`}
+              className="overflow-hidden rounded-xl border border-l-4 bg-card text-sm shadow-sm"
+              style={{ borderLeftColor: h.color }}
+            >
+              <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2.5">
+                <span className="font-semibold">{s.name}</span>
+                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${h.badge}`}>
+                  {h.label}{reason && <span className="font-normal opacity-80"> · {reason}</span>}
+                </span>
+              </div>
+              {s.health === 'unknown' && (
+                <div className="border-b px-4 py-1.5 text-xs text-muted-foreground">nog niet gesynchroniseerd</div>
+              )}
+              <div className="px-4 pt-3">
+                <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+                  <span>Omzet {monthName}</span>
+                  <span className="tabular-nums">
+                    <span className="font-medium text-foreground">{eur(s.revenueMonth)}</span>
+                    {s.targetMonth !== null && <> / {eur(s.targetMonth)}</>}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((p ?? 0) * 100))}%`, background: targetColor(p) }}
+                  />
+                </div>
+              </div>
+              <dl className="divide-y px-4 py-1">
+                <Line label="Bank" value={eur(s.bank)} />
+                <Line label="Resultaat YTD" value={eur(s.resultYtd)} negative={s.resultYtd !== null && s.resultYtd < 0} />
+                <Line
+                  label="Open deb."
+                  value={eur(s.receivables)}
+                  sub={s.overdue > 0 ? `${eur(s.overdue)} te laat` : undefined}
+                />
+              </dl>
             </div>
-            {s.health === 'unknown' && <div className="mb-2 text-xs text-muted-foreground">nog niet gesynchroniseerd</div>}
-            <Line label="Bank" value={eur(s.bank)} />
-            <Line label="Resultaat YTD" value={eur(s.resultYtd)} />
-            <Line
-              label="Open deb."
-              value={
-                <>
-                  {eur(s.receivables)}
-                  {s.overdue > 0 && <> · <b className="text-rose-600 dark:text-rose-300">{eur(s.overdue)} te laat</b></>}
-                </>
-              }
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function Line({ label, value }: { label: string; value: React.ReactNode }) {
+function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <div className="flex justify-between py-0.5 text-muted-foreground">
-      <span>{label}</span>
-      <span className="tabular-nums text-foreground">{value}</span>
+    <span className="flex items-center gap-1.5">
+      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}
+
+function Line({ label, value, sub, negative }: { label: string; value: React.ReactNode; sub?: string; negative?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right">
+        <div className={`font-semibold tabular-nums ${negative ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>{value}</div>
+        {sub && <div className="text-xs font-medium tabular-nums text-red-600 dark:text-red-400">{sub}</div>}
+      </dd>
     </div>
   );
 }
