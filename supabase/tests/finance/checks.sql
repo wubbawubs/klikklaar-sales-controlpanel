@@ -84,6 +84,24 @@ BEGIN;
 SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f1','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
 DO $$ BEGIN IF (SELECT count(*) FROM finance_access) <> 2 THEN RAISE EXCEPTION 'check finance_access f1 all'; END IF; END $$;
 ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    UPDATE finance_companies SET excluded=true WHERE id='00000000-0000-0000-0000-0000000000c1';
+    RAISE EXCEPTION 'check guard: f3 excluded update should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  UPDATE finance_companies SET min_buffer=5, ownership_pct=50 WHERE id='00000000-0000-0000-0000-0000000000c1';
+  IF (SELECT min_buffer FROM finance_companies WHERE id='00000000-0000-0000-0000-0000000000c1') <> 5 THEN RAISE EXCEPTION 'check guard: f3 min_buffer'; END IF;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f1','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  UPDATE finance_companies SET excluded=true WHERE id='00000000-0000-0000-0000-0000000000c1';
+  IF NOT (SELECT excluded FROM finance_companies WHERE id='00000000-0000-0000-0000-0000000000c1') THEN RAISE EXCEPTION 'check guard: f1 excluded'; END IF;
+END $$;
+ROLLBACK;
 DO $$ BEGIN
   IF can_view_finance('00000000-0000-0000-0000-0000000000f5') IS NOT TRUE THEN RAISE EXCEPTION 'check can_view_finance(f5) must stay true'; END IF;
   RAISE NOTICE 'FINANCE CHECKS PASSED';

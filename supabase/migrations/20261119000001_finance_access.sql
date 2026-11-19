@@ -32,6 +32,30 @@ CREATE TRIGGER finance_companies_updated_at
   BEFORE UPDATE ON public.finance_companies
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+-- Alleen super_admin (of service role: auth.uid() IS NULL) mag andere kolommen dan ownership_pct/min_buffer wijzigen.
+CREATE OR REPLACE FUNCTION public.finance_companies_guard_update()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF auth.uid() IS NULL OR public.has_role(auth.uid(), 'super_admin') THEN
+    RETURN NEW;
+  END IF;
+  IF NEW.id IS DISTINCT FROM OLD.id
+     OR NEW.exact_division IS DISTINCT FROM OLD.exact_division
+     OR NEW.name IS DISTINCT FROM OLD.name
+     OR NEW.legal_name IS DISTINCT FROM OLD.legal_name
+     OR NEW.excluded IS DISTINCT FROM OLD.excluded
+     OR NEW.last_synced_at IS DISTINCT FROM OLD.last_synced_at
+     OR NEW.sync_error IS DISTINCT FROM OLD.sync_error
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+    RAISE EXCEPTION 'finance_companies: alleen ownership_pct en min_buffer mogen worden gewijzigd' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER finance_companies_guard_update
+  BEFORE UPDATE ON public.finance_companies
+  FOR EACH ROW EXECUTE FUNCTION public.finance_companies_guard_update();
+
 CREATE OR REPLACE FUNCTION public.finance_can_view(_uid uuid, _company uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT public.has_role(_uid, 'super_admin')
