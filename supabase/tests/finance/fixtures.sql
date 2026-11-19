@@ -18,3 +18,11 @@ INSERT INTO user_roles (user_id, role) VALUES
  ('00000000-0000-0000-0000-0000000000f3','sales_executive'),
  ('00000000-0000-0000-0000-0000000000f4','sales_executive'),
  ('00000000-0000-0000-0000-0000000000f5','admin');
+
+INSERT INTO profiles (user_id, full_name, email) VALUES
+ ('00000000-0000-0000-0000-0000000000f3','Fien Manager','f3@test.local');
+
+-- Test-only stub: the push trigger on notifications calls pg_net, which the throwaway image lacks.
+CREATE SCHEMA IF NOT EXISTS net;
+CREATE OR REPLACE FUNCTION net.http_post(url text, headers jsonb DEFAULT '{}', body jsonb DEFAULT '{}') RETURNS bigint
+  LANGUAGE sql AS $$ SELECT 1::bigint $$;

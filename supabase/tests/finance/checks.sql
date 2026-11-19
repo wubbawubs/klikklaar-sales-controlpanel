@@ -102,6 +102,105 @@ DO $$ BEGIN
   IF NOT (SELECT excluded FROM finance_companies WHERE id='00000000-0000-0000-0000-0000000000c1') THEN RAISE EXCEPTION 'check guard: f1 excluded'; END IF;
 END $$;
 ROLLBACK;
+-- ===== Task 2: data tables =====
+INSERT INTO finance_monthly (company_id, month) VALUES ('00000000-0000-0000-0000-0000000000c1','2026-10-01'),('00000000-0000-0000-0000-0000000000c2','2026-10-01');
+INSERT INTO finance_bank_accounts (company_id, account_code, name, balance) VALUES ('00000000-0000-0000-0000-0000000000c1','1','Bank A',100),('00000000-0000-0000-0000-0000000000c2','1','Bank B',200);
+INSERT INTO finance_open_items (company_id, kind, exact_id, counterparty, amount) VALUES ('00000000-0000-0000-0000-0000000000c1','receivable','r1','Klant A',50),('00000000-0000-0000-0000-0000000000c2','receivable','r2','Klant B',60);
+INSERT INTO finance_exact_connection (id, access_token) VALUES (1,'secret');
+
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f2','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM finance_open_items) <> 1 OR (SELECT count(*) FROM finance_open_items WHERE company_id <> '00000000-0000-0000-0000-0000000000c1') <> 0 THEN RAISE EXCEPTION 'check data f2 open_items'; END IF;
+  IF (SELECT count(*) FROM finance_monthly) <> 1 OR (SELECT count(*) FROM finance_monthly WHERE company_id <> '00000000-0000-0000-0000-0000000000c1') <> 0 THEN RAISE EXCEPTION 'check data f2 monthly'; END IF;
+  IF (SELECT count(*) FROM finance_bank_accounts) <> 1 OR (SELECT count(*) FROM finance_bank_accounts WHERE company_id <> '00000000-0000-0000-0000-0000000000c1') <> 0 THEN RAISE EXCEPTION 'check data f2 bank'; END IF;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f2','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO finance_fixed_costs (company_id,name,category,monthly_amount) VALUES ('00000000-0000-0000-0000-0000000000c1','X','software',10);
+    RAISE EXCEPTION 'check fixed_costs f2 A: should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN INSERT INTO finance_fixed_costs (company_id,name,category,monthly_amount) VALUES ('00000000-0000-0000-0000-0000000000c1','X','software',10); END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO finance_fixed_costs (company_id,name,category,monthly_amount) VALUES ('00000000-0000-0000-0000-0000000000c2','X','software',10);
+    RAISE EXCEPTION 'check fixed_costs f3 B: should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f2','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO finance_targets (company_id,month,target) VALUES ('00000000-0000-0000-0000-0000000000c1','2026-11-01',10);
+    RAISE EXCEPTION 'check targets f2: should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN INSERT INTO finance_targets (company_id,month,target) VALUES ('00000000-0000-0000-0000-0000000000c1','2026-11-01',10); END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO finance_monthly (company_id,month) VALUES ('00000000-0000-0000-0000-0000000000c1','2026-09-01');
+    RAISE EXCEPTION 'check monthly write: should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f1','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO finance_monthly (company_id,month) VALUES ('00000000-0000-0000-0000-0000000000c1','2026-09-01');
+    RAISE EXCEPTION 'check monthly write super: should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO finance_open_items (company_id,kind,exact_id,counterparty,amount) VALUES ('00000000-0000-0000-0000-0000000000c1','payable','p1','Lev',1);
+    RAISE EXCEPTION 'check open_items write: should have failed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f1','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  BEGIN
+    IF (SELECT count(*) FROM finance_exact_connection) <> 0 THEN RAISE EXCEPTION 'check exact_connection: f1 sees rows'; END IF;
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000f3','role','authenticated')::text, true); SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+  INSERT INTO finance_fixed_costs (company_id,name,category,monthly_amount) VALUES ('00000000-0000-0000-0000-0000000000c1','HubSpot Sales Pro','software',450);
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM notifications WHERE user_id='00000000-0000-0000-0000-0000000000f1') <> 1 OR (SELECT count(*) FROM notifications WHERE user_id='00000000-0000-0000-0000-0000000000f2') <> 1 THEN RAISE EXCEPTION 'check notify: f1/f2 must get exactly one'; END IF;
+  IF EXISTS (SELECT 1 FROM notifications WHERE user_id IN ('00000000-0000-0000-0000-0000000000f3','00000000-0000-0000-0000-0000000000f4','00000000-0000-0000-0000-0000000000f5')) THEN RAISE EXCEPTION 'check notify: f3/f4/f5 must get none'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM notifications WHERE user_id='00000000-0000-0000-0000-0000000000f2' AND title='Nieuwe maandlast' AND type='info' AND action_url='/finance/liquiditeit'
+     AND body='Fien Manager heeft een nieuwe maandlast toegevoegd: HubSpot Sales Pro, € 450 p/m.') THEN
+    RAISE EXCEPTION 'check notify: content wrong: %', (SELECT body FROM notifications WHERE user_id='00000000-0000-0000-0000-0000000000f2'); END IF;
+END $$;
+ROLLBACK;
+
 DO $$ BEGIN
   IF can_view_finance('00000000-0000-0000-0000-0000000000f5') IS NOT TRUE THEN RAISE EXCEPTION 'check can_view_finance(f5) must stay true'; END IF;
   RAISE NOTICE 'FINANCE CHECKS PASSED';
