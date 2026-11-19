@@ -19,6 +19,9 @@ vi.mock('@/hooks/useFunnels', () => ({
   useFunnelDealCount: () => ({ data: 2 }),
 }));
 
+let financeAccess = false;
+vi.mock('@/hooks/useFinance', () => ({ useFinanceMe: () => ({ data: { has_access: financeAccess, level: 'view', is_super_admin: false } }) }));
+
 let taskCount: number | undefined = 3;
 vi.mock('@/hooks/useTasks', () => ({ useMyOpenTaskCount: () => ({ data: taskCount }) }));
 
@@ -56,5 +59,15 @@ describe('AppSidebar', () => {
     isAllView = false; taskCount = 0;
     renderAt('/');
     expect(screen.getByText('Taken').closest('a')).not.toHaveTextContent('0');
+  });
+  it('shows Finance when finance_me grants access', () => {
+    isAllView = false; financeAccess = true;
+    renderAt('/');
+    expect(screen.getByText('Finance').closest('a')).toHaveAttribute('href', '/finance');
+  });
+  it('hides Finance for an admin without finance access', () => {
+    isAllView = false; financeAccess = false;
+    renderAt('/');
+    expect(screen.queryByText('Finance')).toBeNull();
   });
 });

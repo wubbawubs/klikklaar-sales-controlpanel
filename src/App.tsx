@@ -22,13 +22,8 @@ import BoardsPage from "@/pages/BoardsPage";
 import BoardPage from "@/pages/BoardPage";
 import GrowthPage from "@/pages/GrowthPage";
 import FinanceLayout from "@/pages/finance/FinanceLayout";
-import FinancePage from "@/pages/FinancePage";
-import FacturenPage from "@/pages/FacturenPage";
-import OmzetResultaatPage from "@/pages/OmzetResultaatPage";
-import LiquiditeitPage from "@/pages/LiquiditeitPage";
-import ContractenPage from "@/pages/ContractenPage";
-import StripePage from "@/pages/StripePage";
-import PrognosePage from "@/pages/PrognosePage";
+import FinanceRoute from "@/pages/finance/FinanceRoute";
+import FinancePlaceholder from "@/pages/finance/FinancePlaceholder";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
@@ -71,14 +66,13 @@ function AppRoutes() {
         <Route path="/boards" element={<BoardsPage />} />
         <Route path="/boards/:id" element={<BoardPage />} />
         <Route path="/growth" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><GrowthPage /></ProtectedRoute>} />
-        <Route path="/finance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinanceLayout /></ProtectedRoute>}>
-          <Route index element={<FinancePage />} />
-          <Route path="facturen" element={<FacturenPage />} />
-          <Route path="omzet" element={<OmzetResultaatPage />} />
-          <Route path="liquiditeit" element={<LiquiditeitPage />} />
-          <Route path="contracten" element={<ContractenPage />} />
-          <Route path="stripe" element={<StripePage />} />
-          <Route path="prognose" element={<PrognosePage />} />
+        <Route path="/finance" element={<FinanceRoute><FinanceLayout /></FinanceRoute>}>
+          <Route index element={<FinancePlaceholder title="Overzicht" />} />
+          <Route path="omzet" element={<FinancePlaceholder title="Omzet & Resultaat" />} />
+          <Route path="liquiditeit" element={<FinancePlaceholder title="Cash & Liquiditeit" />} />
+          <Route path="debiteuren" element={<FinancePlaceholder title="Facturen & Debiteuren" />} />
+          <Route path="bedrijven" element={<FinancePlaceholder title="Bedrijven" />} />
+          <Route path="rapportage" element={<FinancePlaceholder title="Rapportage" />} />
         </Route>
         <Route path="/account" element={<AccountPage />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SettingsPage /></ProtectedRoute>} />
