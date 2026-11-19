@@ -31,6 +31,9 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const SUPPLIER_SPEND_DAYS = 120;
+// Edge functions hebben een wall-clock-limiet (~150 s). Na dit budget start er geen nieuw bedrijf meer;
+// de volgende (cron-)run gaat verder met de bedrijven die het langst niet gesynchroniseerd zijn.
+const SYNC_BUDGET_MS = 110_000;
 const BANK_LAST_LINE_DAYS = 120;
 
 type Caller =
@@ -147,8 +150,9 @@ async function syncCompany(token: string, company: CompanyRow): Promise<void> {
       console.error(`exact-sync ${company.exact_division} laatste bankregel ${g.Code}:`, (e as Error).message);
     }
   }
-  const bank = mapBankAccounts(balancesByYear.get(year) ?? [], glAccounts, lastLines)
-    .map((b) => ({ company_id: company.id, ...b, synced_at: now }));
+  const bank = [...new Map(
+    mapBankAccounts(balancesByYear.get(year) ?? [], glAccounts, lastLines).map((b) => [b.account_code, b]),
+  ).values()].map((b) => ({ company_id: company.id, ...b, synced_at: now }));
   if (bank.length) {
     const { error } = await admin.from("finance_bank_accounts").upsert(bank, { onConflict: "company_id,account_code" });
     if (error) throw new Error(`finance_bank_accounts: ${error.message}`);
@@ -191,6 +195,22 @@ async function syncCompany(token: string, company: CompanyRow): Promise<void> {
     const { error } = await admin.from("finance_supplier_spend").upsert(spend, { onConflict: "company_id,supplier_code" });
     if (error) throw new Error(`finance_supplier_spend: ${error.message}`);
   }
+
+  // Opschonen na een geslaagde sync. Alles wat deze run schreef heeft synced_at = now.
+  // Bankrekeningen die Exact niet meer teruggaf: weg.
+  const staleBank = () => admin.from("finance_bank_accounts").delete().eq("company_id", company.id);
+  for (const { error } of [await staleBank().lt("synced_at", now), await staleBank().is("synced_at", null)]) {
+    if (error) throw new Error(`finance_bank_accounts opschonen: ${error.message}`);
+  }
+  // Maanden van de gesynchroniseerde jaren die Exact niet (meer) teruggaf: op 0 (bijv. teruggedraaide boeking).
+  for (const y of balancesByYear.keys()) {
+    const zeroMonths = () =>
+      admin.from("finance_monthly").update({ revenue: 0, costs: 0, synced_at: now })
+        .eq("company_id", company.id).gte("month", `${y}-01-01`).lte("month", `${y}-12-01`);
+    for (const { error } of [await zeroMonths().lt("synced_at", now), await zeroMonths().is("synced_at", null)]) {
+      if (error) throw new Error(`finance_monthly opschonen: ${error.message}`);
+    }
+  }
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────────────────────
@@ -214,6 +234,7 @@ Deno.serve(async (req) => {
   }
   if (companyId && !(await canManage(caller, companyId))) return json({ error: "Forbidden" }, 403);
 
+  const startedAt = Date.now();
   let token: string;
   try {
     token = await getAccessToken(admin);
@@ -227,8 +248,10 @@ Deno.serve(async (req) => {
   try {
     if (!companyId && caller.kind !== "manage") await syncDivisions(token);
 
+    // Oudste eerst (nooit gesynchroniseerd vooraan), zodat een afgebroken run de volgende keer verdergaat.
     let q = admin.from("finance_companies").select("id, exact_division, name")
-      .eq("excluded", false).not("exact_division", "is", null).order("name");
+      .eq("excluded", false).not("exact_division", "is", null)
+      .order("last_synced_at", { ascending: true, nullsFirst: true });
     if (companyId) q = q.eq("id", companyId);
     const { data: companies, error } = await q;
     if (error) throw new Error(`finance_companies: ${error.message}`);
@@ -241,8 +264,15 @@ Deno.serve(async (req) => {
     }
 
     let synced = 0;
+    let remaining = 0;
     const failed: { companyId: string; error: string }[] = [];
-    for (const company of list) {
+    for (const [i, company] of list.entries()) {
+      if (Date.now() - startedAt > SYNC_BUDGET_MS) {
+        remaining = list.length - i;
+        break;
+      }
+      // Access tokens leven ~10 min; per bedrijf opnieuw ophalen (ververst alleen als < 60 s geldig).
+      token = await getAccessToken(admin);
       try {
         await syncCompany(token, company);
         await admin.from("finance_companies")
@@ -256,7 +286,7 @@ Deno.serve(async (req) => {
         failed.push({ companyId: company.id, error: msg });
       }
     }
-    return json({ synced, failed });
+    return json({ synced, failed, remaining });
   } catch (e) {
     if (e instanceof ExactAuthError) return json({ error: "Exact-koppeling verlopen; koppel opnieuw" }, 409);
     console.error("exact-sync:", (e as Error).message);
