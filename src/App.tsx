@@ -25,6 +25,7 @@ import FinanceLayout from "@/pages/finance/FinanceLayout";
 import FinanceRoute from "@/pages/finance/FinanceRoute";
 import FinancePlaceholder from "@/pages/finance/FinancePlaceholder";
 import OmzetResultaatPage from "@/pages/finance/OmzetResultaatPage";
+import CashLiquiditeitPage from "@/pages/finance/CashLiquiditeitPage";
 import OverzichtPage from "@/pages/finance/OverzichtPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -71,7 +72,7 @@ function AppRoutes() {
         <Route path="/finance" element={<FinanceRoute><FinanceLayout /></FinanceRoute>}>
           <Route index element={<OverzichtPage />} />
           <Route path="omzet" element={<OmzetResultaatPage />} />
-          <Route path="liquiditeit" element={<FinancePlaceholder title="Cash & Liquiditeit" />} />
+          <Route path="liquiditeit" element={<CashLiquiditeitPage />} />
           <Route path="debiteuren" element={<FinancePlaceholder title="Facturen & Debiteuren" />} />
           <Route path="bedrijven" element={<FinancePlaceholder title="Bedrijven" />} />
           <Route path="rapportage" element={<FinancePlaceholder title="Rapportage" />} />
