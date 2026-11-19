@@ -11,9 +11,10 @@ import {
 import { applyShare, companySummary, groupSummary } from '@/lib/finance/aggregate';
 import { forecast13Weeks } from '@/lib/finance/forecast';
 import { eur } from '@/lib/finance/format';
+import { pct, targetColor, TONE_HEX } from '@/lib/finance/ui';
 import { useFinanceFilter } from './FinanceFilter';
 
-const selectClass = 'h-9 rounded-md border border-input bg-background px-2 text-sm';
+const selectClass = 'h-9 rounded-md border border-input bg-background px-2.5 text-[13px]';
 
 export default function RapportagePage() {
   const filter = useFinanceFilter();
@@ -75,92 +76,97 @@ export default function RapportagePage() {
 
   const { all, rows, group, chart, minBalance, oldestSync } = data;
   const monthName = format(parseISO(month), 'LLLL', { locale: nl });
-  const th = 'py-1 font-medium text-muted-foreground';
+  // Het rapport is altijd een wit A4-vel, ook in dark mode: vaste grijstinten in plaats van thematokens.
+  const th = 'py-1.5 text-[11px] font-medium text-gray-500';
+  const td = 'py-1.5';
+  const num = 'py-1.5 text-right tabular-nums';
+  const totalRow = 'border-t border-gray-300 font-semibold';
+  const row = 'border-b border-gray-100';
 
   return (
     <div className="p-6 print:p-0">
-      <div className="mb-4 flex flex-wrap items-end gap-3 print:hidden">
-        <label className="text-xs text-muted-foreground">
-          <span className="mb-1 block">Bedrijf</span>
-          <select aria-label="Bedrijf" className={selectClass} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-            <option value="all">Groep (alle bedrijven)</option>
-            {all.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          <span className="mb-1 block">Maand</span>
-          <input aria-label="Maand" type="month" className={selectClass} value={ym} onChange={(e) => e.target.value && setYm(e.target.value)} />
-        </label>
-        <Button onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" />Download PDF</Button>
+      <div className="mb-6 flex flex-wrap items-center gap-2 print:hidden">
+        <select aria-label="Bedrijf" className={selectClass} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+          <option value="all">Groep (alle bedrijven)</option>
+          {all.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <input aria-label="Maand" type="month" className={selectClass} value={ym} onChange={(e) => e.target.value && setYm(e.target.value)} />
+        <Button size="sm" className="h-9 rounded-md shadow-none sm:ml-auto" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" />Download PDF</Button>
       </div>
 
-      <article id="finance-report" className="mx-auto w-[210mm] max-w-full space-y-5 rounded-lg border bg-white p-[12mm] text-sm text-black shadow-sm print:rounded-none print:border-0 print:shadow-none">
-        <header className="flex items-start justify-between border-b pb-3">
+      <article id="finance-report" className="mx-auto w-[210mm] max-w-full space-y-7 rounded-xl border bg-white p-[14mm] text-[13px] text-gray-900 shadow-sm print:rounded-none print:border-0 print:shadow-none">
+        <header className="flex items-start justify-between gap-4 border-b border-gray-200 pb-4">
           <div>
-            <h1 className="text-xl font-semibold">OneGroup — Financieel overzicht {monthName} {year}</h1>
-            <p className="text-xs text-gray-500">
+            <h1 className="text-[20px] font-semibold tracking-tight">OneGroup — Financieel overzicht {monthName} {year}</h1>
+            <p className="mt-1 text-xs text-gray-500">
               {companyId === 'all' ? 'Groep, excl. intercompany' : rows[0]?.name} · {mode === 'share' ? 'aandeel OneGroup' : '100%'} · {format(new Date(), 'd MMMM yyyy', { locale: nl })}
             </p>
           </div>
-          <FreshnessBadge syncedAt={oldestSync} />
+          <FreshnessBadge syncedAt={oldestSync} className="mt-1 text-xs text-gray-500" />
         </header>
 
         <section>
-          <h2 className="mb-1 font-semibold">Banksaldi</h2>
+          <ReportHeading>Banksaldi</ReportHeading>
           <table className="w-full">
             <tbody>
               {rows.map((r) => (
-                <tr key={r.companyId} className="border-b"><td className="py-1">{r.name}</td><td className="py-1 text-right tabular-nums">{eur(r.bank)}</td></tr>
+                <tr key={r.companyId} className={row}><td className={td}>{r.name}</td><td className={num}>{eur(r.bank)}</td></tr>
               ))}
-              <tr data-testid="bank-totaal" className="font-semibold"><td className="py-1">Totaal</td><td className="py-1 text-right tabular-nums">{eur(group.bank)}</td></tr>
+              <tr data-testid="bank-totaal" className={totalRow}><td className={td}>Totaal</td><td className={num}>{eur(group.bank)}</td></tr>
             </tbody>
           </table>
         </section>
 
         <section>
-          <h2 className="mb-1 font-semibold">Omzet {monthName} vs target</h2>
+          <ReportHeading>Omzet {monthName} vs target</ReportHeading>
           <table className="w-full">
-            <thead><tr className="border-b text-left"><th className={th}>Bedrijf</th><th className={`${th} text-right`}>Omzet</th><th className={`${th} text-right`}>Target</th><th className={`${th} text-right`}>Behaald</th></tr></thead>
+            <thead><tr className="border-b border-gray-200 text-left"><th className={th}>Bedrijf</th><th className={`${th} text-right`}>Omzet</th><th className={`${th} text-right`}>Target</th><th className={`${th} text-right`}>Behaald</th></tr></thead>
             <tbody>
               {[...rows.map((r) => ({ key: r.companyId, name: r.name, revenue: r.revenueMonth, target: r.targetMonth, pct: r.targetPct })),
                 { key: 'totaal', name: 'Totaal', revenue: group.revenueMonth, target: group.targetMonth, pct: group.targetPct }].map((r) => (
-                <tr key={r.key} className={r.key === 'totaal' ? 'font-semibold' : 'border-b'}>
-                  <td className="py-1">{r.name}</td>
-                  <td className="py-1 text-right tabular-nums">{eur(r.revenue)}</td>
-                  <td className="py-1 text-right tabular-nums">{eur(r.target)}</td>
-                  <td className="py-1 text-right tabular-nums">{r.pct === null ? '—' : `${Math.round(r.pct * 100)}%`}</td>
+                <tr key={r.key} className={r.key === 'totaal' ? totalRow : row}>
+                  <td className={td}>{r.name}</td>
+                  <td className={num}>{eur(r.revenue)}</td>
+                  <td className={num}>{eur(r.target)}</td>
+                  {/* Lichtgroen (bijna) is als tekst op wit te zwak: dan het donkere groen. */}
+                  <td className={`${num} font-semibold`} style={r.pct === null ? undefined : { color: r.pct >= 0.85 && r.pct < 1 ? TONE_HEX.success : targetColor(r.pct) }}>
+                    {r.pct === null ? '—' : pct(r.pct)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="mt-1 text-xs text-gray-500">Omzet YTD {eur(group.revenueYtd)} · Resultaat YTD {eur(group.resultYtd)}</p>
+          <p className="mt-2 text-xs text-gray-500">Omzet YTD <span className="font-medium tabular-nums text-gray-700">{eur(group.revenueYtd)}</span> · Resultaat YTD <span className="font-medium tabular-nums text-gray-700">{eur(group.resultYtd)}</span></p>
         </section>
 
         <section>
-          <h2 className="mb-1 font-semibold">Prognose 13 weken</h2>
-          <LineChart width={640} height={170} data={chart}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `€${Math.round(v / 1000)}k`} />
-            <Line type="monotone" dataKey="balance" stroke="#14a38b" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="buffer" stroke="#b5452f" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          <ReportHeading>Prognose 13 weken</ReportHeading>
+          <LineChart width={640} height={170} data={chart} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="#e5e7eb" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={false} width={48} tickFormatter={(v: number) => `€${Math.round(v / 1000)}k`} />
+            <Line type="monotone" dataKey="balance" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="buffer" stroke={TONE_HEX.danger} strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
           </LineChart>
-          <p className="text-xs text-gray-500">Laagste verwachte saldo: {eur(minBalance)} · rode lijn = minimumbuffer</p>
+          <p className="mt-1 text-xs text-gray-500">Laagste verwachte saldo: <span className="font-medium tabular-nums text-gray-700">{eur(minBalance)}</span> · rode stippellijn = minimumbuffer</p>
         </section>
 
         <section>
-          <h2 className="mb-1 font-semibold">Open debiteuren</h2>
+          <ReportHeading>Open debiteuren</ReportHeading>
           <table className="w-full">
             <tbody>
               {rows.map((r) => (
-                <tr key={r.companyId} className="border-b">
-                  <td className="py-1">{r.name}</td>
-                  <td className="py-1 text-right tabular-nums">{eur(r.receivables)}{r.overdue > 0 && ` · ${eur(r.overdue)} te laat`}</td>
+                <tr key={r.companyId} className={row}>
+                  <td className={td}>{r.name}</td>
+                  <td className={num}>
+                    {eur(r.receivables)}
+                    {r.overdue > 0 && <span className="ml-2 text-xs" style={{ color: TONE_HEX.danger }}>{eur(r.overdue)} te laat</span>}
+                  </td>
                 </tr>
               ))}
-              <tr data-testid="deb-totaal" className="font-semibold">
-                <td className="py-1">Totaal</td>
-                <td className="py-1 text-right tabular-nums"><span>{eur(group.receivables)}</span> · <span>{eur(group.overdue)} te laat</span></td>
+              <tr data-testid="deb-totaal" className={totalRow}>
+                <td className={td}>Totaal</td>
+                <td className={num}><span>{eur(group.receivables)}</span> · <span style={group.overdue > 0 ? { color: TONE_HEX.danger } : undefined}>{eur(group.overdue)} te laat</span></td>
               </tr>
             </tbody>
           </table>
@@ -168,4 +174,8 @@ export default function RapportagePage() {
       </article>
     </div>
   );
+}
+
+function ReportHeading({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-2 border-b border-gray-200 pb-1.5 text-[13px] font-semibold">{children}</h2>;
 }

@@ -9,7 +9,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, Omit<ComponentProps<'inpu
 }>(({ prefix, suffix, className, wrapperClassName, type = 'number', ...props }, ref) => (
   <div
     className={cn(
-      'flex h-9 items-center rounded-md border border-input bg-background text-[13px] transition-colors',
+      'flex h-9 items-center rounded-md border border-input bg-card text-[13px] transition-colors',
       'focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/30',
       wrapperClassName,
     )}
